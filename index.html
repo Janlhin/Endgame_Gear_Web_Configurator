@@ -1685,6 +1685,14 @@ a {
     }
     sel.value = String(val);
   }
+  var XM1_CPI_OFF = [52, 61, 82, 92];
+  function xm1ReadCpi(b) {
+    return XM1_CPI_OFF.map((o, i) => ({
+      idx: i,
+      x: b[o] | b[o + 1] << 8,
+      y: b[o + 2] | b[o + 3] << 8
+    }));
+  }
   function renderXm1Readonly() {
     $("iModel").textContent = mouseName;
     $("iMouseFw").textContent = "\u2014";
@@ -1699,18 +1707,15 @@ a {
       tr.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
       tb.appendChild(tr);
     } else {
-      const b = blob;
-      for (let row = 0; row < 16; row++) {
-        const o = row * 16;
-        const cells = [];
-        for (let i = 0; i < 16; i++) cells.push(b[o + i].toString(16).padStart(2, "0"));
+      const rows = xm1ReadCpi(blob);
+      for (const r of rows) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td class="muted">0x${o.toString(16).padStart(3, "0")}</td><td colspan="4" style="font-family:Consolas,monospace;font-size:11.5px">${cells.join(" ")}</td>`;
+        tr.innerHTML = `<td>CPI ${r.idx + 1}</td><td class="muted">\u2014</td><td class="muted">\u2014</td><td><input type="number" value="${r.x}" disabled></td><td><input type="number" value="${r.y}" disabled></td>`;
         tb.appendChild(tr);
       }
-      const tail = document.createElement("tr");
-      tail.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
-      tb.appendChild(tail);
+      const note = document.createElement("tr");
+      note.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
+      tb.appendChild(note);
     }
     for (const id of [
       "btnApplySensor",

@@ -374,11 +374,28 @@ function fillSelect(sel, opts, val) {
   sel.value = String(val);
 }
 
-/* XM1 视图：显示已读到的 blob 原始字节（只读）。
+/* ★ XM1 CPI 表偏移（内部布局，2026-10-09 差分实测确凿）
+   方法：官方软件把一档从 800 改成 1150，blob 仅 4 字节变化：
+     0x03D-0x03E: 20 03 → 7e 04   (800 → 1150) = CPI X
+     0x03F-0x040: 20 03 → 7e 04   (800 → 1150) = CPI Y
+   结论：每档 = [X:u16 LE][Y:u16 LE]，小端、**直接存储无缩放**（1150=0x047E 直存）。
+   四组的 X 偏移实测为 0x034 / 0x03D / 0x052 / 0x05C（Y 各 +2）。
+   ⚠️ 组间间距不均（9/21/10），中间疑似夹有 LED/标志字段；
+      且档位编号与官方软件显示顺序的对应关系尚未确认。 */
+const XM1_CPI_OFF = [0x034, 0x03D, 0x052, 0x05C];
+
+function xm1ReadCpi(b) {
+  return XM1_CPI_OFF.map((o, i) => ({
+    idx: i,
+    x: b[o] | (b[o + 1] << 8),
+    y: b[o + 2] | (b[o + 3] << 8),
+  }));
+}
+
+/* XM1 视图：显示解析出的 CPI 值（只读）。
    ★ 读取路径已按官方 0x40FC80 修正；**写入永久停用**——
-     官方写路径 0x40FB90 需要 0x4103D0 重排层，该层未逐字节核实，
-     贸然下发 1024B 负载会覆盖鼠标配置（2026-10-09 事故：DPI/CPI 被清零）。
-   这里只展示数据供对照，所有写入控件禁用。 */
+     写路径 0x40FB90 需要 0x4103D0 重排层，该层未逐字节核实，
+     贸然下发 1024B 负载会覆盖鼠标配置（2026-10-09 事故：DPI/CPI 被清零）。 */
 function renderXm1Readonly() {
   $("iModel").textContent = mouseName;
   $("iMouseFw").textContent = "—";
@@ -393,23 +410,24 @@ function renderXm1Readonly() {
     tr.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
     tb.appendChild(tr);
   } else {
-    const b = blob;
-    for (let row = 0; row < 16; row++) {
-      const o = row * 16;
-      const cells = [];
-      for (let i = 0; i < 16; i++) cells.push(b[o + i].toString(16).padStart(2, "0"));
+    // 解析出的 CPI 档位（只读展示）
+    const rows = xm1ReadCpi(blob);
+    for (const r of rows) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="muted">0x${o.toString(16).padStart(3, "0")}</td>` +
-        `<td colspan="4" style="font-family:Consolas,monospace;font-size:11.5px">${cells.join(" ")}</td>`;
+      tr.innerHTML =
+        `<td>CPI ${r.idx + 1}</td>` +
+        `<td class="muted">—</td>` +
+        `<td class="muted">—</td>` +
+        `<td><input type="number" value="${r.x}" disabled></td>` +
+        `<td><input type="number" value="${r.y}" disabled></td>`;
       tb.appendChild(tr);
     }
-    const tail = document.createElement("tr");
-    tail.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
-    tb.appendChild(tail);
+    const note = document.createElement("tr");
+    note.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
+    tb.appendChild(note);
   }
 
-  // 禁用所有写入控件；但**导出保持可用**——导出是纯本地操作，无害，
-  // 且是定位 blob 字段语义（差分对比）的必要手段。
+  // 禁用所有写入控件；导出保持可用（纯本地操作）
   for (const id of ["btnApplySensor", "btnApplyPerf", "cpiLevels", "cpiActive", "lod", "glass",
                     "angleSnap", "ripple", "ledLiftoff", "angleTune", "polling", "motionSync",
                     "slamclick", "jitter", "maxFps", "multiclick", "powerSaving", "deepSleep",
