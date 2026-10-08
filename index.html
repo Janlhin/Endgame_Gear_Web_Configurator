@@ -589,17 +589,17 @@
     }
   };
   async function probe() {
-    try {
-      await transact(15, 1, null, { pace: 120 });
-      return;
-    } catch (e) {
-      if (e.code === 7) throw e;
-    }
-    try {
-      await transact(15, 15, null, { pace: 120 });
-      return;
-    } catch (e) {
-      if (e.code === 7) throw e;
+    if (!wired) {
+      try {
+        await transact(15, 1, null, { pace: 120 });
+        return;
+      } catch (e) {
+      }
+      try {
+        await transact(15, 15, null, { pace: 120 });
+        return;
+      } catch (e) {
+      }
     }
     await transact(14, 0, null, { pace: 120 });
   }
@@ -988,9 +988,13 @@
       if (!devs.length)
         devs = await navigator.hid.requestDevice({ filters: [] });
       if (!devs.length) return;
-      for (const d of devs)
-        log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} collections=` + (d.collections || []).map((c) => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
+      for (const d of devs) {
+        const kind = d.productId === DONGLE_PID ? "dongle" : MOUSE_PIDS[d.productId] ? "\u9F20\u6807" : "\u672A\u77E5\u8BBE\u5907";
+        log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} [${kind}] collections=` + (d.collections || []).map((c) => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
+      }
       const pick = devs.find((d) => (d.collections || []).some((c) => c.usagePage >= 65280)) || devs[0];
+      if (pick.productId === DONGLE_PID)
+        log("\u2139 \u5DF2\u9009\u62E9\u63A5\u6536\u5668\u3002\u82E5\u9F20\u6807\u6B64\u523B\u63D2\u7740 USB \u7EBF\uFF0C\u65E0\u7EBF\u94FE\u8DEF\u662F\u65AD\u5F00\u7684\u2014\u2014\u8BF7\u6539\u9009\u9F20\u6807\u8BBE\u5907\uFF08\u6216\u62D4\u7EBF\u540E\u518D\u8FDE\uFF09\u3002");
       await openDevice(pick);
     } catch (e) {
       banner("err", t("bConnectFail") + e.message);

@@ -68,9 +68,14 @@ async function transact(cmd, target = 0x00, payload = null, opt: any = {}) {
   return p;
 }
 class StatusError extends Error { code: any; constructor(code: any, msg: string) { super(msg); this.code = code; } }
+/* 探测/唤醒。0x0F 是**无线专属**唤醒（官方仅 0x22 路径唤醒，见 re/PROTOCOL_NOTES.md）：
+   有线直连时发 0x0F 两个变体都会回状态 7，且会让后续写入被 ACK 后静默丢弃
+   （zexsso/OP1-WebAPP device.ts 真机验证）。有线直接走 0x0E 读鼠标信息。 */
 async function probe() {
-  try { await transact(0x0F, 0x01, null, { pace: 120 }); return; } catch (e) { if (e.code === 0x07) throw e; }
-  try { await transact(0x0F, 0x0F, null, { pace: 120 }); return; } catch (e) { if (e.code === 0x07) throw e; }
+  if (!wired) {
+    try { await transact(0x0F, 0x01, null, { pace: 120 }); return; } catch (e) { /* 试下一变体 */ }
+    try { await transact(0x0F, 0x0F, null, { pace: 120 }); return; } catch (e) { /* 落到 0x0E */ }
+  }
   await transact(0x0E, 0x00, null, { pace: 120 });
 }
 async function guarded(cmd, target, payload: any = null, opt: any = {}) {
@@ -397,11 +402,15 @@ $("btnConnect").onclick = async () => {
     if (!devs.length)
       devs = await (navigator as any).hid.requestDevice({ filters: [] });
     if (!devs.length) return;
-    for (const d of devs)
-      log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} collections=` +
+    for (const d of devs) {
+      const kind = d.productId === DONGLE_PID ? "dongle" : (MOUSE_PIDS[d.productId] ? "鼠标" : "未知设备");
+      log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} [${kind}] collections=` +
           (d.collections || []).map(c => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
+    }
     // 优先挑 vendor 用法页（0xFF00+）的接口；没有就退而求其次
     const pick = devs.find(d => (d.collections || []).some(c => c.usagePage >= 0xFF00)) || devs[0];
+    if (pick.productId === DONGLE_PID)
+      log("ℹ 已选择接收器。若鼠标此刻插着 USB 线，无线链路是断开的——请改选鼠标设备（或拔线后再连）。");
     await openDevice(pick);
   } catch (e) { banner("err", t("bConnectFail") + e.message); log("✗ " + e.message); }
 };

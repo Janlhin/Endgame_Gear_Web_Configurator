@@ -145,6 +145,20 @@ a0 a1 01 00×17 03 01 04 61 00 01 0a 00 00 01 00 01 …
   OP1w 文档 = blob[0x70]；按型号分叉可能，待 XM2w 真机回读定论。maxFps@0x71、
   mcMaster@0x72（OP1w 记载）同理。
 
+## 有线唤醒陷阱（真机回归 + OP1-WebAPP device.ts 互证，2026-10-08 深夜）
+
+**用户真机**：XM2w 4k v2 插线直连 → 网页版报 "N/A on this connection"（状态 7）。
+根因：probe() 无条件先发 0x0F 唤醒，而 **0x0F 是无线专属**——zexsso device.ts 真机结论：
+
+> 有线直连时 0x0F 两个变体一律回状态 7；"There is nothing to wake over a cable, and
+> sending it anyway is actively harmful"——更糟的是**唤醒后的写入会被 ACK 但静默丢弃**
+> （鼠标保持旧设置）。官方固件也只在 0x22（无线）路径唤醒（对应本仓库逆向看到的
+> apply-all 双路径：无线分支 0x5480/0x55A0 探测后才应用，有线分支直接写）。
+
+**修复**：probe() 按 `wired`（PID≠0x1970）分流——无线才发 0x0F/0x01→0x0F/0x0F，有线直接 0x0E。
+另：dongle+线缆同时连接时，经 dongle 打开的话所有命令会回状态 8（stale），候选日志已加
+dongle/鼠标类型标注与提示。0x72 的 16 字节按 OP1-WebAPP 记载为 4 dwords 设备信息（pair data）。
+
 ## 版本比对基准（生态调研，docs/ecosystem-survey.md）
 
 - 官方 GitHub org `EndgameGear` 挂 8 个固件仓库（XM2w-4k / XM2w-4k-v2 / OP1w-4k / OP1w-4k-v2 /
