@@ -126,6 +126,25 @@ a0 a1 01 00×17 03 01 04 61 00 01 0a 00 00 01 00 01 …
 **后续验证**：读取修好后，做一次真机写读回环（改值 → 应用 → 重新读取看是否一致），
 即可判定 0x14/0x15 写路径的 vole 格式是否需要按官方 wire 映射调整。
 
+## 上游互证（2026-10-08 深夜，详见 re/upstream/SOURCES.md）
+
+- **官方 v1.04 工具已下载验真**（SHA256 `6e635fb5…380c` 与生态调研一致）；命令表与 v1.02
+  逐项一致，唯一差异是目标 PID：v1.04→`0x1968`（XM2w 4k **v1**），v1.02→`0x1982`（v2）。
+  证实"同一模板按型号编译"；v2 专用工具不在公开仓库。
+- **zexsso/OP1-WebAPP 的 PROTOCOL.md（Part II，真机实测）与本项目全面互证**：
+  0xA0 回显格式、单响应缓冲、命令表、0x14 wire=`blob[7,8,9,10,11,—,14,13,35..54]`、
+  0x15 advanced=`blob[12,5,6,4,61,68,75,82,89,3]`、CPI@35..54、按键@55..110、settle
+  有线 500ms/无线 880ms（出厂 800/1080，无线写前唤醒）——全部与本项目实现吻合或已采纳。
+- **悬案告破**：①本项目 NOTES 的"20B 未名块"blob[0x0F..0x22] = 4 档 LED 颜色
+  4×[R,G,B,enabled,id]；②"X 高字节缺失"系静态分析漏看 0x14 builder 的 `this=obj+0xA`
+  基址，修正后与 vole/OP1-WebAPP 完全一致（CPI 连续 blob[35..54] → wire[8..27]）。
+- **修正误判**：VID `0x22D4` = 初代 OP1w 4k（makalu_67_dll，PID 1502/1503），非升级器专用。
+- **已采纳的代码修正**：rawReceive 零占位加固；0x14 p[0] 透传 blob[7]；settle 时间
+  按有线/无线取 500/880ms；连接过滤器严格优先（FF01:02）；describeMap 补 class 0x18。
+- **新型号分叉待验证**：角度调校 blob 位置——XM2w v1.02 = blob[0x01]（解析+滑条双证），
+  OP1w 文档 = blob[0x70]；按型号分叉可能，待 XM2w 真机回读定论。maxFps@0x71、
+  mcMaster@0x72（OP1w 记载）同理。
+
 ## 版本比对基准（生态调研，docs/ecosystem-survey.md）
 
 - 官方 GitHub org `EndgameGear` 挂 8 个固件仓库（XM2w-4k / XM2w-4k-v2 / OP1w-4k / OP1w-4k-v2 /

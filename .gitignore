@@ -3,3 +3,8 @@ dist/
 # RE 中间产物（可由 re/ 脚本重新生成，勿入库）
 re/o_*.txt
 re/strings_*.txt
+# 上游原始抓取物（大文件/第三方二进制，结论沉淀在 re/upstream/SOURCES.md）
+re/upstream/*.html
+re/upstream/*.exe
+re/upstream/*.json
+re/upstream/eggweb_app.js
