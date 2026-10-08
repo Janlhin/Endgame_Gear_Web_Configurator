@@ -1535,9 +1535,31 @@ a {
     }
     throw new Error(`blob read failed after 4 rounds; last head: ${lastDump}`);
   }
-  var XM1_READ_REQ = new Uint8Array(63);
-  XM1_READ_REQ[0] = 7;
-  XM1_READ_REQ[1] = 0;
+  function xm1QueryReq(cmd) {
+    const b = new Uint8Array(63);
+    b[0] = cmd;
+    return b;
+  }
+  var XM1_READ_REQ = xm1QueryReq(7);
+  async function xm1QueryByte() {
+    try {
+      await dev2.sendFeatureReport(RPT_CMD, xm1QueryReq(3));
+    } catch (e) {
+      log(`\u2717 XM1 cmd 0x03 \u53D1\u9001\u5931\u8D25: ${e.message}`);
+      return null;
+    }
+    await sleep(50);
+    for (const rid of [RPT_BULK, RPT_CMD]) {
+      try {
+        const u8 = await rawReceive(rid);
+        log(`  XM1 cmd 0x03 \u54CD\u5E94 (reportId 0x${rid.toString(16)}) ${u8.length} B  head: ${hex(u8, 32)}`);
+        return u8;
+      } catch (e) {
+        log(`  XM1 cmd 0x03 \u7528 reportId 0x${rid.toString(16)} \u8BFB\u53D6\u5931\u8D25: ${e.message}`);
+      }
+    }
+    return null;
+  }
   async function readBlobXm1() {
     let lastDump = "";
     for (let round = 1; round <= 4; round++) {
@@ -1960,6 +1982,7 @@ a {
         battery = null;
         showCards2();
         try {
+          await xm1QueryByte();
           await readBlob();
           parseBlob();
           render();
@@ -2094,15 +2117,15 @@ a {
     if (xm1) {
       const realSend = d.sendFeatureReport.bind(d);
       d.sendFeatureReport = async (reportId, data) => {
-        const isSafeReadReq = reportId === RPT_CMD && data instanceof Uint8Array && data.length === 63 && data[0] === 7 && data.every((b, i) => i < 1 ? true : b === 0);
-        if (!isSafeReadReq) {
-          log(`\u2717 XM1 \u62E6\u622A\uFF1A\u975E\u5E38\u89C4\u53D1\u9001\uFF08reportId=${reportId}, len=${data == null ? void 0 : data.length}\uFF09`);
+        const isSafeQueryReq = reportId === RPT_CMD && data instanceof Uint8Array && data.length === 63 && (data[0] === 3 || data[0] === 7) && data.every((b, i) => i < 1 ? true : b === 0);
+        if (!isSafeQueryReq) {
+          log(`\u2717 XM1 \u62E6\u622A\uFF1A\u975E\u5E38\u89C4\u53D1\u9001\uFF08reportId=${reportId}, len=${data == null ? void 0 : data.length}, cmd=${(data == null ? void 0 : data[0]) ?? "?"}\uFF09`);
           xm1WriteDisabled();
         }
         return realSend(reportId, data);
       };
       d.__realSend = realSend;
-      log("\u26A0 XM1 \u4EC5\u5141\u8BB8 64B \u7A7A\u8BF7\u6C42\u8BFB\u53D6\uFF1B\u5199\u914D\u7F6E\u5DF2\u7981\u7528\uFF08\u4FDD\u62A4\u6027\u62E6\u622A\uFF09");
+      log("\u26A0 XM1 \u4EC5\u5141\u8BB8 0x03/0x07 \u4E24\u6761\u65E0\u8D1F\u8F7D\u67E5\u8BE2\uFF1B\u5199\u914D\u7F6E\u5DF2\u7981\u7528\uFF08\u4FDD\u62A4\u6027\u62E6\u622A\uFF09");
     }
     dev2.addEventListener("inputreport", (e) => {
       if (e.data.byteLength < 2) return;

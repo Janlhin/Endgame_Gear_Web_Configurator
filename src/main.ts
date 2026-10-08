@@ -208,10 +208,60 @@ async function readBlob() {
  *   我此前误把 64 字节原样传进 data（等于在负载最前面多塞了一个 0xA1），
  *   设备回显 `a1 a0 07 00 ...` 就是这个错位。
  */
-const XM1_READ_REQ = new Uint8Array(63);   // 64 字节报告去掉 reportId 后的长度
-XM1_READ_REQ[0] = 0x07;                    // 命令码（官方 buf[1]）
-XM1_READ_REQ[1] = 0x00;
-// 其余全 0：空请求，不携带任何配置，设备只会回送现有配置
+/* 构造 XM1 的 64 字节查询请求（WebHID 视角：63 字节，不含 reportId）。
+   除首字节的命令码外全为 0 —— 这是**空请求**：不携带任何配置数据，
+   设备无法据此改写鼠标设置。官方读路径 0x418F80 用的就是这两个命令：
+     cmd 0x03 → 读一个状态/配置字节
+     cmd 0x07 → 读 1024B 配置 blob
+   ★ 任何**带负载**的报文（尤其 1041B）依旧禁止，见 readBlobXm1 的事故注释。 */
+function xm1QueryReq(cmd: number) {
+  const b = new Uint8Array(63);
+  b[0] = cmd;
+  return b;
+}
+const XM1_READ_REQ = xm1QueryReq(0x07);
+
+/* ---------------------------------------------------------------------------
+ * ★ 2026-10-09 新发现：XM1 有一个配置字节存在 1024B blob **之外**
+ *
+ * 反汇编官方两处调用链（re/upstream/xm1_single_byte.py 可复现）：
+ *
+ *   读取（0x418F80）: call 0x40FA30 (cmd 0x03 读字节, 返回码须=1)
+ *                     call 0x40FC80 (cmd 0x07 读 1024B blob)
+ *
+ *   应用（0x41A070）: call 0x40FA30 (cmd 0x03 读字节, 返回码须=1)
+ *                     call 0x40E0D0 (把配置对象打包成 blob)
+ *                     call 0x40FB90 (cmd 0x08 写 1024B blob)
+ *                     call 0x40FAE0 (cmd 0x04 写回同一个字节, 值取自 [obj+4])
+ *
+ * 即「单字节」与 blob 是**两套独立存储**，同读同写。
+ * 这解释了实测现象：用鼠标实体键改回报率后，导出的 blob **一个字节都没变**
+ * —— 回报率（以及可能的激活档等全局量）不在 blob 里，而在那条单字节通道上。
+ *
+ * 因此这里只**读取**该字节用于定位其语义（读取不含负载，安全级别与 blob 读取相同）。
+ * 写入（cmd 0x04）继续禁止：单字节的语义尚未确认，盲写同样是改配置。
+ * ------------------------------------------------------------------------- */
+async function xm1QueryByte() {
+  try {
+    await dev.sendFeatureReport(RPT_CMD, xm1QueryReq(0x03));
+  } catch (e) {
+    log(`✗ XM1 cmd 0x03 发送失败: ${e.message}`);
+    return null;
+  }
+  await sleep(50);                     // 官方 Sleep(0x32)
+  /* 响应报告的 ID 未确证：blob 读用的是 0xA0（实测），单字节读先用 0xA0 再退到 0xA1。
+     两者都是**只读**调用，失败只会抛异常，不会改设备。 */
+  for (const rid of [RPT_BULK, RPT_CMD]) {
+    try {
+      const u8 = await rawReceive(rid);
+      log(`  XM1 cmd 0x03 响应 (reportId 0x${rid.toString(16)}) ${u8.length} B  head: ${hex(u8, 32)}`);
+      return u8;
+    } catch (e) {
+      log(`  XM1 cmd 0x03 用 reportId 0x${rid.toString(16)} 读取失败: ${e.message}`);
+    }
+  }
+  return null;
+}
 
 async function readBlobXm1() {
   let lastDump = "";
@@ -642,6 +692,9 @@ async function refreshAll() {
       dongleFw = "—"; mouseFw = "—"; battery = null;
       showCards();
       try {
+        /* 先读单字节（官方读取事务的第一步）：回报率等全局量不在 blob 里，
+           这条通道是唯一入口。只读，不含负载。 */
+        await xm1QueryByte();
         await readBlob();
         parseBlob();
         render();
@@ -760,26 +813,29 @@ async function openDevice(d) {
   xm1 = isXm1(d.vendorId);
   wired = xm1 || d.productId !== DONGLE_PID;
   /* ★ XM1 发送白名单（防止再次损坏配置）
-   * 允许：仅 readBlobXm1() 的 64B 空请求（A1 07 00 00 + 全零），
-   *       它不含任何配置数据，设备只会回送现有配置。
-   * 拦截：任何其他发送，尤其 1041B 负载——那是写配置，会覆盖鼠标设置。
-   * 依据：2026-10-09 事故（发送 0xA0 全零 blob 导致 DPI/CPI 清零）。
-   * 比"全禁"更精确：全禁会让 XM1 完全不可用，而空请求是安全的。 */
+   * 允许：64B 空请求，命令码为官方**读路径**用到的查询命令 ——
+   *         cmd 0x07（读 1024B blob）、cmd 0x03（读单字节配置/状态）。
+   *       共同特征：63 字节、除首字节命令码外全为 0 → **不含任何配置数据**，
+   *       设备只能据此回送现有值，无法被改写。
+   * 拦截：任何带负载的发送，尤其 1041B —— 那是写配置，会覆盖鼠标设置。
+   *       cmd 0x04（写单字节）也**不在白名单内**：其语义未确认，盲写即改配置。
+   * 依据：2026-10-09 事故（发送 0xA0 全零 1024B blob 导致 DPI/CPI 清零）。
+   * 比"全禁"更精确：全禁会让 XM1 完全不可用，而空请求是可证明安全的。 */
   if (xm1) {
     const realSend = d.sendFeatureReport.bind(d);
     d.sendFeatureReport = async (reportId: number, data: any) => {
-      const isSafeReadReq = reportId === RPT_CMD
+      const isSafeQueryReq = reportId === RPT_CMD
         && data instanceof Uint8Array && data.length === 63
-        && data[0] === 0x07
-        && data.every((b, i) => i < 1 ? true : b === 0);   // 除命令码外全零
-      if (!isSafeReadReq) {
-        log(`✗ XM1 拦截：非常规发送（reportId=${reportId}, len=${data?.length}）`);
+        && (data[0] === 0x03 || data[0] === 0x07)              // 官方读路径的两条查询命令
+        && data.every((b, i) => i < 1 ? true : b === 0);       // 除命令码外全零 = 无负载
+      if (!isSafeQueryReq) {
+        log(`✗ XM1 拦截：非常规发送（reportId=${reportId}, len=${data?.length}, cmd=${data?.[0] ?? "?"}）`);
         xm1WriteDisabled();
       }
       return realSend(reportId, data);
     };
     (d as any).__realSend = realSend;
-    log("⚠ XM1 仅允许 64B 空请求读取；写配置已禁用（保护性拦截）");
+    log("⚠ XM1 仅允许 0x03/0x07 两条无负载查询；写配置已禁用（保护性拦截）");
   }
   dev.addEventListener("inputreport", e => {
     if (e.data.byteLength < 2) return;
