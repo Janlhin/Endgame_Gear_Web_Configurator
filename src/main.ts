@@ -401,9 +401,14 @@ function buildSensorPayload() {
   p[7] = stage.active;
   for (let n = 0; n < 4; n++) {
     const o = 8 + 5 * n;
-    p[o] = stage.cpi[n][0];
-    p[o+1] = stage.cpi[n][1] & 0xFF; p[o+2] = stage.cpi[n][1] >> 8;
-    p[o+3] = stage.cpi[n][2] & 0xFF; p[o+4] = stage.cpi[n][2] >> 8;
+    const xyOn = stage.cpi[n][0] ? 1 : 0;
+    const x = stage.cpi[n][1] | 0;
+    /* ★ 未启用独立 → Y 必须等于 X（官方单值语义）。
+       即使 UI 被绕过，写出去的报文也是自洽的。 */
+    const y = xyOn ? (stage.cpi[n][2] | 0) : x;
+    p[o] = xyOn;
+    p[o+1] = x & 0xFF; p[o+2] = (x >> 8) & 0xFF;
+    p[o+3] = y & 0xFF; p[o+4] = (y >> 8) & 0xFF;
   }
   return p;
 }
@@ -716,20 +721,42 @@ function render() {
   for (let n = 0; n < 4; n++) {
     const tr = document.createElement("tr");
     const dis = n >= stage.levels ? "disabled" : "";
+    /* XY 开关关闭 = 官方软件的单值语义：Y 显示为与 X 相同（框禁用但跟随） */
+    const xyOn = stage.cpi[n][0] ? 1 : 0;
+    const xv = stage.cpi[n][1], yv = xyOn ? stage.cpi[n][2] : stage.cpi[n][1];
     tr.innerHTML = `<td>CPI ${n + 1}${n === stage.active ? t("current") : ""}</td><td>${STAGE_COLORS[LANG][n]}</td>
-      <td><input type="checkbox" data-xy="${n}" ${stage.cpi[n][0] ? "checked" : ""} ${dis}></td>
-      <td><input type="number" data-x="${n}" min="50" max="30000" step="50" value="${stage.cpi[n][1]}" ${dis}></td>
-      <td><input type="number" data-y="${n}" min="50" max="30000" step="50" value="${stage.cpi[n][2]}" ${stage.cpi[n][0] && !dis ? "" : "disabled"}></td>`;
+      <td><input type="checkbox" data-xy="${n}" ${xyOn ? "checked" : ""} ${dis}></td>
+      <td><input type="number" data-x="${n}" min="50" max="30000" step="50" value="${xv}" ${dis}></td>
+      <td><input type="number" data-y="${n}" min="50" max="30000" step="50" value="${yv}" ${xyOn && !dis ? "" : "disabled"}></td>`;
     tb.appendChild(tr);
   }
   tb.querySelectorAll("input[data-xy]").forEach(el => el.onchange = () => {
     const n = +el.dataset.xy; stage.cpi[n][0] = el.checked ? 1 : 0;
-    tb.querySelector(`input[data-y="${n}"]`).disabled = !el.checked;
+    const yEl: any = tb.querySelector(`input[data-y="${n}"]`);
+    yEl.disabled = !el.checked;
+    /* 取消独立 → 立刻回到单值语义：Y 同步为 X，
+       不留下"开关关着、两个值却不同"的中间状态。 */
+    if (!el.checked) { stage.cpi[n][2] = stage.cpi[n][1]; yEl.value = String(stage.cpi[n][1]); }
   });
   tb.querySelectorAll("input[data-x],input[data-y]").forEach(el => el.onchange = () => {
     const n = +(el.dataset.x ?? el.dataset.y); const ax = el.dataset.x ? 1 : 2;
-    stage.cpi[n][ax] = Math.max(10, Math.min(30000, +el.value || 400));
+    const v = Math.max(10, Math.min(30000, +el.value || 400));
+    (el as any).value = String(v);                       // clamp 后回显
+    stage.cpi[n][ax] = v;
+    /* ★ 未启用 XY 独立时两个值联动 —— 等同官方软件的单一 CPI 输入 */
+    if (!stage.cpi[n][0]) {
+      stage.cpi[n][1] = stage.cpi[n][2] = v;
+      const xEl: any = tb.querySelector(`input[data-x="${n}"]`);
+      const yEl: any = tb.querySelector(`input[data-y="${n}"]`);
+      if (xEl) xEl.value = String(v);
+      if (yEl) yEl.value = String(v);
+    }
   });
+  /* 开关含义提示：不勾 = 官方那套单值 CPI，勾上才独立 */
+  const hint = document.createElement("tr");
+  hint.innerHTML = `<td colspan="5" class="muted">${t("xyHint")}</td>`;
+  tb.appendChild(hint);
+
   $("cpiLevels").value = String(stage.levels);
   $("cpiLevels").onchange = e => stage.levels = +e.target.value;
   const actSel = $("cpiActive");
@@ -849,7 +876,7 @@ const resetSettle = () => wired ? 800 : 1080;
 /** 写入前：记录传感器页期望值 */
 function snapSensor(): any {
   return {
-    cpi: stage.cpi.map((r: number[]) => [r[0] ? 1 : 0, r[1] | 0, r[2] | 0]),
+    cpi: stage.cpi.map((r: number[]) => [r[0] ? 1 : 0, r[1] | 0, r[0] ? (r[2] | 0) : (r[1] | 0)]),
     levels: stage.levels | 0,
     active: stage.active | 0,
     angleSnap: stage.angleSnap ? 1 : 0,
@@ -868,7 +895,8 @@ function verifySensor(w: any): string[] {
     const a = stage.cpi[n] || [0, 0, 0];
     if (w.cpi[n][0] !== (a[0] ? 1 : 0)) bad.push(`CPI ${n + 1} XY-enable`);
     if (w.cpi[n][1] !== (a[1] | 0)) bad.push(`CPI ${n + 1} X ${w.cpi[n][1]}→${a[1] | 0}`);
-    if (w.cpi[n][2] !== (a[2] | 0)) bad.push(`CPI ${n + 1} Y ${w.cpi[n][2]}→${a[2] | 0}`);
+    const wantY = w.cpi[n][0] ? w.cpi[n][2] : w.cpi[n][1];   // 未启用独立时从 X 取期望
+    if (wantY !== (a[2] | 0)) bad.push(`CPI ${n + 1} Y ${wantY}→${a[2] | 0}`);
   }
   if (w.levels !== (stage.levels | 0)) bad.push(`Levels ${w.levels}→${stage.levels}`);
   if (gen === 2 && w.active !== (stage.active & 3)) bad.push(`Active stage ${w.active + 1}→${(stage.active & 3) + 1}`);

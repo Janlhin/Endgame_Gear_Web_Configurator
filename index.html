@@ -533,6 +533,7 @@ a {
       battery: "\u7535\u91CF",
       connMode: "\u8FDE\u63A5\u65B9\u5F0F",
       gen: "\u534F\u8BAE\u4EE3\u6570",
+      xyHint: "\u52FE\u9009 = X/Y \u72EC\u7ACB\uFF1B\u4E0D\u52FE = \u4E24\u503C\u8054\u52A8\uFF08\u7B49\u540C\u5B98\u65B9\u8F6F\u4EF6\u7684\u5355\u4E00 CPI \u8F93\u5165\uFF09",
       secSensor: "\u4F20\u611F\u5668 / CPI",
       stage: "\u6863\u4F4D",
       ledColor: "LED \u989C\u8272",
@@ -713,6 +714,7 @@ a {
       battery: "Battery",
       connMode: "Connection",
       gen: "Protocol gen",
+      xyHint: "Checked = independent X/Y; unchecked = the two values move together (same as the official tool's single CPI field)",
       secSensor: "Sensor / CPI",
       stage: "Stage",
       ledColor: "LED color",
@@ -1878,11 +1880,14 @@ a {
     p[7] = stage.active;
     for (let n = 0; n < 4; n++) {
       const o = 8 + 5 * n;
-      p[o] = stage.cpi[n][0];
-      p[o + 1] = stage.cpi[n][1] & 255;
-      p[o + 2] = stage.cpi[n][1] >> 8;
-      p[o + 3] = stage.cpi[n][2] & 255;
-      p[o + 4] = stage.cpi[n][2] >> 8;
+      const xyOn = stage.cpi[n][0] ? 1 : 0;
+      const x = stage.cpi[n][1] | 0;
+      const y = xyOn ? stage.cpi[n][2] | 0 : x;
+      p[o] = xyOn;
+      p[o + 1] = x & 255;
+      p[o + 2] = x >> 8 & 255;
+      p[o + 3] = y & 255;
+      p[o + 4] = y >> 8 & 255;
     }
     return p;
   }
@@ -2170,22 +2175,41 @@ a {
     for (let n = 0; n < 4; n++) {
       const tr = document.createElement("tr");
       const dis = n >= stage.levels ? "disabled" : "";
+      const xyOn = stage.cpi[n][0] ? 1 : 0;
+      const xv = stage.cpi[n][1], yv = xyOn ? stage.cpi[n][2] : stage.cpi[n][1];
       tr.innerHTML = `<td>CPI ${n + 1}${n === stage.active ? t("current") : ""}</td><td>${STAGE_COLORS[LANG][n]}</td>
-      <td><input type="checkbox" data-xy="${n}" ${stage.cpi[n][0] ? "checked" : ""} ${dis}></td>
-      <td><input type="number" data-x="${n}" min="50" max="30000" step="50" value="${stage.cpi[n][1]}" ${dis}></td>
-      <td><input type="number" data-y="${n}" min="50" max="30000" step="50" value="${stage.cpi[n][2]}" ${stage.cpi[n][0] && !dis ? "" : "disabled"}></td>`;
+      <td><input type="checkbox" data-xy="${n}" ${xyOn ? "checked" : ""} ${dis}></td>
+      <td><input type="number" data-x="${n}" min="50" max="30000" step="50" value="${xv}" ${dis}></td>
+      <td><input type="number" data-y="${n}" min="50" max="30000" step="50" value="${yv}" ${xyOn && !dis ? "" : "disabled"}></td>`;
       tb.appendChild(tr);
     }
     tb.querySelectorAll("input[data-xy]").forEach((el) => el.onchange = () => {
       const n = +el.dataset.xy;
       stage.cpi[n][0] = el.checked ? 1 : 0;
-      tb.querySelector(`input[data-y="${n}"]`).disabled = !el.checked;
+      const yEl = tb.querySelector(`input[data-y="${n}"]`);
+      yEl.disabled = !el.checked;
+      if (!el.checked) {
+        stage.cpi[n][2] = stage.cpi[n][1];
+        yEl.value = String(stage.cpi[n][1]);
+      }
     });
     tb.querySelectorAll("input[data-x],input[data-y]").forEach((el) => el.onchange = () => {
       const n = +(el.dataset.x ?? el.dataset.y);
       const ax = el.dataset.x ? 1 : 2;
-      stage.cpi[n][ax] = Math.max(10, Math.min(3e4, +el.value || 400));
+      const v = Math.max(10, Math.min(3e4, +el.value || 400));
+      el.value = String(v);
+      stage.cpi[n][ax] = v;
+      if (!stage.cpi[n][0]) {
+        stage.cpi[n][1] = stage.cpi[n][2] = v;
+        const xEl = tb.querySelector(`input[data-x="${n}"]`);
+        const yEl = tb.querySelector(`input[data-y="${n}"]`);
+        if (xEl) xEl.value = String(v);
+        if (yEl) yEl.value = String(v);
+      }
     });
+    const hint = document.createElement("tr");
+    hint.innerHTML = `<td colspan="5" class="muted">${t("xyHint")}</td>`;
+    tb.appendChild(hint);
     $("cpiLevels").value = String(stage.levels);
     $("cpiLevels").onchange = (e) => stage.levels = +e.target.value;
     const actSel = $("cpiActive");
@@ -2306,7 +2330,7 @@ a {
   var resetSettle = () => wired2 ? 800 : 1080;
   function snapSensor() {
     return {
-      cpi: stage.cpi.map((r) => [r[0] ? 1 : 0, r[1] | 0, r[2] | 0]),
+      cpi: stage.cpi.map((r) => [r[0] ? 1 : 0, r[1] | 0, r[0] ? r[2] | 0 : r[1] | 0]),
       levels: stage.levels | 0,
       active: stage.active | 0,
       angleSnap: stage.angleSnap ? 1 : 0,
@@ -2323,7 +2347,8 @@ a {
       const a = stage.cpi[n] || [0, 0, 0];
       if (w.cpi[n][0] !== (a[0] ? 1 : 0)) bad.push(`CPI ${n + 1} XY-enable`);
       if (w.cpi[n][1] !== (a[1] | 0)) bad.push(`CPI ${n + 1} X ${w.cpi[n][1]}\u2192${a[1] | 0}`);
-      if (w.cpi[n][2] !== (a[2] | 0)) bad.push(`CPI ${n + 1} Y ${w.cpi[n][2]}\u2192${a[2] | 0}`);
+      const wantY = w.cpi[n][0] ? w.cpi[n][2] : w.cpi[n][1];
+      if (wantY !== (a[2] | 0)) bad.push(`CPI ${n + 1} Y ${wantY}\u2192${a[2] | 0}`);
     }
     if (w.levels !== (stage.levels | 0)) bad.push(`Levels ${w.levels}\u2192${stage.levels}`);
     if (gen === 2 && w.active !== (stage.active & 3)) bad.push(`Active stage ${w.active + 1}\u2192${(stage.active & 3) + 1}`);
