@@ -13,7 +13,7 @@ import { t } from "./i18n.js";
 import { S } from "./state.js";
 import { rawReceive } from "./transport.js";
 import { RPT_CMD, RPT_BULK, XM1_SETTLE_MS, buildXm1BlobReport, buildXm1ByteReport, xm1GuardEchoByte } from "./protocol.js";
-import { looksLikeBlob, xm1Parse, XM1_F, XM1_STAGE_ON, xm1LodToMm, xm1MmToLod } from "./blob.js";
+import { looksLikeBlob, xm1Parse, XM1_F, XM1_STAGE_ON, xm1LodToMm, xm1MmToLod, cpiClamp } from "./blob.js";
 
 export function xm1QueryReq(cmd: number) {
   const b = new Uint8Array(63);
@@ -154,7 +154,7 @@ export function xm1Snapshot(label: string) {
 
 export function xm1PatchEdit(ref: Uint8Array, e: any): Uint8Array {
   const out = ref.slice();
-  const clamp = (v: number) => Math.max(50, Math.min(30000, Math.round(v / 50) * 50));
+  const clamp = cpiClamp;                 // 50–30000、步进 50（定义见 blob.ts）
   out[XM1_F.active] = (e.active | 0) & 3;
   XM1_F.stages.forEach((st, i) => {
     const ed = e.stages[i];
@@ -211,7 +211,7 @@ export async function xm1Apply() {
     const bad: string[] = [];
     if (p.active !== (want.active | 0)) bad.push(t("xm1FActive"));
     for (let i = 0; i < 4; i++) {
-      const st = want.stages[i], clamp = (v: number) => Math.max(50, Math.min(30000, Math.round(v / 50) * 50));
+      const st = want.stages[i], clamp = cpiClamp;
       const v = clamp(st.x);                      // 写入时 Y 同步为 X
       if (p.stages[i].on !== !!st.on) bad.push("CPI " + (i + 1) + " " + t("on"));
       if (p.stages[i].x !== v) bad.push("CPI " + (i + 1) + " X");

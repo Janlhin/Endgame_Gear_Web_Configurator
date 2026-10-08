@@ -218,3 +218,38 @@ a { color: $acc; }
     grid-template-columns: 1fr;
   }
 }
+
+// ---------- 预设条与设置说明 ----------
+// 预设只往表单里填值、不写设备，用户确认后再点「应用」。
+.presetBar {
+  margin-bottom: $gap-sm;
+
+  .presetLabel {
+    font-size: $fs-xs;
+    color: $sub;
+    min-width: auto;
+  }
+
+  button {
+    font-size: $fs-xs;
+    padding: 4px 10px;
+  }
+}
+
+// 「这些设置是什么意思」——默认收起，不打扰已经会用的人
+.helpBox {
+  margin-top: $gap-md;
+  font-size: $fs-xs;
+  color: $sub;
+
+  summary {
+    cursor: pointer;
+    color: $acc;
+    font-size: $fs-sm;
+    user-select: none;
+  }
+
+  dl { margin: $gap-sm 0 0; }
+  dt { font-weight: 600; color: $text; margin-top: $gap-sm; }
+  dd { margin: 2px 0 0; line-height: 1.55; }
+}

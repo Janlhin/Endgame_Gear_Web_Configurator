@@ -3,11 +3,11 @@
  *  事件绑定就地写在渲染函数里（控件是渲染时动态建出来的，每次渲染后重绑），
  *  所以本模块引用 device-xm1 的 xm1Apply。依赖方向是 render → device，单向。
  */
-import { $, hex } from "./util.js";
+import { $, hex, banner } from "./util.js";
 import { LANG, t } from "./i18n.js";
 import { S } from "./state.js";
 import { xm1Apply } from "./device-xm1.js";
-import { xm1LodToMm } from "./blob.js";
+import { xm1LodToMm, cpiClamp } from "./blob.js";
 import { XM1_MAX_STAGES } from "./protocol.js";
 
 /* ★ 这两张表按 LANG 直接取用（取不到就是 undefined → 崩）。
@@ -166,8 +166,13 @@ export function render() {
   });
   tb.querySelectorAll("input[data-x],input[data-y]").forEach(el => el.onchange = () => {
     const n = +(el.dataset.x ?? el.dataset.y); const ax = el.dataset.x ? 1 : 2;
-    const v = Math.max(10, Math.min(30000, +el.value || 400));
-    (el as any).value = String(v);                       // clamp 后回显
+    /* ★ CPI 归一化走 blob.ts 的单一来源（50–30000、步进 50）。
+       静默改掉用户输入的数字会让人困惑，所以被归一化时给一句反馈。 */
+    const raw = +el.value || 400;
+    const v = cpiClamp(raw);
+    (el as any).value = String(v);
+    const note = $("cpiStepNote");
+    if (note) note.textContent = v !== raw ? t("cpiAligned", String(v)) : "";
     S.stage.cpi[n][ax] = v;
     /* ★ 未启用 XY 独立时两个值联动 —— 等同官方软件的单一 CPI 输入 */
     if (!S.stage.cpi[n][0]) {
@@ -298,5 +303,56 @@ export function describeMap(b) {
     case 0xFF: return t("disabled");
     default: return t("typeRaw", b.type.toString(16));
   }
+}
+
+/* ================= 预设与设置说明 =================
+ *
+ * ★ 预设只把值填进表单，**绝不写设备** —— 和官方"点一下直接生效"不同，
+ *   用户改完还要再点「应用」。这是刻意的：本项目出过一次误写事故（见 TODO.md 不做项）。
+ *
+ * ★ renderHelp() 只在初始化与语言切换时调用，**不能放进 render()** ——
+ *   那会每次都重建 <details>，把用户展开/收起的状态重置掉。
+ */
+
+/** 预设只动这几项，其余保持当前值。 */
+const PRESETS: any[] = [
+  { name: "presetFps", desc: "presetFpsDesc", cpi: 400, snap: 0, ripple: 0, sync: 0, lod: 1.0 },
+  { name: "presetMoba", desc: "presetMobaDesc", cpi: 800, snap: 0, ripple: 0, sync: 0, lod: 1.0 },
+  { name: "presetDesktop", desc: "presetDesktopDesc", cpi: 1600, snap: 1, ripple: 0, sync: 0, lod: 2.0 },
+  { name: "presetArt", desc: "presetArtDesc", cpi: 800, snap: 1, ripple: 1, sync: 0, lod: 2.0 },
+];
+
+function applyPreset(p: any) {
+  for (let n = 0; n < 4; n++) {
+    const split = S.stage.cpi[n][0];          // 保留 XY 独立开关，独立时不动 Y
+    S.stage.cpi[n] = [split, p.cpi, split ? S.stage.cpi[n][2] : p.cpi];
+  }
+  S.stage.angleSnap = p.snap;
+  S.stage.ripple = p.ripple;
+  S.stage.motionSync = p.sync;
+  S.stage.lodMM = p.lod;
+  render();
+  banner("warn", t("presetFilled"));
+}
+
+export function renderHelp() {
+  const bar = $("presetBar");
+  if (bar) {
+    bar.innerHTML =
+      `<label class="presetLabel" style="min-width:auto">${t("preset")}</label>` +
+      PRESETS.map((p, i) => `<button class="ghost" data-preset="${i}" title="${t(p.desc)}">${t(p.name)}</button>`).join("") +
+      `<span class="muted">${t("presetNote")}</span>`;
+    bar.querySelectorAll("button[data-preset]").forEach((el: any) => {
+      el.onclick = () => applyPreset(PRESETS[+el.dataset.preset]);
+    });
+  }
+  const fill = (id: string, keys: string[]) => {
+    const box = $(id);
+    if (!box) return;
+    box.innerHTML = `<details><summary>${t("helpToggle")}</summary><ul>` +
+      keys.map(k => `<li>${t(k)}</li>`).join("") + `</ul></details>`;
+  };
+  fill("sensorHelp", ["helpLod", "helpAngleSnap", "helpRipple", "helpAngleTune", "cpiHint"]);
+  fill("perfHelp", ["helpPolling", "helpMotionSync", "helpSlamclick", "helpJitter", "helpMaxFps", "helpMulti", "helpPower", "helpDeepSleep"]);
 }
 

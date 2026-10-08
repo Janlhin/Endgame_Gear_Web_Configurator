@@ -160,3 +160,16 @@ export const XM1_STAGE_ON = 0x00;
 /** Lift Cut-Off 编码 ⇄ 毫米（实测 3mm=11、2mm=6 ⇒ 5×mm−4） */
 export const xm1LodToMm = (raw) => raw ? (raw + 4) / 5 : 0;
 export const xm1MmToLod = (mm) => Math.round(mm * 5) - 4;
+
+/** CPI 归一化：50–30000，步进 50 —— 全局**单一来源**（UI 输入、XM1 写回、4k 写回都用它）。
+ *
+ *  步进 50 的依据：2026-10-08 实测官方软件拒绝 1234、接受 1150（= 50×23），
+ *  即 CPI 必须是 50 的倍数。对齐到 50 是**保守方向** —— 50 的倍数一定是合法值，
+ *  所以对齐不会让设备拒绝；反过来把 1234 原样下发才会。
+ *  ⚠️ 该结论在 XM1 上实测确认；4k 族沿用同一规则（官方工具为共用 OEM 模板），
+ *     若日后在 4k 族上实测到不同步进，只需改这一个函数。
+ */
+export function cpiClamp(v) {
+  const n = Math.round((+v || 0) / 50) * 50;
+  return Math.max(50, Math.min(30000, n));
+}

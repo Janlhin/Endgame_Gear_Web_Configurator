@@ -115,6 +115,7 @@
 
   <section class="card" id="cardSensor" style="display:none">
     <h2 data-i18n="secSensor">传感器 / CPI</h2>
+    <div class="row" id="presetBar"></div>
     <table>
       <thead><tr>
         <th data-i18n="stage">档位</th><th data-i18n="ledColor">LED 颜色</th><th data-i18n="xySplit">XY 独立</th>
@@ -122,6 +123,7 @@
       </tr></thead>
       <tbody id="cpiRows"></tbody>
     </table>
+    <div class="muted" id="cpiStepNote" style="margin-top:6px"></div>
     <div class="row" id="rowStages" style="margin-top:12px">
       <label data-i18n="cpiLevels">启用档位数</label>
       <select id="cpiLevels"><option>1</option><option>2</option><option>3</option><option>4</option></select>
@@ -148,6 +150,7 @@
       <span class="muted" data-i18n="angleTuneNote">v2 专属</span>
     </div>
     <div class="row"><button id="btnApplySensor" data-i18n="applySensor">应用传感器设置</button></div>
+    <div id="sensorHelp" class="helpBox"></div>
   </section>
 
   <section class="card" id="cardPerf" style="display:none">
@@ -161,6 +164,7 @@
     <div class="row" id="rowPower"><label data-i18n="powerSaving">省电超时 (分钟)</label><select id="powerSaving"></select>
       <label style="min-width:auto" data-i18n="deepSleep">深度休眠 (分钟)</label><select id="deepSleep"></select></div>
     <div class="row"><button id="btnApplyPerf" data-i18n="applyPerf">应用性能/电源</button></div>
+    <div id="perfHelp" class="helpBox"></div>
   </section>
 
   <section class="card" id="cardBtns" style="display:none">

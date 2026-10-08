@@ -70,5 +70,24 @@ for (const name of ["STAGE_COLORS", "BTN_NAMES"]) {
   if (extra.length) console.log("        多:", extra.join(" "));
 }
 
+// 代码里引用的 t("key") 必须都在字典里 —— 否则界面直接显示裸 key 名（很难看，且没人会注意到）。
+// 这条是补的：我自己就犯过「render 里引用了 helpXy、字典里没加」。
+console.log("\n代码引用的词条是否存在：");
+const srcFiles = readdirSync(SRC).filter((f) => f.endsWith(".ts"));
+const missingRefs = new Set();
+for (const f of srcFiles) {
+  const code = readFileSync(new URL(f, SRC), "utf8");
+  const body = f === "i18n.ts" ? code.slice(0, code.indexOf("const I18N")) : code;
+  for (const m of body.matchAll(/\bt\(\s*"([A-Za-z0-9_]+)"/g)) {
+    if (!base.has(m[1])) missingRefs.add(`${m[1]}  (${f})`);
+  }
+}
+if (missingRefs.size) {
+  fails++;
+  console.log("  缺词条:", [...missingRefs].join("  "));
+} else {
+  console.log("  全部命中  OK");
+}
+
 console.log(`\n结果：${langs.length} 种语言，${fails} 项失败`);
 process.exit(fails ? 1 : 0);

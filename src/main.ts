@@ -18,14 +18,14 @@ import { looksLikeBlob, looksLikeBlob8k, parseBlob, buildSensorPayload, buildPow
 import { readBlobXm1, writeBlobXm1, xm1QueryByte, xm1Snapshot, xm1Apply } from "./device-xm1.js";
 import { readBlob8k, store8k, verifySensor8k, verifyPerf8k } from "./device-8k.js";
 import { readBlob } from "./device-4k.js";
-import { render, renderXm1, renderInfoOnly } from "./render.js";
+import { render, renderXm1, renderInfoOnly, renderHelp } from "./render.js";
 import { refreshAll, applySensor, applyPerf, resetSettle, writeSettle } from "./session.js";
 import { releaseAllDevices, openDevice, guard4k } from "./connect.js";
 
 // —— 语言切换时重渲染（i18n.ts 通过事件解耦） ——
 /* 语言切换：applyI18n() 已在 i18n.ts 的 onchange 里跑过，这里补上
    「由 t() 生成的表头」与各卡片的重渲染。 */
-document.addEventListener("langchange", () => { reapplyLayout(); render(); });
+document.addEventListener("langchange", () => { reapplyLayout(); renderHelp(); render(); });
 
 
 
@@ -532,6 +532,7 @@ document.addEventListener("langchange", applyThemeButton);
 applyThemeButton();
 
 applyI18n();   // ★ 必须先跑：它会按 data-i18n 写文本，跑在布局之后会覆盖型号专属表头
+renderHelp();  // 预设条与设置说明（只在初始化与语言切换时重建，避免重置 <details> 展开态）
 
 /* 未连接状态：设备相关卡片全部收起（确定性初始态，不依赖模板里的 inline style）。
    若 URL 带 #layout=xxx 则套用该预览布局（便于无实机时查看裁剪效果）。 */
