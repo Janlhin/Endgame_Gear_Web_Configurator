@@ -537,9 +537,14 @@ function xm1PatchEdit(ref: Uint8Array, e: any): Uint8Array {
   XM1_F.stages.forEach((st, i) => {
     const ed = e.stages[i];
     out[st.flag] = ed.on ? XM1_STAGE_ON : 0xFF;
-    const x = clamp(ed.x), y = clamp(ed.y);
+    /* ★ XM1 的固件只读取 X，忽略 Y（2026-10-09 真机实测：改 X 有效果、改 Y 没效果）。
+       协议层同样印证：XM1 每档是 [启用][填充][X][Y] 共 6 字节，**没有** 4k 族那样的
+       XY 使能字段（4k 族是 0x23+5n 的 [XY使能][X][Y]）。
+       所以写入时把 Y 也设成 X —— 与官方工具行为一致，且避免设备里残留一个
+       "看似有效、实则无效"的 Y 值。 */
+    const x = clamp(ed.x);
     out[st.x] = x & 0xFF; out[st.x + 1] = (x >> 8) & 0xFF;
-    out[st.y] = y & 0xFF; out[st.y + 1] = (y >> 8) & 0xFF;
+    out[st.y] = x & 0xFF; out[st.y + 1] = (x >> 8) & 0xFF;
   });
   out[XM1_F.lod] = xm1MmToLod(e.lodMM);
   out[XM1_F.ripple] = e.ripple ? 1 : 0;
@@ -555,7 +560,7 @@ function xm1FieldName(off: number): string {
     const st = XM1_F.stages[i];
     if (off === st.flag) return "CPI " + (i + 1) + " " + t("on");
     if (off === st.x || off === st.x + 1) return "CPI " + (i + 1) + " X";
-    if (off === st.y || off === st.y + 1) return "CPI " + (i + 1) + " Y";
+    if (off === st.y || off === st.y + 1) return "CPI " + (i + 1) + " Y (=X)";
   }
   return "?";
 }
@@ -585,9 +590,12 @@ async function xm1Apply() {
     if (p.active !== (want.active | 0)) bad.push(t("xm1FActive"));
     for (let i = 0; i < 4; i++) {
       const st = want.stages[i], clamp = (v: number) => Math.max(50, Math.min(30000, Math.round(v / 50) * 50));
+      const v = clamp(st.x);                      // 写入时 Y 同步为 X
       if (p.stages[i].on !== !!st.on) bad.push("CPI " + (i + 1) + " " + t("on"));
-      if (p.stages[i].x !== clamp(st.x)) bad.push("CPI " + (i + 1) + " X");
-      if (p.stages[i].y !== clamp(st.y)) bad.push("CPI " + (i + 1) + " Y");
+      if (p.stages[i].x !== v) bad.push("CPI " + (i + 1) + " X");
+      /* Y 不作为失败条件：XM1 固件根本不使用 Y，其读回值由设备自行处理。
+         这里仅记录，便于日后判断固件是把 Y 同步成 X 还是原样保留。 */
+      if (p.stages[i].y !== v) log("⋯ CPI " + (i + 1) + " 读回 Y=" + p.stages[i].y + "（XM1 固件不使用 Y，仅记录）");
     }
     if (Math.abs(xm1LodToMm(p.lodRaw) - want.lodMM) > 0.05) bad.push(t("xm1FLod"));
     if (!!p.ripple !== !!want.ripple) bad.push(t("xm1FRipple"));
@@ -600,10 +608,12 @@ async function xm1Apply() {
   }
 }
 
-/* XM1 视图：显示解析出的传感器配置（**只读**）。
-   ★ 读取路径按官方 0x40FC80 实现；**写入永久停用**——
-     写路径 0x40FB90 需要 0x4103D0 重排层，该层未逐字节核实，
-     贸然下发 1024B 负载会覆盖鼠标配置（2026-10-09 事故：DPI/CPI 被清零）。 */
+/* XM1 视图：显示并编辑已实测确认的传感器字段。
+   ★ 读取路径按官方 0x40FC80；写入按官方 0x41A070 事务（cmd 0x03 + 0x08 + 0x04），
+     2026-10-09 回声闭环真机验证通过（re/XM1_NOTES.md 6.13/6.14）。
+   ★ 写入边界：只允许改动 XM1_EDITABLE_OFFSETS 里的 23 个字节（全部经差分实测确认），
+     其余字节必须与刚读回的数据逐字节一致 —— 由 protocol.ts 的 xm1GuardWrite 强制。
+   ★ CPI 是**单值**：XM1 固件只读取 X、忽略 Y（6.15 节，实测 + 协议层双重印证）。 */
 function renderXm1() {
   $("iModel").textContent = mouseName;
   $("iMouseFw").textContent = "—";
@@ -614,7 +624,8 @@ function renderXm1() {
 
   // XM1 的表头含义与 4k 族不同（启用 / 激活 / X / Y）
   const ths = document.querySelectorAll("#cardSensor thead th");
-  const labels = [t("stage"), t("xm1On"), t("xm1ActiveCol"), "CPI X", "CPI Y"];
+  // ★ XM1 只有一个 CPI 值：固件只读 X、忽略 Y（实测 + 协议层双重印证），故合并为一列
+  const labels = [t("stage"), t("xm1On"), t("xm1ActiveCol"), "CPI", ""];
   ths.forEach((el, i) => { if (labels[i]) el.textContent = labels[i]; });
 
   const tb = $("cpiRows");
@@ -632,8 +643,7 @@ function renderXm1() {
       `<td>CPI ${i + 1}</td>` +
       `<td><input type="checkbox" data-on="${i}"${st.on ? " checked" : ""}></td>` +
       `<td style="text-align:center"><input type="radio" name="xm1act" data-act="${i}"${xm1Edit.active === i ? " checked" : ""}></td>` +
-      `<td><input type="number" data-x="${i}" min="50" max="30000" step="50" value="${st.x}"></td>` +
-      `<td><input type="number" data-y="${i}" min="50" max="30000" step="50" value="${st.y}"></td>`;
+      `<td colspan="2"><input type="number" data-x="${i}" min="50" max="30000" step="50" value="${st.x}"></td>`;
     tb.appendChild(tr);
   });
   // 事件：直接改编辑状态，不立即写设备
@@ -645,9 +655,6 @@ function renderXm1() {
   });
   tb.querySelectorAll("input[data-x]").forEach(el => {
     el.oninput = () => { xm1Edit.stages[+el.dataset.x!].x = +el.value || 0; };
-  });
-  tb.querySelectorAll("input[data-y]").forEach(el => {
-    el.oninput = () => { xm1Edit.stages[+el.dataset.y!].y = +el.value || 0; };
   });
   const note = document.createElement("tr");
   note.innerHTML = `<td colspan="5" class="muted">${t("xm1EditNote")}</td>`;
@@ -693,9 +700,7 @@ function renderXm1() {
   }
 }
 function render() {
-  /* XM1 只读视图：blob 字段语义尚未核实（官方内部布局与线上布局之间还有一层重排，
-     函数 0x40FD60 有 298 条搬运），按 4k 偏移猜测并回写会永久损坏鼠标配置。
-     所以这里只展示原始 blob 字节，禁用所有写入控件——等重排层核实后再开写入。 */
+  /* XM1：字段已实测确认，走 renderXm1() 的受限编辑器（写入只涉及 23 个已核实字节）。 */
   if (xm1) return renderXm1();
 
   $("iModel").textContent = mouseName;
