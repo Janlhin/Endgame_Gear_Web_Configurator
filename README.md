@@ -15,7 +15,7 @@
 | XM2w 4k v2 | 4k 无线 v2 | `0x1970` | `0x1982` / `0x1981` | ✅ 完整支持 |
 | OP1w 4k v2 | 4k 无线 v2 | `0x1984` | `0x1984` | ✅ 完整支持 |
 | **XM2we** | **2020 有线/2.4G** | `0x1961` | `0x1960` | ✅ 完整支持（CPI/回报率/去抖/按键/EEPROM 导出） |
-| XM1 等同代型号 | 2020 有线 | — | — | ⏳ 协议推测同族，待安装官方软件后逆向验证 |
+| XM1 等同代型号 | 2020 有线 | — | — | 🧪 协议已逆向（见下），未做界面 |
 
 > 四个 4k 无线型号共用 dongle PID `0x1970`，USB 层面无法区分型号；本工具用 cmd `0x0E` 返回的鼠标自身 PID 做判别，v1/v2 两代不兼容的字段编码（LOD、回报率枚举、标志位）已分别处理。变体 PID `0x1969`/`0x1981` 来自官方 v1.02 工具二进制的设备表（见 `re/PROTOCOL_NOTES.md`）。XM2we 族按 PID `0x1960`/`0x1961` 与接口页 `0xFF02` 双重判定。
 
@@ -31,7 +31,13 @@
 
 ## 本地运行 / 部署到 GitHub Pages
 
-源码在 `src/`（TypeScript），构建脚本把打包结果同时写到 `dist/index.html` 和根目录 `index.html`——两者都是零依赖单文件，**直接双击即可用，无需服务器**。
+源码分两部分，构建脚本把两者打包成单文件写到 `dist/index.html` 和根目录 `index.html`——
+两者都是零依赖单文件，**直接双击即可用，无需服务器**。
+
+| 目录 | 内容 |
+|---|---|
+| `src/` | TypeScript（`main.ts` 入口、`protocol.ts`、`xm2we.ts`、`xm2we-ui.ts`、`i18n.ts`、`util.ts`） |
+| `scss/` | **样式唯一来源**（`_tokens.scss` 设计令牌 / `_mixins.scss` 混入 / `main.scss` 组件） |
 
 **本地**：双击打开 `index.html`（`file://` 是安全上下文，WebHID 可用）。若浏览器策略拦截，任意静态服务器也行：
 
@@ -40,13 +46,23 @@ python -m http.server 8080
 # 访问 http://localhost:8080
 ```
 
-**从源码构建**（改 `src/` 后执行；产物会同步根目录 `index.html`）：
+**从源码构建**（改 `src/` 或 `scss/` 后执行；产物会同步根目录 `index.html`）：
 
 ```bash
 npm install
-npm run build     # esbuild 打包 -> dist/index.html + index.html
+npm run build     # esbuild 打包 TS + sass 编译 SCSS -> dist/index.html + index.html
+npm run build -- --minify   # 压缩版
 npm run check     # tsc --noEmit 类型检查
 ```
+
+### 样式开发约定（强制）
+
+- **样式一律用 SCSS 写在 `scss/` 下**，由 `build.mjs` 调 `sass.compile()` 编译后内联进 HTML。
+- `index.template.html` 里只保留占位符 `/*__STYLES__*/`（以及 `/*__BUNDLE__*/` 供 JS），
+  **不要在模板里直接写 `<style>`**。
+- 改主题色/间距/圆角/字号 → 只改 `_tokens.scss`；组件样式在 `main.scss` 用嵌套 + `@each` 组织。
+- 构建时若缺占位符会直接报错（防止模板与构建脱节）。
+- 分发产物仍是**单个 HTML 文件**、零运行时依赖，SCSS 只是开发期的源格式。
 
 **GitHub Pages**：
 
@@ -75,12 +91,33 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 - 写入即持久化；状态码 `0x01` OK / `0x03` busy 重试 / `0x07` 该连接不适用 / `0x08,0x11` 鼠标休眠
 - 失败后必须重发 `0x0F` 探测，否则设备"楔死"直到下一条探测成功
 
-## 逆向验证（v1.2）
+## 三族协议对照（Endgame Gear 并非一套协议）
+
+| | **XM1**（2020 有线） | **XM2we**（2020 有线/2.4G） | **4k 无线族**（2021+） |
+|---|---|---|---|
+| usage page | — | `0xFF02` | `0xFF01` |
+| 报告 ID | `0xA1` | `0x08` 出 / `0x09` 入 | `0xA1` 出 / `0xA0` 入 |
+| 帧结构 | 64 B 定长 | 17 B + `(0x55−Σ)&0xFF` 校验 | 64 B 命令 / 1041 B 读取 |
+| 状态字节 | **无**（看 HidD 返回码） | 无 | `[1]`/`[2]`（v2 有回显变体） |
+| 命令数 | **3 条**（`0x03`/`0x04`/`0x07`） | 5 opcode | 13 条 |
+| 配置载体 | **文件**（`.profile`/`pfList.dat`） | **EEPROM** `0x00–0xB4` | **1024 B blob** |
+| 厂商 DLL | 无（协议在主 exe） | `OemDrv.exe` | `hidapi` 静态链接 |
+| 内部代号 | K25A / K25B | — | OP1w 4k |
+
+三者共用同一套 HID 通讯封装：`HidD_SetFeature` 失败时对错误码
+`{0x15, 0x17, 0x1D, 0x57, 0x65B}` 按 50 ms 间隔重试 4 次——在官方 4k 工具与 XM1 主程序里
+逐字节一致。详见 `re/PROTOCOL_NOTES.md` 与 `re/XM1_NOTES.md`。
+
+## 逆向验证（v1.2 / v1.3）
 
 协议实现已对照官方 `Endgame Gear XM2w 4k v2 Configuration Tool v1.02` 二进制逐字节核验：
 命令表/目标/长度、0x16 双块写入、blob 布局（CPI 档 `0x23+5n`、按键 `0x37+7n`、玻璃模式 `0x6F`）、
 busy 重试与发送错误码重试策略全部一致。完整证据链（反汇编脚本 + 中间产物）见 `re/`。
 LED 页签与 Surface Calibration 在官方 v1.02 中未发现协议实现路径（模板遗留 UI），故未实现。
+
+**XM1**：官方安装包是 InstallShield Basic MSI（5.82 MB `ISSetupStream` 私有压缩 overlay，
+zlib/deflate/LZMA/BZ2 全部解不开），用 `pawstas80/Unpacker` 剥出真实文件后完成静态逆向——
+命令表 3 条、无状态字节、配置存文件而非 EEPROM。完整证据链见 `re/XM1_NOTES.md`。
 
 ## 致谢
 
@@ -110,8 +147,23 @@ LED 页签与 Surface Calibration 在官方 v1.02 中未发现协议实现路径
 
 中期战役计划（官方仓库摸底 → 有线协议逆向 → 全系网页驱动 → 收尾）见 **[TODO.md](TODO.md)**（#8–#12）。
 
-- [ ] 按键重映射 UI（协议层已实现，缺编辑器）
+**已完成的协议族工作**
+
+- [x] 官方仓库摸底（org 实为 9 个仓库，v1.04 工具已验真下载）
+- [x] 4k 无线族 v1/v2 全字段（当前网页版主力支持）
+- [x] XM2we 2020 有线/2.4G 族（`src/xm2we.ts`，29 项离线仿真通过）
+- [x] XM1 2020 有线族静态逆向（`re/XM1_NOTES.md`，命令表 3 条已实锤）
+- [x] 样式层迁移 SCSS（`scss/`，强制约定见「本地运行」章节）
+
+**待办**
+
+- [ ] **XM1 界面实现**：协议已知但未做 UI；且 XM1 的 VID/PID 与命令 0x04/0x07 参数布局
+      仍需装后读 `Config.ini` 才能定案（配置存 `.profile`/`pfList.dat` 文件而非 EEPROM）
+- [ ] 按键重映射 UI（4k 族协议层已实现，缺编辑器）
+- [ ] XM2we 真机验证（input report 桥接时序、回报率写入）
 - [ ] inputreport 实时休眠/唤醒提示优化
 - [ ] 0x14/0x15 写路径真机回环验证（v2 固件 wire 布局，见 `re/PROTOCOL_NOTES.md`）
+- [ ] 深色主题（SCSS 已用 `_tokens.scss` 集中令牌，加一组 `[data-theme="dark"]` 覆盖即可，
+      组件样式无需改动——这是当初把样式抽成 SCSS 的主要收益）
 - [ ] 更多语言（在 `src/i18n.ts` 的 `I18N` 字典加条目即可，欢迎 PR）
 - [ ] 向官方申请协议文档（见 `docs/email-to-endgamegear.md`；XRed 事件论据见 `docs/ecosystem-survey.md`）
