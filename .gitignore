@@ -1,2 +1,5 @@
 node_modules/
 dist/
+# RE 中间产物（可由 re/ 脚本重新生成，勿入库）
+re/o_*.txt
+re/strings_*.txt
