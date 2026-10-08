@@ -7,9 +7,14 @@
 //   ① 报文的几何关系（长度 / 头部 / 载荷落位 / 尾巴）
 //   ② 「自己构造的报文必须能过自己的校验」（这条就是当初能抓到 bug 的断言）
 //   ③ 一切变形都必须被拦截
+import { XM1_EDITABLE_OFFSETS as _OFF0 } from "../src/protocol.js";
 import { buildXm1BlobReport, buildXm1ByteReport,
-         xm1GuardQuery, xm1GuardEchoBlob, xm1GuardEchoByte,
+         xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte, XM1_EDITABLE_OFFSETS,
          RPT_CMD, RPT_BULK, XM1_BLOB_DATA_LEN, XM1_PAYLOAD_OFF_IN_DATA } from "../src/protocol.js";
+
+const XM1_EDITABLE_SET_has0 = (() => {
+  const s = new Set<number>(_OFF0); return s.has(0);
+})();
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {
@@ -42,8 +47,8 @@ console.log("[1] 写 blob 报文的几何关系（对应官方 0x40FB90）");
 
 console.log("[2] 自己构造的报文必须能过自己的校验 —— 这条断言就是当初该拦下 bug 的");
 {
-  ok(xm1GuardEchoBlob(RPT_BULK, buildXm1BlobReport(ref), ref) === true,
-     "buildXm1BlobReport(...) 通过 xm1GuardEchoBlob（修复前恒为 false）");
+  ok(xm1GuardWrite(RPT_BULK, buildXm1BlobReport(ref), ref) === true,
+     "构造 → 校验 往返通过（修复前恒为 false）");
   ok(xm1GuardEchoByte(RPT_CMD, buildXm1ByteReport(ref[0]), ref) === true,
      "buildXm1ByteReport(...) 通过 xm1GuardEchoByte");
 }
@@ -52,20 +57,20 @@ console.log("[3] 回声校验必须拦截的一切变形");
 {
   const base = buildXm1BlobReport(ref);
   const mut = (f: (d: Uint8Array) => void) => {
-    const c = base.slice(); f(c); return xm1GuardEchoBlob(RPT_BULK, c, ref);
+    const c = base.slice(); f(c); return xm1GuardWrite(RPT_BULK, c, ref);
   };
   ok(mut(c => { c[15 + 500] ^= 0x01; }) === false, "改动载荷中任意一字节 → 拦截");
   ok(mut(c => { c[4] ^= 0xFF; }) === false, "改动 buf[5] → 拦截");
   ok(mut(c => { c[1] = 1; }) === false, "buf[2] 非 0 → 拦截");
   ok(mut(c => { c[1039] = 1; }) === false, "尾巴非 0 → 拦截");
   ok(mut(c => { c[0] = 0x07; }) === false, "命令码不是 0x08 → 拦截");
-  ok(xm1GuardEchoBlob(RPT_BULK, base.slice(0, 1039), ref) === false, "长度 1039 → 拦截");
+  ok(xm1GuardWrite(RPT_BULK, base.slice(0, 1039), ref) === false, "长度 1039 → 拦截");
   const longer = new Uint8Array(1041); longer.set(base);          // slice 会被截断，必须真的造 1041
-  ok(xm1GuardEchoBlob(RPT_BULK, longer, ref) === false, "长度 1041 → 拦截");
-  ok(xm1GuardEchoBlob(RPT_CMD, base, ref) === false, "reportId 换成 0xA1 → 拦截");
-  ok(xm1GuardEchoBlob(RPT_BULK, base, null) === false, "没有基准 → 拦截");
+  ok(xm1GuardWrite(RPT_BULK, longer, ref) === false, "长度 1041 → 拦截");
+  ok(xm1GuardWrite(RPT_CMD, base, ref) === false, "reportId 换成 0xA1 → 拦截");
+  ok(xm1GuardWrite(RPT_BULK, base, null) === false, "没有基准 → 拦截");
   const other = new Uint8Array(1024); other.fill(0xAA);
-  ok(xm1GuardEchoBlob(RPT_BULK, buildXm1BlobReport(other), ref) === false,
+  ok(xm1GuardWrite(RPT_BULK, buildXm1BlobReport(other), ref) === false,
      "换成另一份完全不同的配置 → 拦截（非回声一律拒绝）");
 }
 
@@ -90,6 +95,37 @@ console.log("[5] 写单字节报文的形状");
   ok(b[3] === 0, "buf[4] = 0");
   ok(b[4] === 0x11, "buf[5] = 值");
   ok(b[5] === 0 && b[6] === 0, "buf[6..7] = 0");
+}
+
+console.log("[6] 受限编辑：只有已核实字段允许不同（这是写入安全的边界）");
+{
+  const patched = (f: (p: Uint8Array) => void) => {
+    const p = ref.slice(); f(p); return buildXm1BlobReport(p);
+  };
+  const editable = new Set<number>(XM1_EDITABLE_OFFSETS);
+  ok(editable.size === 23, "可编辑偏移共 23 个", String(editable.size));
+  for (const o of [0x032, 0x033, 0x034, 0x035, 0x036, 0x037, 0x03C, 0x03D, 0x03E, 0x03F,
+                   0x040, 0x046, 0x051, 0x052, 0x053, 0x054, 0x055, 0x057,
+                   0x05B, 0x05C, 0x05D, 0x05E, 0x05F]) {
+    if (!editable.has(o)) { ok(false, "偏移 0x" + o.toString(16) + " 应在可编辑集合内"); }
+  }
+  ok(true, "23 个字段偏移全部登记");
+  ok(XM1_EDITABLE_SET_has0 === false, "blob[0] 不在可编辑集合内（含义未确认）");
+
+  ok(xm1GuardWrite(RPT_BULK, patched(p => { p[0x034] = 0x84; p[0x035] = 0x03; }), ref) === true,
+     "改 CPI 1 的 X（0x034-0x035）→ 放行");
+  ok(xm1GuardWrite(RPT_BULK, patched(p => { p[0x057] = 0; }), ref) === true, "改 Ripple → 放行");
+  ok(xm1GuardWrite(RPT_BULK, patched(p => { p[0x046] = 0x0B; }), ref) === true, "改 LOD → 放行");
+  ok(xm1GuardWrite(RPT_BULK, patched(p => { p[0x032] = 2; }), ref) === true, "改激活档 → 放行");
+  ok(xm1GuardWrite(RPT_BULK, patched(p => { p[0x03C] = 0xFF; }), ref) === true, "改档 2 启用位 → 放行");
+
+  ok(xm1GuardWrite(RPT_BULK, patched(p => { p[0] = 0x99; }), ref) === false, "改 blob[0] → 拦截");
+  ok(xm1GuardWrite(RPT_BULK, patched(p => { p[0x012] = 0x77; }), ref) === false, "改未核实偏移 0x012 → 拦截");
+  ok(xm1GuardWrite(RPT_BULK, patched(p => { p[0x06B] = 0x77; }), ref) === false, "改未解的表 A（0x06B）→ 拦截");
+  ok(xm1GuardWrite(RPT_BULK, patched(p => { p[0x0C7] = 0x77; }), ref) === false, "改未解的按键表（0x0C7）→ 拦截");
+  ok(xm1GuardWrite(RPT_BULK, patched(p => { p[0x3FF] = 0x77; }), ref) === false, "改尾部任意字节 → 拦截");
+  const two = patched(p => { p[0x034] = 0x84; p[0x100] = 1; });
+  ok(xm1GuardWrite(RPT_BULK, two, ref) === false, "一个合法改动 + 一个非法改动 → 整体拦截");
 }
 
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);

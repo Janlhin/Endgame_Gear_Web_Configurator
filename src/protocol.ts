@@ -108,22 +108,47 @@ function xm1GuardQuery(reportId: number, data: unknown): boolean {
     && data.every((b, i) => (i < 1 ? true : b === 0));
 }
 
-/** 回声写 blob：载荷必须**逐字节等于**刚读回的那 1024B（含长度与尾巴校验）。 */
-function xm1GuardEchoBlob(reportId: number, data: unknown, ref: Uint8Array | null): boolean {
+/* ★ XM1 允许写入的字节偏移 —— **只包含真机差分实测确认过的字段**。
+ * 其余 1001 个字节在任何情况下都必须与刚读回的数据逐字节相同。
+ * 这张表是写入安全的最后一道边界：宁可改不了，也不能改错。
+ *
+ * 依据（re/XM1_NOTES.md 6.7 节，四次受控差分）：
+ *   0x032 激活档索引 | 0x033/0x03C/0x051/0x05B 四档启用位
+ *   0x034-0x037 / 0x03D-0x040 / 0x052-0x055 / 0x05C-0x05F 四档 X/Y（u16 LE）
+ *   0x046 Lift Cut-Off（5×mm−4） | 0x057 Ripple Control
+ * 注意 **不含 blob[0]**：它的含义未确认，且它是 buf[5] 与 cmd 0x04 的来源，
+ * 必须保持原值。 */
+const XM1_EDITABLE_OFFSETS: readonly number[] = [
+  0x032,
+  0x033, 0x034, 0x035, 0x036, 0x037,
+  0x03C, 0x03D, 0x03E, 0x03F, 0x040,
+  0x046,
+  0x051, 0x052, 0x053, 0x054, 0x055,
+  0x057,
+  0x05B, 0x05C, 0x05D, 0x05E, 0x05F,
+];
+const XM1_EDITABLE_SET = new Set<number>(XM1_EDITABLE_OFFSETS);
+
+/** 回声写 blob → 升级为「受限编辑写 blob」：除已核实字段外必须逐字节等于 ref。
+ *  无任何差异时即等价于原样回声（所以回声测试走的也是这条）。 */
+function xm1GuardWrite(reportId: number, data: unknown, ref: Uint8Array | null,
+                       editable: ReadonlySet<number> = XM1_EDITABLE_SET): boolean {
   if (reportId !== RPT_BULK || !(data instanceof Uint8Array) || !ref) return false;
   if (data.length !== XM1_BLOB_DATA_LEN || ref.length !== 1024) return false;
-  if (data[0] !== 0x08) return false;                                // 命令码必须是 08（★ 曾被漏掉）
-  if (data[1] !== 0 || data[2] !== 0 || data[3] !== 0) return false;   // buf[2..4] 必须为 0
-  if (data[5] !== 0 || data[6] !== 0) return false;                   // buf[6..7] 必须为 0
-  if (data[4] !== ref[0]) return false;                              // buf[5] = blob[0]
-  if (data[1039] !== 0) return false;                                // memset 尾巴
+  if (data[0] !== 0x08) return false;                                // 命令码必须是 08
+  if (data[1] !== 0 || data[2] !== 0 || data[3] !== 0) return false;   // buf[2..4] = 0
+  if (data[5] !== 0 || data[6] !== 0) return false;                    // buf[6..7] = 0
+  if (data[1039] !== 0) return false;                                  // memset 尾巴
+  if (data[4] !== ref[0]) return false;          // blob[0] 不可改 ⇒ buf[5] 恒等于 ref[0]
   for (let i = 0; i < 1024; i++) {
-    if (data[XM1_PAYLOAD_OFF_IN_DATA + i] !== ref[i]) return false;   // 逐字节回声
+    const v = data[XM1_PAYLOAD_OFF_IN_DATA + i];
+    if (v === ref[i]) continue;
+    if (!editable.has(i)) return false;          // ★ 未核实字段一律不许动
   }
   return true;
 }
 
-/** 回声写单字节：值必须等于刚读回 blob 的第 0 字节。 */
+/** 写单字节（cmd 0x04）依旧只允许回声：blob[0] 不在可编辑集合内。 */
 function xm1GuardEchoByte(reportId: number, data: unknown, ref: Uint8Array | null): boolean {
   if (reportId !== RPT_CMD || !(data instanceof Uint8Array) || !ref) return false;
   if (data.length !== 63 || data[0] !== 0x04) return false;
@@ -135,4 +160,4 @@ export { VIDS, VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, XM1_PIDS, RPT_CMD, RPT_BUL
          XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,
          XM1_BLOB_DATA_LEN, XM1_PAYLOAD_OFF_IN_DATA,
          buildXm1BlobReport, buildXm1ByteReport,
-         xm1GuardQuery, xm1GuardEchoBlob, xm1GuardEchoByte };
+         xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte, XM1_EDITABLE_OFFSETS };

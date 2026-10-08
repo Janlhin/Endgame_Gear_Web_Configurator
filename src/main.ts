@@ -4,7 +4,7 @@ import { I18N, LANG, t, applyI18n } from "./i18n.js";
 import { VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK, POLLING_LABELS,
          XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,
          buildXm1BlobReport, buildXm1ByteReport,
-         xm1GuardQuery, xm1GuardEchoBlob, xm1GuardEchoByte } from "./protocol.js";
+         xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte } from "./protocol.js";
 import { isXm2weFamily, WE_MOUSE_PID, WE_DONGLE_PID } from "./xm2we.js";
 import { openXm2we, closeXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
 
@@ -490,7 +490,7 @@ function xm1Parse(b) {
  *   非零字节 100% 落在 A 的目的集内 → 把「刚读回来的那份」原样写回，设备侧状态不变。
  *   发送白名单会把这一点**逐字节强制校验**：载荷不等于刚读回的那份就直接拦截。
  */
-async function writeBlobXm1Echo() {
+async function writeBlobXm1(payloadIn?: Uint8Array) {
   const ref = xm1LastRead;
   if (!dev || !xm1) throw new Error("XM1 未连接");
   if (!ref || ref.length !== 1024) throw new Error("尚未成功读取过配置");
@@ -498,7 +498,7 @@ async function writeBlobXm1Echo() {
 
   await xm1QueryByte();                                   // ① 握手（空载荷）
 
-  const data = buildXm1BlobReport(ref);                   // ② 写 blob（构造与校验同源）
+  const data = buildXm1BlobReport(payloadIn || ref);      // ② 写 blob（构造与校验同源）
   xm1Armed = true;
   try {
     await dev.sendFeatureReport(RPT_BULK, data);
@@ -511,11 +511,100 @@ async function writeBlobXm1Echo() {
   }
 }
 
+/* ================= XM1 编辑（受限）=================
+ * 可写字节被 protocol.ts 的 xm1GuardWrite 硬限制在 23 个已核实偏移内 —— UI 只是
+ * 表面，真正的边界在发送层。这里负责：编辑状态、打补丁、差异预览、写入前快照、
+ * 写入后回读校验。 */
+let xm1Edit: any = null;
+
+/* 快照：每次成功读取、以及每次写入前各存一份，最多 20 份，支持一键回退。 */
+const xm1Snaps: { at: number; label: string; blob: Uint8Array }[] = [];
+function xm1Snapshot(label: string) {
+  if (!xm1LastRead) return;
+  const last = xm1Snaps[xm1Snaps.length - 1];
+  if (last && last.blob.length === xm1LastRead.length && last.blob.every((v, i) => v === xm1LastRead![i])) return;
+  xm1Snaps.push({ at: Date.now(), label, blob: xm1LastRead.slice() });
+  if (xm1Snaps.length > 20) xm1Snaps.shift();
+  const b = $("btnXm1Undo");
+  if (b) b.textContent = t("xm1Undo") + " (" + xm1Snaps.length + ")";
+}
+
+/** 把编辑状态打成一份新的 1024B（只动 XM1_F 里登记的偏移）。 */
+function xm1PatchEdit(ref: Uint8Array, e: any): Uint8Array {
+  const out = ref.slice();
+  const clamp = (v: number) => Math.max(50, Math.min(30000, Math.round(v / 50) * 50));
+  out[XM1_F.active] = (e.active | 0) & 3;
+  XM1_F.stages.forEach((st, i) => {
+    const ed = e.stages[i];
+    out[st.flag] = ed.on ? XM1_STAGE_ON : 0xFF;
+    const x = clamp(ed.x), y = clamp(ed.y);
+    out[st.x] = x & 0xFF; out[st.x + 1] = (x >> 8) & 0xFF;
+    out[st.y] = y & 0xFF; out[st.y + 1] = (y >> 8) & 0xFF;
+  });
+  out[XM1_F.lod] = xm1MmToLod(e.lodMM);
+  out[XM1_F.ripple] = e.ripple ? 1 : 0;
+  return out;
+}
+
+/** 偏移 → 人话字段名（用于差异预览） */
+function xm1FieldName(off: number): string {
+  if (off === XM1_F.active) return t("xm1FActive");
+  if (off === XM1_F.lod) return t("xm1FLod");
+  if (off === XM1_F.ripple) return t("xm1FRipple");
+  for (let i = 0; i < XM1_F.stages.length; i++) {
+    const st = XM1_F.stages[i];
+    if (off === st.flag) return "CPI " + (i + 1) + " " + t("on");
+    if (off === st.x || off === st.x + 1) return "CPI " + (i + 1) + " X";
+    if (off === st.y || off === st.y + 1) return "CPI " + (i + 1) + " Y";
+  }
+  return "?";
+}
+
+/** 应用编辑：差异预览 → 快照 → 写入 → 回读校验 */
+async function xm1Apply() {
+  if (!xm1LastRead || !xm1Edit) return banner("err", t("bRead"));
+  const next = xm1PatchEdit(xm1LastRead, xm1Edit);
+  const diffs: number[] = [];
+  for (let i = 0; i < 1024; i++) if (next[i] !== xm1LastRead[i]) diffs.push(i);
+  if (!diffs.length) return banner("warn", t("xm1NoChange"));
+
+  const lines = diffs.map(o => "  0x" + o.toString(16).padStart(3, "0") + "  " +
+    xm1FieldName(o) + "   " + xm1LastRead[o].toString(16).padStart(2, "0") + " → " +
+    next[o].toString(16).padStart(2, "0")).join("\n");
+  if (!window.confirm(t("xm1ApplyConfirm").replace("{0}", String(diffs.length)) + "\n\n" + lines)) return;
+
+  xm1Snapshot(t("xm1SnapBeforeWrite"));
+  banner("warn", t("xm1Applying"));
+  try {
+    await writeBlobXm1(next);
+    await readBlob();
+    // 回读校验：把读回的数据按编辑状态再解一次，逐项比对
+    const p = xm1Parse(blob);
+    const want = xm1Edit;
+    const bad: string[] = [];
+    if (p.active !== (want.active | 0)) bad.push(t("xm1FActive"));
+    for (let i = 0; i < 4; i++) {
+      const st = want.stages[i], clamp = (v: number) => Math.max(50, Math.min(30000, Math.round(v / 50) * 50));
+      if (p.stages[i].on !== !!st.on) bad.push("CPI " + (i + 1) + " " + t("on"));
+      if (p.stages[i].x !== clamp(st.x)) bad.push("CPI " + (i + 1) + " X");
+      if (p.stages[i].y !== clamp(st.y)) bad.push("CPI " + (i + 1) + " Y");
+    }
+    if (Math.abs(xm1LodToMm(p.lodRaw) - want.lodMM) > 0.05) bad.push(t("xm1FLod"));
+    if (!!p.ripple !== !!want.ripple) bad.push(t("xm1FRipple"));
+    xm1Snapshot(t("xm1SnapAfterWrite"));
+    if (bad.length) { banner("warn", t("xm1VerifyFail") + bad.join("、")); log("⋯ 回读不一致：" + bad.join("、")); }
+    else { banner("ok", t("xm1Applied")); log("✓ XM1 写入成功并已回读校验（" + diffs.length + " 个字节）"); }
+  } catch (e) {
+    banner("err", t("xm1WriteFail") + e.message);
+    log("✗ XM1 写入失败：" + e.message);
+  }
+}
+
 /* XM1 视图：显示解析出的传感器配置（**只读**）。
    ★ 读取路径按官方 0x40FC80 实现；**写入永久停用**——
      写路径 0x40FB90 需要 0x4103D0 重排层，该层未逐字节核实，
      贸然下发 1024B 负载会覆盖鼠标配置（2026-10-09 事故：DPI/CPI 被清零）。 */
-function renderXm1Readonly() {
+function renderXm1() {
   $("iModel").textContent = mouseName;
   $("iMouseFw").textContent = "—";
   $("iDongleFw").textContent = t("noDongleWired");
@@ -523,62 +612,91 @@ function renderXm1Readonly() {
   $("iConn").textContent = t("wiredMode");
   $("iGen").textContent = "2020 (XM1)";
 
-  const tb = $("cpiRows"); tb.innerHTML = "";
-  if (!blob || !blob.length) {
+  // XM1 的表头含义与 4k 族不同（启用 / 激活 / X / Y）
+  const ths = document.querySelectorAll("#cardSensor thead th");
+  const labels = [t("stage"), t("xm1On"), t("xm1ActiveCol"), "CPI X", "CPI Y"];
+  ths.forEach((el, i) => { if (labels[i]) el.textContent = labels[i]; });
+
+  const tb = $("cpiRows");
+  tb.innerHTML = "";
+  if (!blob || !blob.length || !xm1Edit) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
+    tr.innerHTML = `<td colspan="5" class="muted">${t("bRead")}</td>`;
     tb.appendChild(tr);
-  } else {
-    const p = xm1Parse(blob);
-    for (const s of p.stages) {
-      const tr = document.createElement("tr");
-      tr.innerHTML =
-        `<td>CPI ${s.idx + 1}${s.idx === p.active ? t("current") : ""}</td>` +
-        `<td>${s.on ? "On" : "Off"}</td>` +
-        `<td class="muted">—</td>` +
-        `<td><input type="number" value="${s.x}" disabled></td>` +
-        `<td><input type="number" value="${s.y}" disabled></td>`;
-      if (!s.on) tr.style.opacity = "0.5";
-      tb.appendChild(tr);
-    }
-    const note = document.createElement("tr");
-    note.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
-    tb.appendChild(note);
+    return;
   }
 
-  // 传感器项：填入读到的值（只读）
+  xm1Edit.stages.forEach((st, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td>CPI ${i + 1}</td>` +
+      `<td><input type="checkbox" data-on="${i}"${st.on ? " checked" : ""}></td>` +
+      `<td style="text-align:center"><input type="radio" name="xm1act" data-act="${i}"${xm1Edit.active === i ? " checked" : ""}></td>` +
+      `<td><input type="number" data-x="${i}" min="50" max="30000" step="50" value="${st.x}"></td>` +
+      `<td><input type="number" data-y="${i}" min="50" max="30000" step="50" value="${st.y}"></td>`;
+    tb.appendChild(tr);
+  });
+  // 事件：直接改编辑状态，不立即写设备
+  tb.querySelectorAll("input[data-on]").forEach(el => {
+    el.onchange = () => { xm1Edit.stages[+el.dataset.on!].on = el.checked ? 1 : 0; };
+  });
+  tb.querySelectorAll("input[data-act]").forEach(el => {
+    el.onchange = () => { xm1Edit.active = +el.dataset.act!; };
+  });
+  tb.querySelectorAll("input[data-x]").forEach(el => {
+    el.oninput = () => { xm1Edit.stages[+el.dataset.x!].x = +el.value || 0; };
+  });
+  tb.querySelectorAll("input[data-y]").forEach(el => {
+    el.oninput = () => { xm1Edit.stages[+el.dataset.y!].y = +el.value || 0; };
+  });
+  const note = document.createElement("tr");
+  note.innerHTML = `<td colspan="5" class="muted">${t("xm1EditNote")}</td>`;
+  tb.appendChild(note);
+
+  // LOD / Ripple：XM1 只有这两个传感器项已核实
   const lodSel = $("lod");
-  if (lodSel && blob) {
-    const p = xm1Parse(blob);
-    // XM1 Lift Cut-Off 可选值（编码 5×mm−4；1/2/3mm 由实测两例 + 线性外推）
-    const opts = [[1, "1 mm"], [2, "2 mm"], [3, "3 mm"]];
-    fillSelect(lodSel, opts, Math.round(p.lodMM));
-    lodSel.onchange = null;
+  if (lodSel) {
+    fillSelect(lodSel, [[1, "1 mm"], [2, "2 mm"], [3, "3 mm"]], Math.round(xm1Edit.lodMM));
+    lodSel.disabled = false;
+    lodSel.onchange = () => { xm1Edit.lodMM = +lodSel.value; };
   }
   const rip = $("ripple");
-  if (rip && blob) {
-    const p = xm1Parse(blob);
-    rip.checked = !!p.ripple;
-    rip.onchange = null;
+  if (rip) {
+    rip.checked = !!xm1Edit.ripple;
+    rip.disabled = false;
+    rip.onchange = () => { xm1Edit.ripple = rip.checked ? 1 : 0; };
   }
+  // 档位数：XM1 固定 4 档（官方 UI 也是 4 张卡片），只读展示
+  const lv = $("cpiLevels");
+  if (lv) { lv.value = "4"; lv.disabled = true; }
+  const act = $("cpiActive");
+  if (act) { act.disabled = true; }        // 激活档用表内单选，避免两处入口
+  const note2 = $("cpiActiveNote");
+  if (note2) note2.textContent = "";
 
-  // 禁用所有写入控件；导出保持可用（纯本地操作，无害）
-  for (const id of ["btnApplySensor", "btnApplyPerf", "cpiLevels", "cpiActive", "lod", "glass",
-                    "angleSnap", "ripple", "ledLiftoff", "angleTune", "polling", "motionSync",
-                    "slamclick", "jitter", "maxFps", "multiclick", "powerSaving", "deepSleep",
-                    "btnReset", "btnLoad", "btnRefresh"]) {
+  // 其余控件（4k 族专属）保持禁用
+  for (const id of ["btnApplyPerf", "glass", "angleSnap", "ledLiftoff", "angleTune",
+                    "polling", "motionSync", "slamclick", "jitter", "maxFps", "multiclick",
+                    "powerSaving", "deepSleep", "btnReset", "btnLoad"]) {
     const el = $(id); if (el) el.disabled = true;
   }
+  const apply = $("btnApplySensor");
+  if (apply) { apply.disabled = !xm1LastRead; apply.onclick = () => { void xm1Apply(); }; }
   const save = $("btnSave"); if (save) save.disabled = false;
-  // 实验性：原样写回测试（回声白名单会逐字节校验，改不了任何东西）
   const echoBtn = $("btnXm1Echo");
   if (echoBtn) { echoBtn.style.display = ""; echoBtn.disabled = !xm1LastRead; }
+  const undo = $("btnXm1Undo");
+  if (undo) {
+    undo.style.display = "";
+    undo.disabled = xm1Snaps.length < 2;
+    undo.textContent = t("xm1Undo") + " (" + xm1Snaps.length + ")";
+  }
 }
 function render() {
   /* XM1 只读视图：blob 字段语义尚未核实（官方内部布局与线上布局之间还有一层重排，
      函数 0x40FD60 有 298 条搬运），按 4k 偏移猜测并回写会永久损坏鼠标配置。
      所以这里只展示原始 blob 字节，禁用所有写入控件——等重排层核实后再开写入。 */
-  if (xm1) return renderXm1Readonly();
+  if (xm1) return renderXm1();
 
   $("iModel").textContent = mouseName;
   $("iMouseFw").textContent = mouseFw;
@@ -745,12 +863,14 @@ async function refreshAll() {
            这条通道是唯一入口。只读，不含负载。 */
         await xm1QueryByte();
         await readBlob();
+        xm1Edit = xm1Parse(blob);            // 编辑状态以读回值为初始
+        xm1Snapshot(t("xm1SnapRead"));
         parseBlob();
         render();
-        banner("warn", t("xm1ReadOnly"));
-        log(`✓ XM1 blob 已读取（写入仍停用，配置请用官方软件）`);
+        banner("warn", t("xm1EditNote"));
+        log(`✓ XM1 blob 已读取（可编辑 23 个已核实字段）`);
       } catch (e) {
-        renderXm1Readonly();
+        renderXm1();
         banner("err", t("bRead") + e.message);
         log("✗ XM1 读取失败: " + e.message);
       }
@@ -885,7 +1005,7 @@ async function openDevice(d) {
       // 校验全部来自 protocol.ts（与构造函数同一源头，并有单元测试覆盖）
       const ref = echo();
       const isQuery = xm1GuardQuery(reportId, u8);                       // ① 无负载查询，常驻
-      const isEchoBlob = xm1Armed && xm1GuardEchoBlob(reportId, u8, ref); // ② 回声写 blob
+      const isEchoBlob = xm1Armed && xm1GuardWrite(reportId, u8, ref);  // ② 写 blob（仅限已核实字段）
       const isEchoByte = xm1Armed && xm1GuardEchoByte(reportId, u8, ref); // ③ 回声写单字节
       if (!isQuery && !isEchoBlob && !isEchoByte) {
         log(`✗ XM1 拦截：非常规发送（reportId=${reportId}, len=${u8?.length}, cmd=${u8?.[0] ?? "?"}, armed=${xm1Armed}）`);
@@ -1021,6 +1141,27 @@ $("btnReset").onclick = async () => {
   try { await guarded(0x13, 0x00, null, { pace: resetSettle() }); log("✓ factory reset done"); await refreshAll(); banner("ok", t("bResetOk")); }
   catch (e) { banner("err", e.message); }
 };
+/* XM1 一键回退：把上一份快照（写入前 / 上一次读取）原样写回。
+   快照之间的差异同样只落在已核实字段内，所以走的还是同一个白名单。 */
+$("btnXm1Undo").onclick = async () => {
+  if (xm1Snaps.length < 2) return banner("warn", t("xm1NoSnap"));
+  const prev = xm1Snaps[xm1Snaps.length - 2];
+  if (!window.confirm(t("xm1UndoConfirm").replace("{0}", new Date(prev.at).toLocaleTimeString()))) return;
+  banner("warn", t("xm1Applying"));
+  try {
+    await writeBlobXm1(prev.blob);
+    await readBlob();
+    xm1Edit = xm1Parse(blob);
+    render();
+    xm1Snaps.pop();                        // 丢弃"当前"这一份，回到上一份
+    banner("ok", t("xm1UndoOk"));
+    log("✓ 已回退到快照（" + new Date(prev.at).toLocaleTimeString() + "，" + prev.label + "）");
+  } catch (e) {
+    banner("err", t("xm1WriteFail") + e.message);
+    log("✗ 回退失败：" + e.message);
+  }
+};
+
 $("btnSave").onclick = () => {
   if (!blob) return banner("err", t("cfgNoRead"));
   // 附带可读的 hex dump，便于人工比对与差分分析
@@ -1045,7 +1186,7 @@ $("btnXm1Echo").onclick = async () => {
   banner("warn", t("xm1EchoRunning"));
   log(`⋯ 回声写回测试：将原样写回 ${before.length} 字节（内容 = 刚读回的那份）`);
   try {
-    await writeBlobXm1Echo();
+    await writeBlobXm1();
     log("✓ 回声写回已发送，正在回读比对…");
     await readBlob();
     const same = !!blob && blob.length === before.length && blob.every((v, i) => v === before[i]);
