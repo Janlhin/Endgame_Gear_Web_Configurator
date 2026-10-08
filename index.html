@@ -1389,8 +1389,8 @@ a {
     p.className = "status-pill" + (on ? "" : " off");
     p.textContent = text;
   }
-  async function rawReceive(reportId) {
-    const d = await dev2.receiveFeatureReport(reportId);
+  async function rawReceive(reportId, size) {
+    const d = size !== void 0 ? await dev2.receiveFeatureReport(reportId, size) : await dev2.receiveFeatureReport(reportId);
     let u8 = new Uint8Array(d.buffer);
     if (u8.length && u8[0] === 0) u8 = u8.slice(1);
     if (u8.length && u8[0] === reportId) return u8;
@@ -1552,14 +1552,14 @@ a {
       await sleep(XM1_SETTLE_MS);
       let u8;
       try {
-        u8 = await rawReceive(RPT_BULK);
+        u8 = await rawReceive(RPT_CMD, 1041);
       } catch (e) {
-        log(`\u2717 XM1 GetFeature \u5931\u8D25 (round ${round}): ${e.message}`);
+        log(`\u2717 XM1 GetFeature(0xA1,1041) \u5931\u8D25 (round ${round}): ${e.message}`);
         lastDump = "recv:" + e.message;
         await sleep(250);
         continue;
       }
-      log(`  XM1 0xA0 \u54CD\u5E94 ${u8.length} B  head: ${hex(u8, 24)}`);
+      log(`  XM1 \u54CD\u5E94 ${u8.length} B  head: ${hex(u8, 24)}`);
       if (u8[1] !== 1) {
         lastDump = hex(u8, 32);
         log(`\u22EF XM1 \u72B6\u6001\u672A\u5C31\u7EEA ([1]=0x${u8[1].toString(16)}), round ${round}, head: ${lastDump}`);

@@ -39,8 +39,16 @@ function setConn(on, text) { const p = $("connState"); p.className = "status-pil
    可能带 reportId、剥掉 reportId（payload-only）、或把 reportId 置 0（零占位）。
    参考 qsxcv/UnofficialEGGWebConfig 的 eggNormalizeFeature（re/upstream/）。
    v2 固件的 0xA0 响应首字节是 0xA1 回显，由 readBlob 的双格式分支处理。 */
-async function rawReceive(reportId) {
-  const d = await dev.receiveFeatureReport(reportId);
+async function rawReceive(reportId, size?: number) {
+  /* WebHID 的 receiveFeatureReport(reportId) 用 reportId 定位报告。
+     ★ XM1 的 1041B 报告首字节是 **0xA1**，不是 0xA0！
+       官方 0x40FC80：memset(1041B,0) / mov byte [buf], 0xA1 /
+       push 0x411 / push buf / call HidD_GetFeature
+       即 GetFeature 的 reportId 取自**缓冲区首字节** = 0xA1。
+       （曾误传 0xA0 → 设备把空请求原样回显，日志里全是 0x00。）
+     size：某些实现需要显式长度，XM1 走 1041B 时传它。 */
+  const d = size !== undefined ? await dev.receiveFeatureReport(reportId, size)
+                               : await dev.receiveFeatureReport(reportId);
   let u8 = new Uint8Array(d.buffer);
   if (u8.length && u8[0] === 0x00) u8 = u8.slice(1);              // 零占位 → 丢弃
   if (u8.length && u8[0] === reportId) return u8;                 // 已含 reportId
@@ -172,8 +180,10 @@ async function readBlob() {
  *      ebx=0，所以 `mov dword [ebp-0x40], ebx` 只是清零参数区，
  *      **不含任何配置数据** ← 这是我上次误读成"负载"的地方
  *   ② SetFeature(64B) → Sleep(80)          ← 空请求：只说"给我配置"
- *   ③ memset(1041B, 0) / buf[0] = 0xA1
- *   ④ GetFeature(1041B)                     ← ★ 设备在此回送现有 1024B 配置
+ *   ③ memset(1041B, 0) / buf[0] = 0xA1      ← ★ GetFeature 的 reportId 取自首字节
+ *   ④ GetFeature(0xA1, 1041)                ← ★ 设备在此回送现有 1024B 配置
+ *      （封装 0x40F8A0 的签名是 HidD_GetFeature(hDev, buf, len)，
+ *        buf 首字节即 reportId；我曾误传 0xA0，设备把空请求原样回显。）
  *   ⑤ cmp byte [buf+1], 1                   ← 状态判定（XM1 有状态字节，在 [1]）
  *   ⑥ rep movsd 256 dword                   ← 报告偏移 16 → blob
  *   ⑦ call 0x4103D0                         ← 重排（0x40FD60 的逆运算），本工具暂不涉及
@@ -204,16 +214,17 @@ async function readBlobXm1() {
       continue;
     }
     await sleep(XM1_SETTLE_MS);          // 官方 Sleep(80)
-    // ② 读回 1041B（不传长度，用设备默认；与官方一致）
+    // ② GetFeature 读回 —— ★ reportId 必须是 0xA1（官方缓冲区首字节），
+    //    长度 1041（官方 push 0x411）。曾误传 0xA0 导致设备原样回显空请求。
     let u8;
-    try { u8 = await rawReceive(RPT_BULK); }
+    try { u8 = await rawReceive(RPT_CMD, 1041); }
     catch (e) {
-      log(`✗ XM1 GetFeature 失败 (round ${round}): ${e.message}`);
+      log(`✗ XM1 GetFeature(0xA1,1041) 失败 (round ${round}): ${e.message}`);
       lastDump = "recv:" + e.message;
       await sleep(250);
       continue;
     }
-    log(`  XM1 0xA0 响应 ${u8.length} B  head: ${hex(u8, 24)}`);
+    log(`  XM1 响应 ${u8.length} B  head: ${hex(u8, 24)}`);
     // ③ 状态判定（官方：cmp byte [buf+1], 1）
     if (u8[1] !== 0x01) {
       lastDump = hex(u8, 32);
