@@ -525,8 +525,9 @@
   }
   async function rawReceive(reportId) {
     const d = await dev.receiveFeatureReport(reportId);
-    const u8 = new Uint8Array(d.buffer);
-    if (u8[0] === reportId) return u8;
+    let u8 = new Uint8Array(d.buffer);
+    if (u8.length && u8[0] === 0) u8 = u8.slice(1);
+    if (u8.length && u8[0] === reportId) return u8;
     const out = new Uint8Array(u8.length + 1);
     out[0] = reportId;
     out.set(u8, 1);
@@ -654,6 +655,7 @@
     const b = blob;
     const s = newS();
     s.angleTune = b[1] << 24 >> 24;
+    s.unk7 = b[7];
     s.deepSleep = b[3] & 127;
     if (b[3] & 128) s.deepSleep = "off";
     s.powerSaving = b[4] & 127;
@@ -691,6 +693,7 @@
   }
   function buildSensorPayload() {
     const p = new Uint8Array(28);
+    p[0] = stage.unk7 ?? 0;
     p[1] = stage.ledLiftoff;
     p[2] = mmToLodByte(stage.lodMM, stage.glass);
     p[3] = stage.angleSnap;
@@ -862,6 +865,8 @@
         return b.code === 241 ? t("cpiCycle") : t("specialFn", b.code.toString(16));
       case 12:
         return t("fixedCpi");
+      case 24:
+        return b.code === 150 ? "\u{1F310} Browser" : b.code === 148 ? "\u{1F4C1} Explorer" : t("typeRaw", "18");
       case 32:
         return t("mediaKey", b.code.toString(16));
       case 255:
@@ -870,12 +875,14 @@
         return t("typeRaw", b.type.toString(16));
     }
   }
+  var writeSettle = () => wired ? 500 : 880;
+  var resetSettle = () => wired ? 800 : 1080;
   async function applySensor() {
     const glassChanged = gen === 2 && (blob[111] ? 1 : 0) !== stage.glass;
-    await guarded(20, 15, buildSensorPayload(), { pace: 200 });
+    await guarded(20, 15, buildSensorPayload(), { pace: writeSettle() });
     log("\u2713 cmd 0x14 written");
     if (glassChanged) {
-      await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: 200 });
+      await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: writeSettle() });
       log("\u2713 glass-mode linked cmd 0x15 written");
     }
     await refreshAll();
@@ -883,10 +890,10 @@
   }
   async function applyPerf() {
     const glassChanged = gen === 2 && (blob[111] ? 1 : 0) !== stage.glass;
-    await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: 200 });
+    await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: writeSettle() });
     log("\u2713 cmd 0x15 written");
     if (glassChanged) {
-      await guarded(20, 15, buildSensorPayload(), { pace: 200 });
+      await guarded(20, 15, buildSensorPayload(), { pace: writeSettle() });
       log("\u2713 glass-mode linked cmd 0x14 written");
     }
     await refreshAll();
@@ -975,7 +982,9 @@
       return;
     }
     try {
-      let devs = await navigator.hid.requestDevice({ filters: [{ vendorId: VID }] });
+      let devs = await navigator.hid.requestDevice({ filters: [{ vendorId: VID, usagePage: 65281, usage: 2 }] });
+      if (!devs.length)
+        devs = await navigator.hid.requestDevice({ filters: [{ vendorId: VID }] });
       if (!devs.length)
         devs = await navigator.hid.requestDevice({ filters: [] });
       if (!devs.length) return;
@@ -1029,7 +1038,7 @@
     if (!confirm(t("cfReset1"))) return;
     if (!confirm(t("cfReset2"))) return;
     try {
-      await guarded(19, 0, null, { pace: 300 });
+      await guarded(19, 0, null, { pace: resetSettle() });
       log("\u2713 factory reset done");
       await refreshAll();
       banner("ok", t("bResetOk"));
@@ -1059,8 +1068,8 @@
       stage.jitter = !!(stage.flags & 16);
       stage.multiclick = !!(stage.flags & 32);
       stage.maxFps = !!(stage.flags & 64);
-      await guarded(20, 15, buildSensorPayload(), { pace: 220 });
-      await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: 220 });
+      await guarded(20, 15, buildSensorPayload(), { pace: writeSettle() });
+      await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: writeSettle() });
       for (let chunk = 1; chunk <= 2; chunk++) {
         const p = new Uint8Array(28);
         for (let i = 0; i < 4; i++) {
@@ -1070,7 +1079,7 @@
           p[i * 7 + 2] = btn.key;
           p[i * 7 + 6] = btn.filter;
         }
-        await guarded(22, 15, p, { chunk, pace: 220 });
+        await guarded(22, 15, p, { chunk, pace: writeSettle() });
       }
       log("\u2713 config restored (0x14 + 0x15 + 0x16\xD72)");
       await refreshAll();

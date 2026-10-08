@@ -28,10 +28,15 @@ function newS() {
 function setConn(on, text) { const p = $("connState"); p.className = "status-pill" + (on ? "" : " off"); p.textContent = text; }
 
 /* ================= 传输层 ================= */
+/* rawReceive 归一化：Chrome 各平台对 receiveFeatureReport 的返回不一致——
+   可能带 reportId、剥掉 reportId（payload-only）、或把 reportId 置 0（零占位）。
+   参考 qsxcv/UnofficialEGGWebConfig 的 eggNormalizeFeature（re/upstream/）。
+   v2 固件的 0xA0 响应首字节是 0xA1 回显，由 readBlob 的双格式分支处理。 */
 async function rawReceive(reportId) {
   const d = await dev.receiveFeatureReport(reportId);
-  const u8 = new Uint8Array(d.buffer);
-  if (u8[0] === reportId) return u8;                 // 规范：返回缓冲区以 reportId 开头
+  let u8 = new Uint8Array(d.buffer);
+  if (u8.length && u8[0] === 0x00) u8 = u8.slice(1);              // 零占位 → 丢弃
+  if (u8.length && u8[0] === reportId) return u8;                 // 已含 reportId
   const out = new Uint8Array(u8.length + 1); out[0] = reportId; out.set(u8, 1); return out;
 }
 async function transact(cmd, target = 0x00, payload = null, opt: any = {}) {
@@ -113,6 +118,7 @@ async function readBlob() {
 function parseBlob() {
   const b = blob; const s: any = newS();
   s.angleTune = (b[0x01] << 24) >> 24;
+  s.unk7 = b[0x07];                                 // 0x14 帧 p[0] 透传的未知标志（OP1-WebAPP: "carried by 0x14, unread by Basic tab"）
   s.deepSleep = b[0x03] & 0x7F; if (b[0x03] & 0x80) s.deepSleep = "off";
   s.powerSaving = b[0x04] & 0x7F; if (b[0x04] & 0x80) s.powerSaving = "off";
   s.polling = b[0x05];
@@ -148,6 +154,7 @@ function mmToLodByte(mm, glass) {
 }
 function buildSensorPayload() {
   const p = new Uint8Array(28);
+  p[0] = stage.unk7 ?? 0;                           // 透传 blob[7]（勿清零——语义未知，官方工具原样回写）
   p[1] = stage.ledLiftoff;
   p[2] = mmToLodByte(stage.lodMM, stage.glass);
   p[3] = stage.angleSnap; p[4] = stage.ripple;
@@ -300,6 +307,7 @@ function describeMap(b) {
     case 0x02: return t("keyboardMap", b.code.toString(16), b.key.toString(16));
     case 0x09: return b.code === 0xF1 ? t("cpiCycle") : t("specialFn", b.code.toString(16));
     case 0x0C: return t("fixedCpi");
+    case 0x18: return b.code === 0x96 ? "🌐 Browser" : b.code === 0x94 ? "📁 Explorer" : t("typeRaw", "18");
     case 0x20: return t("mediaKey", b.code.toString(16));
     case 0xFF: return t("disabled");
     default: return t("typeRaw", b.type.toString(16));
@@ -307,12 +315,16 @@ function describeMap(b) {
 }
 
 /* ================= 应用流程 ================= */
+/* 官方工具的写后 settle：有线 500ms / 无线 880ms（模式字节 0x11/0x22，见 re/PROTOCOL_NOTES.md） */
+const writeSettle = () => wired ? 500 : 880;
+const resetSettle = () => wired ? 800 : 1080;
+
 async function applySensor() {
   const glassChanged = gen === 2 && (blob[0x6F] ? 1 : 0) !== stage.glass;
-  await guarded(0x14, 0x0F, buildSensorPayload(), { pace: 200 });
+  await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
   log("✓ cmd 0x14 written");
   if (glassChanged) {
-    await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: 200 });
+    await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
     log("✓ glass-mode linked cmd 0x15 written");
   }
   await refreshAll();
@@ -320,10 +332,10 @@ async function applySensor() {
 }
 async function applyPerf() {
   const glassChanged = gen === 2 && (blob[0x6F] ? 1 : 0) !== stage.glass;
-  await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: 200 });
+  await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
   log("✓ cmd 0x15 written");
   if (glassChanged) {
-    await guarded(0x14, 0x0F, buildSensorPayload(), { pace: 200 });
+    await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
     log("✓ glass-mode linked cmd 0x14 written");
   }
   await refreshAll();
@@ -377,9 +389,13 @@ $("btnConnect").onclick = async () => {
     banner("err", why); return;
   }
   try {
-    let devs = await (navigator as any).hid.requestDevice({ filters: [{ vendorId: VID }] });
+    // 官方配置接口 = usagePage 0xFF01 / usage 0x02（初代 22D4 与现行 3367 一致，两代文档互证）。
+    // 先精确匹配；空结果再放宽到 VID-only、最后全量手选。
+    let devs = await (navigator as any).hid.requestDevice({ filters: [{ vendorId: VID, usagePage: 0xFF01, usage: 0x02 }] });
     if (!devs.length)
-      devs = await (navigator as any).hid.requestDevice({ filters: [] }); // 全量列表，用户手选
+      devs = await (navigator as any).hid.requestDevice({ filters: [{ vendorId: VID }] });
+    if (!devs.length)
+      devs = await (navigator as any).hid.requestDevice({ filters: [] });
     if (!devs.length) return;
     for (const d of devs)
       log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} collections=` +
@@ -416,7 +432,7 @@ $("btnPairData").onclick = async () => {
 $("btnReset").onclick = async () => {
   if (!confirm(t("cfReset1"))) return;
   if (!confirm(t("cfReset2"))) return;
-  try { await guarded(0x13, 0x00, null, { pace: 300 }); log("✓ factory reset done"); await refreshAll(); banner("ok", t("bResetOk")); }
+  try { await guarded(0x13, 0x00, null, { pace: resetSettle() }); log("✓ factory reset done"); await refreshAll(); banner("ok", t("bResetOk")); }
   catch (e) { banner("err", e.message); }
 };
 $("btnSave").onclick = () => {
@@ -437,15 +453,15 @@ $("fileLoad").onchange = async e => {
     stage.jitter = !!(stage.flags & 0x10);
     stage.multiclick = !!(stage.flags & 0x20);
     stage.maxFps = !!(stage.flags & 0x40);
-    await guarded(0x14, 0x0F, buildSensorPayload(), { pace: 220 });
-    await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: 220 });
+    await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
+    await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
     for (let chunk = 1; chunk <= 2; chunk++) {
       const p = new Uint8Array(28);
       for (let i = 0; i < 4; i++) {
         const btn = stage.buttons[(chunk - 1) * 4 + i];
         p[i*7] = btn.type; p[i*7+1] = btn.code; p[i*7+2] = btn.key; p[i*7+6] = btn.filter;
       }
-      await guarded(0x16, 0x0F, p, { chunk, pace: 220 });
+      await guarded(0x16, 0x0F, p, { chunk, pace: writeSettle() });
     }
     log("✓ config restored (0x14 + 0x15 + 0x16×2)");
     await refreshAll();
