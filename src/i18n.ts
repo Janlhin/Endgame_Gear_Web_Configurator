@@ -224,4 +224,4 @@ $("langSel").onchange = e => {
   document.dispatchEvent(new CustomEvent("langchange"));  // main.ts 收到后重渲染
 };
 
-export { I18N, LANG, t };
+export { LANG, t };

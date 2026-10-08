@@ -1,11 +1,11 @@
 // 应用主体：全局状态 / 传输层 / blob 读写解析 / UI 渲染 / 连接与事件绑定
 import { $, sleep, hex, log, banner } from "./util.js";
-import { I18N, LANG, t, applyI18n } from "./i18n.js";
-import { VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK, POLLING_LABELS,
+import { LANG, t, applyI18n } from "./i18n.js";
+import { VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK,
          XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,
          buildXm1BlobReport, buildXm1ByteReport,
          xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte } from "./protocol.js";
-import { isXm2weFamily, WE_MOUSE_PID, WE_DONGLE_PID } from "./xm2we.js";
+import { isXm2weFamily } from "./xm2we.js";
 import { openXm2we, closeXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
 
 // —— 语言切换时重渲染（i18n.ts 通过事件解耦） ——

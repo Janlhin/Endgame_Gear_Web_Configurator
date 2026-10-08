@@ -35,7 +35,6 @@ const MOUSE_PIDS: Record<number, [string, number]> = {
 const XM1_PIDS: Record<number, [string, number]> = { 0x1803: ["XM1", 0] };
 
 const RPT_CMD = 0xA1, RPT_BULK = 0xA0;
-const POLLING_LABELS = { 0x02: "4000 Hz", 0x04: "2000 Hz", 0x08: "1000 Hz", 0x40: "125 Hz", 0x80: "1000 Hz" };
 
 /* ---- XM1（2020 变体，VID 0x22D4）----
  * 实测自 XM1 Configuration Software v1.09（re/XM1_NOTES.md 第 3 节）：
@@ -156,7 +155,7 @@ function xm1GuardEchoByte(reportId: number, data: unknown, ref: Uint8Array | nul
   return data.every((b, i) => (i === 0 || i === 4 ? true : b === 0));
 }
 
-export { VIDS, VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, XM1_PIDS, RPT_CMD, RPT_BULK, POLLING_LABELS,
+export { VIDS, VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, XM1_PIDS, RPT_CMD, RPT_BULK,
          XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,
          XM1_BLOB_DATA_LEN, XM1_PAYLOAD_OFF_IN_DATA,
          buildXm1BlobReport, buildXm1ByteReport,

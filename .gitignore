@@ -1,32 +1,26 @@
 node_modules/
 dist/
-# RE 中间产物（可由 re/ 脚本重新生成，勿入库）
+
+# ── RE 中间产物（可由 re/ 脚本重新生成，勿入库）──
 re/o_*.txt
 re/strings_*.txt
-# 上游原始抓取物（大文件/第三方二进制，结论沉淀在 re/upstream/SOURCES.md）
+re/*_check.png
+re/.test_*.mjs
+
+# ── 上游抓取物 / 厂商二进制 ──
+# 大文件与第三方版权物；结论已沉淀在 re/upstream/SOURCES.md
 re/upstream/*.html
 re/upstream/*.exe
 re/upstream/*.json
+re/upstream/*.log
+re/upstream/*.zip
 re/upstream/eggweb_app.js
-re/.test_xm2we.mjs
-re/.test_xm1_write.mjs
-re/style_check.png
 re/upstream/xm1_extracted/
 re/upstream/xm1_payload/
 re/upstream/unpacker_tool/
-re/upstream/*.zip
-re/upstream/*.html
-re/upstream/is_repos.json
-re/upstream/*.log
-re/upstream/Tool8k_v1.12.exe
-re/upstream/site_*.html
-re/upstream/dl_index.html
-re/upstream/xm1_main.exe
-re/upstream/o_fd60.txt
-re/upstream/o_*.txt
 re/upstream/xm1_funcs/
 re/upstream/xm1_proto/
 re/upstream/xm1_strings_*.txt
+
+# ── 真机配置快照（含用户设备数据，不入库）──
 re/xm1_blob_*.bin
-re/studio_check.png
-re/*_check.png
