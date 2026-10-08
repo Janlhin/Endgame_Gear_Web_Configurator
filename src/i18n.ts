@@ -1,7 +1,15 @@
 // i18n 词典 / 翻译 / 应用
 import { $ } from "./util.js";
+// 各语言词条独立成文件：189 条 × 8 种语言放进单文件已不可维护。
+// 键名一致性由 re/i18n_audit.mjs 逐个校验（缺键/多键/{0} 占位符不符都会报错）。
+import de from "./i18n/de.js";
+import es from "./i18n/es.js";
+import fr from "./i18n/fr.js";
+import ja from "./i18n/ja.js";
+import ko from "./i18n/ko.js";
+import zhTW from "./i18n/zh-TW.js";
 
-const I18N = {
+const I18N: Record<string, Record<string, string>> = {
   "zh-CN": {
     appTitle: "Endgame Gear 网页版驱动", notConnected: "未连接", connectedWired: "已连接（有线）", connectedWireless: "已连接（无线）",
     connect: "连接设备", refresh: "重新读取",
@@ -227,7 +235,9 @@ const I18N = {
     bRefuseKeyboard: "Refused to open: this is the system keyboard collection (HID Keyboard Device). Taking exclusive access would break the keyboard. Reconnect and pick the vendor-defined device.",
     bNotVendor: "Refused to open: the selected interface is not a vendor-defined collection (usage page < 0xFF00) and cannot carry configuration. Please pick a vendor-defined device.",
     bNoCollections: "Could not read this device's collection list, so opening was refused for safety (avoids grabbing the mouse pointer interface). Reconnect and pick the vendor-defined device.",
-  }
+  },
+
+  "zh-TW": zhTW, ja, ko, de, fr, es,
 };
 
 /* ---------------- 语言选择 ---------------- */
@@ -236,14 +246,21 @@ const I18N = {
 const LANGS = Object.keys(I18N);
 const FALLBACK_LANG = "zh-CN";
 
-/** 把浏览器给的语言标签归一化到本工具支持的两种之一；不认识返回 null。
- *  zh / zh-CN / zh-Hans-CN / zh-TW → "zh-CN"，en / en-US / en-GB → "en"。
- *  容错：剥掉 "en-US;q=0.9" 这类权重后缀，并把下划线写法（zh_CN）当连字符处理。 */
+/** 把浏览器给的语言标签归一化到本工具支持的语言之一；不认识返回 null。
+ *  容错：剥掉 "en-US;q=0.9" 这类权重后缀，并把下划线写法（zh_CN）当连字符处理。
+ *  ⚠️ 繁体必须在通用 zh- 之前判定，否则 zh-TW / zh-HK / zh-Hant 会被吞成简体。 */
 function normalizeLang(tag) {
   if (!tag) return null;
-  const s = String(tag).toLowerCase().split(";")[0].trim().replace("_", "-");
+  const s = String(tag).toLowerCase().split(";")[0].trim().replace(/_/g, "-");
+  if (s === "zh-hant" || s.indexOf("zh-hant-") === 0 ||
+      s === "zh-tw" || s === "zh-hk" || s === "zh-mo") return "zh-TW";
   if (s === "zh" || s.indexOf("zh-") === 0) return "zh-CN";
   if (s === "en" || s.indexOf("en-") === 0) return "en";
+  if (s === "de" || s.indexOf("de-") === 0) return "de";
+  if (s === "fr" || s.indexOf("fr-") === 0) return "fr";
+  if (s === "es" || s.indexOf("es-") === 0) return "es";
+  if (s === "ja" || s.indexOf("ja-") === 0) return "ja";
+  if (s === "ko" || s.indexOf("ko-") === 0) return "ko";
   return null;
 }
 

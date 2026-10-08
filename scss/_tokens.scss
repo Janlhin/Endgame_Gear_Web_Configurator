@@ -121,8 +121,17 @@ $radius-lg:  10px;
 $radius-pill: 99px;
 
 // ---------- 字体 ----------
+// 默认栈面向拉丁 + 简体中文。$font-mono 只用于十六进制日志，无需 CJK。
 $font-stack: "Segoe UI", "Microsoft YaHei", sans-serif;
 $font-mono:  Consolas, monospace;
+
+// ---- 按语言分流的中文/日文/韩文字体栈 ----
+// 「Microsoft YaHei」是简体字形。若让日文汉字或繁体走它，字形会不对
+// （日文的「直/骨/角」与繁体字形都有差异），所以按 <html lang> 分别给栈。
+// 我们已经用 i18n 的 applyI18n() 设置 documentElement.lang，CSS 直接能吃。
+$font-zh-tw: "Microsoft JhengHei", "PingFang TC", "Microsoft YaHei", sans-serif;   // 微軟正黑體
+$font-ja:    "Yu Gothic UI", "Hiragino Sans", "Meiryo", "Microsoft YaHei", sans-serif;
+$font-ko:    "Malgun Gothic", "Apple SD Gothic Neo", "Microsoft YaHei", sans-serif;
 
 // ---------- 断点 ----------
 $bp-md: 760px;

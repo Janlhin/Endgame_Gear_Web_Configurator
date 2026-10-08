@@ -25,6 +25,12 @@ body {
   color: $text;
 }
 
+// 日文 / 韩文 / 繁体中文各自换字体栈 —— 否则汉字会套用简体字形。
+// 用 :lang() 而非 [lang=]：前者能匹配 lang="ja-JP" 这类带区域的标签。
+html:lang(zh-TW) body { font-family: $font-zh-tw; }
+html:lang(ja)    body { font-family: $font-ja; }
+html:lang(ko)    body { font-family: $font-ko; }
+
 // ---------- 页头 ----------
 header {
   display: flex;
