@@ -83,6 +83,7 @@ LED 页签与 Surface Calibration 在官方 v1.02 中未发现协议实现路径
 - **[johanneszab/vole](https://github.com/johanneszab/vole)** — 完整的 USB 配置协议逆向文档与 Linux 实现（Ghidra + USBPcap + 真机验证），本项目协议层的唯一依据
 - **[stuffz/mouse-battery-monitor](https://github.com/stuffz/mouse-battery-monitor)** — 电池状态 HID 协议文档
 - **[gentoocat/XM2we-Unleashed](https://github.com/gentoocat/XM2we-Unleashed)** — XM2we 直接通信探索
+- **[qsxcv/UnofficialEGGWebConfig](https://github.com/qsxcv/UnofficialEGGWebConfig)** · **[zexsso/OP1-WebAPP](https://github.com/zexsso/OP1-WebAPP)** — 同类 WebHID 网页配置器（8k 系 / OP1w 4k）；XM2w 4k v1/v2 的网页配置器目前仅此一家（生态全景见 `docs/ecosystem-survey.md`）
 - **[jzab.de](https://www.jzab.de/content/linux-configuration-tool-for-endgame-gear-wireless-mice)** — Linux 配置工具的先行实践
 - **[Endgame Gear / Pro Gamersware GmbH](https://www.endgamegear.com/)** — 硬件本身，以及未混淆、可分析的官方配置工具
 
@@ -92,8 +93,10 @@ LED 页签与 Surface Calibration 在官方 v1.02 中未发现协议实现路径
 
 ## 路线图
 
+中期战役计划（官方仓库摸底 → 有线协议逆向 → 全系网页驱动 → 收尾）见 **[TODO.md](TODO.md)**（#8–#12）。
+
 - [ ] 按键重映射 UI（协议层已实现，缺编辑器）
 - [ ] inputreport 实时休眠/唤醒提示优化
-- [ ] XM2we 等有线型号协议逆向与支持（依赖社区抓包数据）
-- [ ] 更多语言（在 `I18N` 字典加条目即可，欢迎 PR）
-- [ ] 向官方申请协议文档（见 `docs/email-to-endgamegear.md`）
+- [ ] 0x14/0x15 写路径真机回环验证（v2 固件 wire 布局，见 `re/PROTOCOL_NOTES.md`）
+- [ ] 更多语言（在 `src/i18n.ts` 的 `I18N` 字典加条目即可，欢迎 PR）
+- [ ] 向官方申请协议文档（见 `docs/email-to-endgamegear.md`；XRed 事件论据见 `docs/ecosystem-survey.md`）

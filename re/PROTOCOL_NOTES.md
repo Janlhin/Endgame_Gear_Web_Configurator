@@ -125,3 +125,13 @@ a0 a1 01 00×17 03 01 04 61 00 01 0a 00 00 01 00 01 …
 
 **后续验证**：读取修好后，做一次真机写读回环（改值 → 应用 → 重新读取看是否一致），
 即可判定 0x14/0x15 写路径的 vole 格式是否需要按官方 wire 映射调整。
+
+## 版本比对基准（生态调研，docs/ecosystem-survey.md）
+
+- 官方 GitHub org `EndgameGear` 挂 8 个固件仓库（XM2w-4k / XM2w-4k-v2 / OP1w-4k / OP1w-4k-v2 /
+  OP1-8k / OP1-8k-v2 / XM2-8k / OP1-8k-Purple-Frost-LE），只发固件 release + 工具 exe，无源码。
+- 本项目所逆向的 v1.02 original exe 的官方出处即该 org 的 release 通道；`EndgameGear/XM2w-4k`
+  已挂 **v1.04** 工具（SHA256 前缀 `6e635fb5`），做哈希比对可验真伪，也可下载 v1.04 复核
+  新版是否引入协议变化。
+- 2025-06/07 官网分发的 OP1w 4k v2 工具曾被植入 XRed 木马——给官方写信与"第三方可审计工具"
+  价值的直接论据。
