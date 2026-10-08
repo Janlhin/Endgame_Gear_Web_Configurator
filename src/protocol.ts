@@ -47,9 +47,86 @@ const DONGLE_PID = 0x1970;
 const MOUSE_PIDS: Record<number, [string, number, number?]> = {
   0x1968: ["XM2w 4k", 1], 0x1972: ["OP1w 4k", 1], 0x1969: ["XM2w 4k (变体)", 1],
   0x1982: ["XM2w 4k v2", 2], 0x1984: ["OP1w 4k v2", 2], 0x1981: ["XM2w 4k v2 (变体)", 2],
-  0x1966: ["XM2 8k", 1, 0], 0x1964: ["OP1 8k / Purple Frost", 1, 0],
-  0x1980: ["XM2 8k v2", 2, 0], 0x1978: ["OP1 8k v2 / Raw Input", 2, 0],
+  0x1966: ["XM2 8k", 1], 0x1964: ["OP1 8k / Purple Frost", 1],
+  0x1980: ["XM2 8k v2", 2], 0x1978: ["OP1 8k v2 / Raw Input", 2],
 };
+
+/* ---- 8k 有线族的 PID（单独一份，便于按族分流写路径）----
+ * 来源：官方各型号工具二进制的设备匹配常量（x86 `push 0x3367` + `push 0x<PID>`）。
+ * 写入用 **0x11 整块写**（不是 4k 的 0x14/0x15/0x16 分块写），
+ * 报文 = [0xA0][0x11][报告 2..15 原样][偏移 16 起 1024B blob][尾字节]。
+ * 交叉来源：官方 OP1 8k v2 工具、社区 egctl（Rust，AGPL）与 qsxcv/UnofficialEGGWebConfig（JS）。
+ * blob 偏移与 4k **完全一致**（polling 0x05 / flags 0x06 / ledLiftoff 0x08 / LOD 0x09 /
+ * angleSnap 0x0A / ripple 0x0B / motionSync 0x0C / active 0x0D / levels 0x0E /
+ * CPI 0x23+5n / glass 0x6F），差异只有按键区（8k 从 0x3D 起 7 条，另有一条 HANDED @0x37）。 */
+const PID_8K: Record<number, string> = {
+  0x1966: "XM2 8k", 0x1964: "OP1 8k / Purple Frost",
+  0x1980: "XM2 8k v2", 0x1978: "OP1 8k v2 / Raw Input",
+};
+const is8k = (pid: number) => PID_8K[pid] !== undefined;
+
+/* ---- 第四协议族：XM1r / OP1 / OP1 RGB（VID 0x3367 + usagePage 0xFFA1, usage 0x00A5）----
+ * 2026-10-09 从官方 Electron 工具（OP1/OP1 RGB 工具 v1.6.400、XM1r 工具 v1.2.2 beta）的
+ * 未打包源码取出设备表：
+ *     XM1r        : PID 0x1903
+ *     OP1 / OP1 RGB: PID 0x1903 / 0x1905 / 0x1906 / 0x1910
+ *     匹配条件    : usagePage === 0xFFA1 && usage === 0x00A5（Windows）
+ * 协议与已知三族**完全不同**：64B 包 `[reportId][命令 @1][包ID @2][载荷 @3..]`，
+ * 54 条命令（kComLight/QueryMouse/QueryProfile/SetProfileData/FirmwareUpgrade…），
+ * 且连接后先发 kComSetPasswd（32 字节口令）才响应查询。
+ * ⇒ 本工具**只识别、不通信**：列出型号并说明不支持，避免让用户以为"连不上是坏的"。 */
+const PID_FAMILY4: Record<number, string> = {
+  0x1903: "XM1r / OP1", 0x1905: "OP1 / OP1 RGB", 0x1906: "OP1 / OP1 RGB", 0x1910: "OP1 / OP1 RGB",
+};
+const isFamily4 = (pid: number) => PID_FAMILY4[pid] !== undefined;
+const USAGE_FAMILY4 = { page: 0xFFA1, usage: 0x00A5 };
+
+/* ---- 8k 写入：整块 blob 的补丁（只动已交叉印证的偏移，其余字节保持读回值）---- */
+const OFF8K = { polling: 0x05, flags: 0x06, lod: 0x09, angleSnap: 0x0A, ripple: 0x0B,
+                motionSync: 0x0C, active: 0x0D, levels: 0x0E, cpi: 0x23 } as const;
+const F8K_SLAMCLICK = 0x01, F8K_JITTER = 0x10;
+
+/** 在「刚读回的 1024B」之上打补丁，返回待写回的 1024B。
+ *  —— 走 RMW（read-modify-write）：未涉及的字节一律保持设备原值，
+ *     所以即使某些偏移理解有误，也不会把无关配置写成 0（XM1 那次事故的教训）。 */
+function buildBlob8k(base: Uint8Array, st: any): Uint8Array {
+  const b = new Uint8Array(base);                  // 从读回值出发
+  b[OFF8K.polling] = st.polling & 0xFF;
+  /* 这两个开关在代码里有两份表示：UI 编辑用的 st.slamclick/st.jitter，
+     以及 blob 里的 st.flags 位。**显式字段优先，缺失时回退到 flags 位** ——
+     若只按显式字段判断，调用方只传 flags 时会把两个位静默清零（等于偷偷关掉用户设置）。 */
+  const slam = st.slamclick !== undefined ? (st.slamclick ? 1 : 0) : ((st.flags & F8K_SLAMCLICK) ? 1 : 0);
+  const jit  = st.jitter !== undefined ? (st.jitter ? 1 : 0) : ((st.flags & F8K_JITTER) ? 1 : 0);
+  b[OFF8K.flags] = (b[OFF8K.flags] & ~(F8K_SLAMCLICK | F8K_JITTER))
+                 | (slam ? F8K_SLAMCLICK : 0)
+                 | (jit ? F8K_JITTER : 0);
+  b[OFF8K.angleSnap] = st.angleSnap ? 1 : 0;
+  b[OFF8K.ripple] = st.ripple ? 1 : 0;
+  b[OFF8K.motionSync] = st.motionSync ? 1 : 0;
+  b[OFF8K.active] = st.active & 3;
+  b[OFF8K.levels] = Math.min(4, Math.max(1, st.levels));
+  for (let n = 0; n < 4; n++) {
+    const o = OFF8K.cpi + 5 * n;
+    const xyOn = st.cpi[n][0] ? 1 : 0;
+    const x = st.cpi[n][1] | 0;
+    const y = xyOn ? (st.cpi[n][2] | 0) : x;        // 未启用独立 ⇒ Y = X（与官方单值语义一致）
+    b[o] = xyOn;
+    b[o + 1] = x & 0xFF; b[o + 2] = (x >> 8) & 0xFF;
+    b[o + 3] = y & 0xFF; b[o + 4] = (y >> 8) & 0xFF;
+  }
+  return b;
+}
+
+/** 组装 8k 的写报告（WebHID 的 data，不含 reportId）。
+ *  frame = 最近一次读回的完整 1041B 报告帧（用于透传报告 2..15 与尾字节）。 */
+function build8kStoreData(frame: Uint8Array, newBlob: Uint8Array): Uint8Array {
+  const data = new Uint8Array(1040);                 // = 报告 1041 − reportId
+  data[0] = 0x11;                                    // STORE（报告[1]）
+  data.set(frame.subarray(2, 16), 1);                // 报告[2..15] 原样透传
+  data.set(newBlob, 15);                             // 报告[16..1039] = 1024B blob
+  data[1039] = frame[1040];                          // 尾字节原样透传
+  return data;
+}
 
 /* XM1 的型号表单独一份（VID 0x22D4，与 4k 族区分）。
    PID 0x1803 与固件 REV 0x0229 来自真机枚举（2026-10-08），见 re/XM1_NOTES.md。 */
@@ -177,6 +254,8 @@ function xm1GuardEchoByte(reportId: number, data: unknown, ref: Uint8Array | nul
 }
 
 export { VIDS, VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, XM1_PIDS, RPT_CMD, RPT_BULK,
+         PID_8K, is8k, PID_FAMILY4, isFamily4, USAGE_FAMILY4,
+         OFF8K, buildBlob8k, build8kStoreData,
          XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,
          XM1_BLOB_DATA_LEN, XM1_PAYLOAD_OFF_IN_DATA,
          buildXm1BlobReport, buildXm1ByteReport,

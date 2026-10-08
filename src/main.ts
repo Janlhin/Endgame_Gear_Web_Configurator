@@ -4,7 +4,9 @@ import { LANG, t, applyI18n } from "./i18n.js";
 import { VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK,
          XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,
          buildXm1BlobReport, buildXm1ByteReport,
-         xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte } from "./protocol.js";
+         xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte,
+         PID_8K, is8k, PID_FAMILY4, isFamily4, USAGE_FAMILY4,
+         buildBlob8k, build8kStoreData } from "./protocol.js";
 import { isXm2weFamily } from "./xm2we.js";
 import { applyLayout, layoutFor, applyLayoutFromHash, reapplyLayout } from "./layout.js";
 import { openXm2we, closeXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
@@ -22,6 +24,12 @@ const FILTER_OPTS = [["off","off"],["1","1"],["2","2"],["3","3"],["4","4"],["5",
 
 let dev = null, queue = Promise.resolve(), lastFail = false;
 let gen = null, mouseName = "—";
+/* 8k 有线族：读走 0xA1/0xA0 的 1024B 帧，写走 **0x11 整块写**（不是 0x14/0x15/0x16）。
+   lastFrame 保留最近一次读回的**完整 1041B 报告帧** —— 写回时要透传报告 2..15 与尾字节。
+   frameAligned 表示该帧的配置数据确实起始于报告偏移 16（写回的前提，否则拒绝写）。 */
+let eightK = false, lastFrame = null, frameAligned = false;
+/* 第四协议族（XM1r / OP1 / OP1 RGB，usagePage 0xFFA1）：只识别不通信 */
+let family4 = false;
 let unverified = false;   // 该型号仅静态实证、未真机验证 → 只读
 let unknownModel = false;  // PID 不在设备表里 → 无法判断协议族，同样只读
 let blob = null;
@@ -273,6 +281,124 @@ async function xm1QueryByte() {
     }
   }
   return null;
+}
+
+/* ================= 8k 有线族（0x11 整块写）=================
+ * 与 4k 无线族的差异**只有写命令**：读仍是 0x12 + 1024B blob，blob 偏移也完全一致
+ * （polling 0x05 / flags 0x06 / ledLiftoff 0x08 / LOD 0x09 / angleSnap 0x0A / ripple 0x0B /
+ *   motionSync 0x0C / active 0x0D / levels 0x0E / CPI 0x23+5n / glass 0x6F）。
+ * 4k 用 0x14/0x15/0x16 **分块**写；8k 用 **0x11 整块**写：
+ *     report = [0xA0][0x11][报告 2..15 原样][偏移 16 起 1024B blob][尾字节原样]
+ * 交叉来源（两个独立实现 + 官方工具二进制）：
+ *   · Creationsss/egctl (Rust, AGPL)：OP_STORE_CONFIG = 0x11a0、CONFIG_SIZE = 1041
+ *   · qsxcv/UnofficialEGGWebConfig (JS)：STORE=0x11/LOAD=0x12，report CFG=0xA0/CMD=0xA1
+ *   · 官方 OP1 8k / XM2 8k 工具二进制的 PID 常量
+ * ⚠️ 尚未在真机上验证（手上没有 8k），所以写入严格采用**读-改-写**：
+ *     未确认的字段一律保持设备刚给的值，绝不写入 0 —— 这是 XM1 事故的教训。 */
+
+/** 8k 的 blob 结构校验（4k 那套只认 polling ∈ {2,4,8,0x40,0x80}，
+ *  而 8k 的 divider 可以是 1（8000 Hz），故单独一份）。*/
+function looksLikeBlob8k(b: Uint8Array) {
+  if (b.length < 131) return false;
+  const levels = b[0x0E], active = b[0x0D], polling = b[0x05];
+  const cpi1 = b[0x24] | (b[0x25] << 8);
+  return levels >= 1 && levels <= 4 && active <= 3
+      && polling >= 1 && polling <= 64 && cpi1 >= 10 && cpi1 <= 30000;
+}
+
+/** 读 8k 配置：发 A1 12（LOAD）后轮询 0xA1/0xA0 取 1024B 帧。
+ *  **不要求 64B 状态 ACK** —— 社区实现同样不轮询（只有 4k 族有那套 status 语义）。 */
+async function readBlob8k() {
+  const cmd = new Uint8Array(63); cmd[0] = 0x12;      // LOAD，无负载
+  let last = "";
+  for (let round = 1; round <= 3; round++) {
+    try { await dev.sendFeatureReport(RPT_CMD, cmd); }
+    catch (e) { log(`✗ 8k LOAD 发送失败: ${e.message}`); await sleep(200); continue; }
+    await sleep(80);
+    let delay = 60;
+    for (let poll = 0; poll < 6; poll++) {
+      for (const rid of [RPT_CMD, RPT_BULK]) {
+        let u8;
+        try { u8 = await rawReceive(rid); } catch (e) { continue; }
+        if (u8.length < 16 + 1024) { last = `len=${u8.length} [${hex(u8, 8)}]`; continue; }
+        const cand = u8.slice(16, 16 + 1024);
+        if (u8[1] === 0x01 && looksLikeBlob8k(cand)) {
+          blob = cand;
+          lastFrame = u8.slice();
+          frameAligned = true;
+          lastFail = false;
+          log(`✓ 8k blob read OK (${blob.length} B @off 16, report 0x${u8[0].toString(16)})  head: ${hex(blob, 16)}`);
+          return;
+        }
+        last = `status=0x${u8[1].toString(16)} levels=${u8[16 + 0x0E]} polling=${u8[16 + 0x05]}`;
+      }
+      await sleep(delay); delay = Math.min(delay * 2, 400);
+    }
+    log(`⋯ 8k 读取第 ${round} 轮未取得有效帧（${last}）`);
+  }
+  lastFail = true;
+  throw new Error(`8k blob read failed; last: ${last}`);
+}
+
+/** 轮询 8k 的写 ACK（0xA1 短报告，状态字节 [1] == 0x01）。收不到不算失败，交由回读校验判定。 */
+async function pollAck8k(polls: number): Promise<boolean> {
+  for (let i = 0; i < polls; i++) {
+    try { const u8 = await rawReceive(RPT_CMD); if (u8[1] === 0x01) return true; } catch (e) { /* 忽略，继续轮询 */ }
+    await sleep(60 + i * 40);
+  }
+  return false;
+}
+
+/** 8k 写：整块 1024B 读-改-写。返回是否收到 ACK。 */
+async function store8k(newBlob: Uint8Array): Promise<boolean> {
+  if (!lastFrame || !frameAligned)
+    throw new Error(t("b8kNoFrame"));
+  const data = build8kStoreData(lastFrame, newBlob);
+  let lastErr: any = null;
+  for (let a = 0; a < 4; a++) {
+    try { await dev.sendFeatureReport(RPT_BULK, data); lastErr = null; break; }
+    catch (e) { lastErr = e; await sleep(50); }
+  }
+  if (lastErr) throw lastErr;
+  await sleep(300);                                   // 官方/社区均等待后才轮询 ACK
+  return pollAck8k(8);
+}
+
+/** 8k 写入后只校验「我们实际写过的字段」——LOD / 玻璃面 / 角度调校 / 最大 FPS
+ *  在 8k 上的编码未验证，本工具不写也不校验（保持读回原值）。 */
+function verifySensor8k(w: any): string[] {
+  const bad: string[] = [];
+  for (let n = 0; n < 4; n++) {
+    const a = stage.cpi[n] || [0, 0, 0];
+    if (w.cpi[n][0] !== (a[0] ? 1 : 0)) bad.push(`CPI ${n + 1} XY-enable`);
+    if (w.cpi[n][1] !== (a[1] | 0)) bad.push(`CPI ${n + 1} X ${w.cpi[n][1]}→${a[1] | 0}`);
+    const wantY = w.cpi[n][0] ? w.cpi[n][2] : w.cpi[n][1];
+    if (wantY !== (a[2] | 0)) bad.push(`CPI ${n + 1} Y ${wantY}→${a[2] | 0}`);
+  }
+  if (w.levels !== (stage.levels | 0)) bad.push(`Levels ${w.levels}→${stage.levels}`);
+  if (w.active !== (stage.active & 3)) bad.push(`Active stage ${w.active + 1}→${(stage.active & 3) + 1}`);
+  if (w.angleSnap !== (stage.angleSnap ? 1 : 0)) bad.push("Angle Snap");
+  if (w.ripple !== (stage.ripple ? 1 : 0)) bad.push("Ripple");
+  return bad;
+}
+function verifyPerf8k(w: any): string[] {
+  const bad: string[] = [];
+  const f = stage.flags | 0;
+  if (w.polling !== stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}→0x${stage.polling.toString(16)}`);
+  if (w.motionSync !== (stage.motionSync ? 1 : 0)) bad.push("Motion Sync");
+  if (w.slamclick !== (f & 1 ? 1 : 0)) bad.push("Slamclick");
+  if (w.jitter !== (f & 0x10 ? 1 : 0)) bad.push("Jitter filter");
+  return bad;
+}
+
+/** 8k 应用：一次整块写覆盖传感器页与性能页（8k 的写是整块，不区分两张卡）。 */
+async function apply8k() {
+  const want = snapSensor(), wantPerf = snapPerf();
+  const nb = buildBlob8k(blob, stage);               // 从读回值出发，只打补丁
+  const acked = await store8k(nb);
+  log(acked ? "✓ 8k STORE 已确认（ACK）" : "⋯ 8k STORE 未收到 ACK，继续回读校验");
+  await refreshAll();
+  reportVerify("bSensor", verifySensor8k(want).concat(verifyPerf8k(wantPerf)));
 }
 
 async function readBlobXm1() {
@@ -705,6 +831,16 @@ function renderXm1() {
     undo.textContent = t("xm1Undo") + " (" + xm1Snaps.length + ")";
   }
 }
+/* 第四协议族（XM1r / OP1 / OP1 RGB）专用：只填设备信息，不渲染任何可编辑控件。 */
+function renderInfoOnly() {
+  $("iModel").textContent = mouseName;
+  $("iMouseFw").textContent = "—";
+  $("iDongleFw").textContent = "—";
+  $("iBattery").textContent = "—";
+  $("iConn").textContent = t("wiredMode");
+  $("iGen").textContent = t("family4Name");
+}
+
 function render() {
   /* XM1：字段已实测确认，走 renderXm1() 的受限编辑器（写入只涉及 23 个已核实字节）。 */
   if (xm1) return renderXm1();
@@ -715,7 +851,7 @@ function render() {
   $("iBattery").textContent = battery === null ? "—"
     : (wired && battery < 100 ? t("charging", battery) : battery + " %");
   $("iConn").textContent = wired ? t("wiredMode") : t("wirelessMode");
-  $("iGen").textContent = gen ? `v${gen}` : "—";
+  $("iGen").textContent = eightK ? t("gen8k") : (gen ? `v${gen}` : "—");
 
   const tb = $("cpiRows"); tb.innerHTML = "";
   for (let n = 0; n < 4; n++) {
@@ -794,23 +930,26 @@ function render() {
   const pollSel = $("polling");
   const isEn = LANG === "en";
   const ps = isEn ? "power saving" : "省电", of = isEn ? "office" : "办公";
-  const pollOpts = gen === 1
-    ? [[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"]]
-    : [[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"],[0x80,`1000 Hz (${ps})`],[0x40,`125 Hz (${of})`]];
+  /* 8k 有线：divider 1/2/4/8 → 8000/4000/2000/1000 Hz（egctl 与官方工具一致）。
+     4k 无线则没有 8000 档，且 1000 Hz 有省电/办公两个特殊编码。 */
+  const pollOpts = eightK
+    ? [[0x01,"8000 Hz"],[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"]]
+    : gen === 1
+      ? [[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"]]
+      : [[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"],[0x80,`1000 Hz (${ps})`],[0x40,`125 Hz (${of})`]];
   fillSelect(pollSel, pollOpts, stage.polling);
-  if (!(gen === 1 && ![0x02,0x04,0x08].includes(stage.polling))) pollSel.value = String(stage.polling);
+  if (eightK || !(gen === 1 && ![0x02,0x04,0x08].includes(stage.polling))) pollSel.value = String(stage.polling);
   $("pollNote").textContent = wired ? t("pollWiredNote") : "";
   pollSel.onchange = e => stage.polling = +e.target.value;
   $("motionSync").value = String(stage.motionSync); $("motionSync").onchange = e => stage.motionSync = +e.target.value;
   stage.slamclick = !!(stage.flags & 1);
   $("slamclick").value = stage.slamclick ? "1" : "0"; $("slamclick").onchange = e => stage.slamclick = +e.target.value;
-  $("rowV1Jitter").style.display = gen === 1 ? "" : "none";
+  /* 注意：行级显示（rowV1Jitter / rowV2Max / rowV2Multi 等）**统一由 layout.ts 负责**，
+     这里不再设置 display —— 两处各自切换会互相打架（8k 就同时踩到这一点）。 */
   stage.jitter = !!(stage.flags & 0x10);
   $("jitter").value = stage.jitter ? "1" : "0"; $("jitter").onchange = e => stage.jitter = +e.target.value;
-  $("rowV2Max").style.display = gen === 2 ? "" : "none";
   stage.maxFps = !!(stage.flags & 0x40);
   $("maxFps").value = stage.maxFps ? "1" : "0"; $("maxFps").onchange = e => stage.maxFps = +e.target.value;
-  $("rowV2Multi").style.display = gen === 2 ? "" : "none";
   stage.multiclick = !!(stage.flags & 0x20);
   $("multiclick").value = stage.multiclick ? "1" : "0"; $("multiclick").onchange = e => stage.multiclick = +e.target.value;
   const toOpts = [["off", t("minutes") === "min" ? "Off" : "关闭"]].concat(Array.from({length:120},(_,i)=>[i+1, t("minutesFmt", i+1)]));
@@ -980,6 +1119,7 @@ function reportVerify(okKey: string, bad: string[]) {
 }
 
 async function applySensor() {
+  if (eightK) return apply8k();                  // 8k 是整块写，两张卡共用一条路径
   const want = snapSensor();                     // 期望值（写入前）
   const wantPerf = snapPerf();                   // 联动写 0x15 时玻璃模式也在里面
   const glassChanged = gen === 2 && (blob[0x6F] ? 1 : 0) !== stage.glass;
@@ -995,6 +1135,7 @@ async function applySensor() {
   reportVerify("bSensor", bad);
 }
 async function applyPerf() {
+  if (eightK) return apply8k();                  // 同上：8k 的性能项与传感器项在同一次整块写里
   const want = snapPerf();                       // 期望值（写入前）
   const wantSensor = snapSensor();               // 联动写 0x14 时传感器字段也在里面
   const glassChanged = gen === 2 && (blob[0x6F] ? 1 : 0) !== stage.glass;
@@ -1012,6 +1153,37 @@ async function applyPerf() {
 async function refreshAll() {
   banner("warn", "");
   try {
+    /* 第四协议族（XM1r / OP1 / OP1 RGB）：只显示型号与原因，不发送任何报文。
+       该族报文格式与本工具实现的三族完全不同（64B 包 + 54 条 kCom* 命令 + 口令握手），
+       在没有实现之前连接它是无意义的；明确告知比"连不上"更有用。 */
+    if (family4) {
+      mouseName = PID_FAMILY4[dev.productId] || t("f4Unknown");
+      mouseFw = "—"; dongleFw = "—"; battery = null;
+      applyLayout("unsupported");
+      renderInfoOnly();
+      banner("warn", t("bFamily4"));
+      log(`⚠ 第四协议族：VID=0x${dev.vendorId.toString(16)} PID=0x${dev.productId.toString(16)}，仅识别不通信`);
+      return;
+    }
+    /* 8k 有线族：从 PID 即可确定型号（有线直连，无需 0x0E 查询），
+       读走 0x12 + 1024B 帧，写走 0x11 整块写。 */
+    if (eightK) {
+      mouseName = PID_8K[dev.productId];
+      mouseFw = "—"; dongleFw = "—"; battery = null;
+      applyLayout("8k");
+      try {
+        await readBlob8k();
+        parseBlob();
+        render();
+        banner("warn", t("b8kNote"));
+        log("✓ 8k blob 已读取（写回为整块读-改-写，未确认字段原样保留）");
+      } catch (e) {
+        render();
+        banner("err", t("bRead") + e.message);
+        log("✗ " + e.message);
+      }
+      return;
+    }
     await probe();
 
     /* XM1：命令表只有 4 条（0x03/0x04/0x07/0x08）——没有 0x0D 固件、0x0E 型号、
@@ -1162,7 +1334,11 @@ async function openDevice(d) {
   if (!(await openGuarded(d))) return;
   dev = d;
   xm1 = isXm1(d.vendorId);
-  wired = xm1 || d.productId !== DONGLE_PID;
+  eightK = !xm1 && is8k(d.productId);
+  family4 = !xm1 && !eightK && (isFamily4(d.productId)
+            || (d.collections || []).some((c: any) => c.usagePage === USAGE_FAMILY4.page));
+  wired = xm1 || eightK || family4 || d.productId !== DONGLE_PID;
+  lastFrame = null; frameAligned = false;
   /* ★ XM1 发送白名单（防止再次损坏配置）
    *
    * 【常驻放行】64B 空请求，命令码为官方**读路径**的两条查询命令：
@@ -1232,9 +1408,13 @@ $("btnConnect").onclick = async () => {
        **鼠标完全无法移动**（实测用户反馈）。
        所以这里只列厂商配置接口（FF01:02 / FF02:02），并按 VID 精确限定。 */
     const filters = [
-      { vendorId: VID,     usagePage: 0xFF01, usage: 0x02 },  // 4k 无线族配置通道
+      { vendorId: VID,     usagePage: 0xFF01, usage: 0x02 },  // 4k 无线族 + 8k 有线族配置通道
       { vendorId: VID_22D4, usagePage: 0xFF01, usage: 0x02 },  // XM1 / XM1 RGB 配置通道
       { vendorId: VID,     usagePage: 0xFF02, usage: 0x02 },  // XM2we / OP1we 配置通道
+      /* 第四族（XM1r / OP1 / OP1 RGB）：官方 Electron 工具按 usagePage 0xFFA1 / usage 0x00A5 匹配。
+         本工具**不实现**该族协议，加进来只为能在界面上明确告知「已识别但不支持」，
+         而不是让用户看到"找不到兼容设备"。只读、不发送任何报文。 */
+      { vendorId: VID,     usagePage: USAGE_FAMILY4.page, usage: USAGE_FAMILY4.usage },
     ];
     let devs = await (navigator as any).hid.requestDevice({ filters });
     if (!devs.length) {
@@ -1292,6 +1472,11 @@ function guard4k(needConfig = true) {
   /* 未真机验证的型号（8k 有线族）只读：协议同构是静态实证的，
      但 gen 编码与字段语义没在硬件上确认过 —— 按未验证的偏移写回去，
      正是 2026-10-09 把 XM1 配置写坏的同一个错误。 */
+  if (family4) {
+    banner("err", t("bFamily4"));
+    log("✗ blocked: 4th protocol family (0xFFA1) is not implemented");
+    throw new Error("unsupported protocol family");
+  }
   if (unverified) {
     banner("err", t(unknownModel ? "bUnknownModel" : "bUnverifiedModel"));
     log("✗ blocked: model not verified on hardware (read-only)");
@@ -1301,7 +1486,8 @@ function guard4k(needConfig = true) {
      否则 applySensor 会把界面上的初始值当成当前配置下发（stage 是 newS() 的默认值）。
      这与 2026-10-09 把 XM1 配置写坏是同一类错误：不知道当前值就发。
      零负载命令（配对 / 恢复出厂）不受此限，用 guard4k(false) 调用。 */
-  if (needConfig && (!blob || !gen)) {
+  /* 8k 没有 0x0E 型号查询，gen 恒为 null —— 判据换成「是否读到过 blob」。 */
+  if (needConfig && (!blob || (!gen && !eightK))) {
     banner("err", t("bNoReadYet"));
     log("✗ blocked: no successful config read yet (write would send UI defaults)");
     throw new Error("no config read");
@@ -1405,6 +1591,9 @@ $("fileLoad").onchange = async e => {
      此前这里没有 guard4k() —— 单靠按钮 disabled 是不设防的：
      只要 handler 能被触发（旧文件选择器、脚本调用），只读型号就会被写。 */
   try { guard4k(); } catch { e.target.value = ""; return; }
+  /* 8k 的写是整块写：导入一个来自别的型号的 blob 等于把未知偏移整体覆盖 ——
+     这正是 XM1 事故的形态。故 8k 暂不支持导入（导出不受影响）。 */
+  if (eightK) { banner("err", t("b8kNoImport")); e.target.value = ""; return; }
   try {
     const j = JSON.parse(await f.text());
     const b = Uint8Array.from(atob(j.blobB64), c => c.charCodeAt(0));

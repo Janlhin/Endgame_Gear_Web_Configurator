@@ -12,8 +12,15 @@
  */
 
 const WE_VID = 0x3367;
-const WE_MOUSE_PID = 0x1960;   // 有线
-const WE_DONGLE_PID = 0x1961;  // 2.4G 接收器
+/* ★ 来自官方 **WE 系列配置工具 v1.0** 的 Cfg.ini（2026-10-09 从官方 CDN 取出并静默安装）：
+     VID=0x3367
+     PID=0x1960,0x1962     ← 两个鼠标 PID
+     PID2=0x1961           ← 接收器
+   所以 0x1960 = XM2we、0x1962 = OP1we（工具里两套皮肤 skins/3501 与 skins/3502），
+   两者共用同一协议与同一份工具 —— 补上 0x1962 即支持 OP1we。 */
+const WE_MOUSE_PID = 0x1960;   // XM2we（有线）
+const WE_MOUSE_PID2 = 0x1962;  // OP1we（有线）
+const WE_DONGLE_PID = 0x1961;  // 2.4G 接收器（两者共用）
 const RPT_OUT = 0x08, RPT_IN = 0x09;
 const FRAME_LEN = 17;
 const EE_MAX = 10;             // [6..15] 共 10 字节，其后是校验位
@@ -341,12 +348,13 @@ export class Xm2weSession {
   }
 }
 
-/** 从 hid.requestDevice 返回值里挑出 XM2we 族设备（有线 0x1960 / 接收器 0x1961，接口页 0xFF02） */
+/** 从 hid.requestDevice 返回值里挑出 XM2we/OP1we 族设备
+ *  （有线 0x1960 / 0x1962、接收器 0x1961，接口页 0xFF02） */
 function isXm2weFamily(pid: number, collections?: any[]): boolean {
-  if (pid === WE_MOUSE_PID || pid === WE_DONGLE_PID) return true;
+  if (pid === WE_MOUSE_PID || pid === WE_MOUSE_PID2 || pid === WE_DONGLE_PID) return true;
   return !!collections?.some(c => c.usagePage === 0xFF02);
 }
 
-export { WE_VID, WE_MOUSE_PID, WE_DONGLE_PID, RPT_OUT, RPT_IN, FRAME_LEN, EE_LIMIT, OP_PROFILE,
+export { WE_VID, WE_MOUSE_PID, WE_MOUSE_PID2, WE_DONGLE_PID, RPT_OUT, RPT_IN, FRAME_LEN, EE_LIMIT, OP_PROFILE,
          POLLING_BY_MASK, MASK_BY_POLLING, BTN_BITS, ck, buildFrame, frameValid,
          decodeCpi, encodeCpiRec, decodeKeys, decodePolling, encodeCpiValue, paired, isXm2weFamily };

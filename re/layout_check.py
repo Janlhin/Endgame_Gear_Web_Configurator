@@ -23,6 +23,10 @@ EXPECT = {
     "xm1": {"cards": ["cardInfo", "cardSensor", "cardTools"], "rows": ["rowLod", "cellRipple"]},
     "ro": {"cards": ["cardInfo", "cardSensor", "cardTools"],
            "rows": ["rowDongleFw", "rowBattery", "cellAngleSnap", "cellRipple"]},
+    "8k": {"cards": ["cardInfo", "cardSensor", "cardPerf", "cardTools"],
+           "rows": ["rowStages", "cellAngleSnap", "cellRipple", "rowPolling",
+                    "rowMotionSync", "rowSlamclick", "rowV1Jitter"]},
+    "unsupported": {"cards": ["cardInfo"], "rows": []},
     "we": {"cards": ["cardWeInfo", "cardWeCpi", "cardWeBtns", "cardWeTools"], "rows": []},
 }
 ALL_CARDS = CARDS_4K + ["cardWeInfo", "cardWeCpi", "cardWeBtns", "cardWeTools"]

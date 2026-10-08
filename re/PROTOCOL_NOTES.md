@@ -204,3 +204,67 @@ dongle/鼠标类型标注与提示。0x72 的 16 字节按 OP1-WebAPP 记载为 
   只需补上它们的 VID/PID 进 `MOUSE_PIDS` 表。
 - **支持 XM1 也几乎不需要新协议代码**：现有 4k 路径改 VID/PID + 命令码取 4 条 +
   去掉状态字节判定 + CPI 档数改 3 + 加 blob↔内部布局重排层即可。
+
+
+## ★★ 8k 有线族的写入路径（2026-10-09 补完）
+
+**结论：读与 4k 相同，写完全不同 —— 8k 是 0x11 整块写。**
+
+| | 4k 无线族 | 8k 有线族 |
+|---|---|---|
+| 读配置 | `0x12` + 1024B blob（报告 0xA0/0xA1） | **完全相同** |
+| **写配置** | `0x14` / `0x15` / `0x16` **分块写** | **`0x11` 整块写** |
+| 写报文 | 28B 负载 + (cmd, target, len) | `[0xA0][0x11][报告 2..15 原样][偏移 16 起 1024B][尾字节]` |
+| blob 偏移 | polling `0x05` / flags `0x06` / LOD `0x09` / angleSnap `0x0A` / ripple `0x0B` / motionSync `0x0C` / active `0x0D` / levels `0x0E` / CPI `0x23+5n` / glass `0x6F` | **与 4k 逐字节相同** |
+| 按键区 | `0x37` 起 8×7B | **`0x3D` 起 7×7B**（另有 `HANDED` 6B @`0x37`） |
+| V2 专属字段位置 | angleTune `0x01`、maxFps = flags bit6 | **angleTune `0x70`、maxFps `0x71`**（偏移不同！） |
+
+**三个独立来源互相印证**（这是本项目里交叉验证最充分的一处）：
+
+| 来源 | 关键常量 |
+|---|---|
+| 官方 OP1 8k v2 工具 | `push 0x3367` + `push 0x1978`（PID 立即数） |
+| `Creationsss/egctl`（Rust，AGPL） | `OP_STORE_CONFIG = 0x11a0` · `OP_LOAD_CONFIG = 0x12a1` · `CONFIG_SIZE = 1041` · 同一套 OFF_* 偏移 |
+| `qsxcv/UnofficialEGGWebConfig`（JS） | `STORE=0x11 / LOAD=0x12`，`CFG=0xA0 / CMD=0xA1`，`writeRaw` 把整块 blob 的 [1] 改成 0x11 后发出 |
+
+**本项目的实现（`protocol.ts` / `main.ts`）**：
+
+- `readBlob8k()`：发 `A1 12`（LOAD，无负载）→ 轮询 `0xA1`/`0xA0` 取 1024B 帧。
+  **不要求 64B 状态 ACK**（4k 那套 status 语义在 8k 上不成立，社区实现同样不轮询）。
+  保留完整 1041B 帧到 `lastFrame`，写回时透传报告 2..15 与尾字节。
+- `buildBlob8k(base, stage)`：**在读回的 1024B 之上打补丁**（RMW），
+  未涉及的字节一律保持设备原值 —— 这是 XM1 事故的核心教训。
+- `store8k()`：`sendFeatureReport(0xA0, build8kStoreData(lastFrame, newBlob))` → Sleep(300)
+  → 轮询 8 次 ACK（`0xA1` 报告 status==1）。
+- 只放出**两个来源都确认过编码**的字段：CPI 四档（含 XY 独立）、档位数、当前档、
+  角度捕捉、波纹控制、回报率（divider 1/2/4/8 = 8000/4000/2000/1000 Hz）、Motion Sync、
+  Slamclick、抖动过滤。
+  **不放出**：LOD（family-specific 列表，编码未验证）、玻璃面 / 抬离 LED / 角度调校 /
+  最大 FPS（在 8k 上是能力位或偏移与 4k 不同）、省电 / 深度休眠、按键区。
+- 回归测试 `re/test_8k_write.ts`（31 项）盯住**核心性质**：
+  `buildBlob8k` 的输出与输入的差异必须全部落在声明范围内（越界即失败）。
+
+⚠️ **仍未真机验证**（手上没有 8k 设备）。因此 8k 的界面会显示提示横幅，
+写明「交叉印证但未在本机验证」。
+
+## ★ WE 系列：OP1we 的 PID 是 0x1962（2026-10-09）
+
+官方 **WE 系列配置工具 v1.0**（`endgame-gear-we-series-configuration-software-v1.0-setup.exe`）
+是 Inno Setup 包，静默装到临时目录后其 `Cfg.ini` 直接给出设备表：
+
+```ini
+VID=0x3367
+PID=0x1960,0x1962     ; 两个鼠标
+PID2=0x1961           ; 接收器
+```
+
+→ **`0x1960` = XM2we、`0x1962` = OP1we**（工具内含两套皮肤 `skins/3501`、`skins/3502`），
+两者共用同一协议与同一份工具。本项目原先只认 `0x1960`/`0x1961`，
+**已补上 `0x1962`** → OP1we 支持到位（`src/xm2we.ts` 的 `isXm2weFamily`）。
+
+## ★ 第四协议族（XM1r / OP1 / OP1 RGB）
+
+VID `0x3367` + **usagePage `0xFFA1` / usage `0x00A5`**，协议与三族都不同。
+完整提取见 **[`re/FAMILY4_NOTES.md`](FAMILY4_NOTES.md)**
+（包格式、54 条 COMTYPE 命令、32 字节口令 `GEGJGYIKDCGBE9DWDKB27EAA7K9Z5J1P`）。
+本工具只识别、不通信。

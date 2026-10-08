@@ -159,3 +159,33 @@ SHA256 `82da585d0039c939…`，同内容 ZIP `ca99bad2…`）。
 ②OP1w 初代（22D4:1503，makalu_67_dll，OP1-WebAPP Part I 已文档化）、③2021+ 4k 无线代
 （3367:1970，报告 A0/A1 + 状态字节 + 1024B blob，本项目实现）。做全系支持（TODO #11）
 需按族分模块，XM2we 族材料已齐（可先做），XM1 待安装后逆向。
+
+
+---
+
+## 官方 Electron 工具（2026-10-09，第四协议族 + WE 系的来源）★新
+
+**关键方法**：这些安装包是 **Inno Setup**（7-Zip 打不开，需 `innoextract`）；
+但 Inno 支持静默指定目录安装，装到临时目录即可拿到**未打包的应用**：
+
+```powershell
+Start-Process -FilePath <tool>.exe -Wait -PassThru -ArgumentList `
+  "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/NOICONS","/DIR=<tmp>"
+```
+
+| 工具 | 官方 CDN 路径 | 装出来是什么 |
+|---|---|---|
+| **XM1r 配置软件 V1.2.2 beta** | `img.endgamegear.com/products/xm1r/downloads/xmr1r-configuration-software-1.2.2_beta.zip` | Electron：`resources/app/main-es2015.js`（**含 source map**） |
+| **OP1 / OP1 RGB 配置软件 1.6.400** | `img.endgamegear.com/downloads/Endgame-Gear-Configuration-Software-OP1-and+OP1-RGB-1.6.400.exe` | 同上 |
+| **WE 系列配置软件 v1.0** | `img.endgamegear.com/downloads/endgame-gear-we-series-configuration-software-v1.0-setup.exe` | Delphi 程序 + **`Cfg.ini`（设备表）** |
+
+抓到的硬事实（详见 `re/FAMILY4_NOTES.md` 与 `re/PROTOCOL_NOTES.md`）：
+
+- **XM1r / OP1 / OP1 RGB 是独立第四协议族**：VID `0x3367` + usagePage `0xFFA1` / usage `0x00A5`，
+  64B 包（`byte1=命令, byte2=包ID, byte3..=载荷`）、54 条 `kCom*` 命令、**32B 口令握手**。
+  PID：XM1r `0x1903`；OP1/OP1 RGB `0x1903 / 0x1905 / 0x1906 / 0x1910`。
+- **OP1we 的 PID = `0x1962`**（来自 WE 工具 `Cfg.ini`）→ 已加入本项目的 WE 族判定。
+- 该族含 `kComFirmwareUpgrade` / `kComWriteFlash` 等**改固件**命令 —— 未完全理解前一律不发。
+
+体积处理：400MB+ 的 Electron 应用目录与安装包**已清理**（按上表 URL 可重新下载），
+只保留 `we_series_cfg.ini`、`family4_comtype.txt` 与 `vidpid_hunt.py`（通用 VID/PID 猎取脚本）。

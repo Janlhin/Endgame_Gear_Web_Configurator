@@ -4,6 +4,7 @@ import { build } from "esbuild";
 const ENTRIES = [
   ["re/test_xm2we.ts", "re/.test_xm2we.mjs"],
   ["re/test_xm1_write.ts", "re/.test_xm1_write.mjs"],
+  ["re/test_8k_write.ts", "re/.test_8k_write.mjs"],
 ];
 
 for (const [entry, out] of ENTRIES) {

@@ -20,8 +20,12 @@ type LayoutKind =
   | "v2"
   /** XM1（2020 有线，VID 0x22D4） */
   | "xm1"
-  /** 8k 有线族：协议同构但未真机验证 ⇒ 只读 */
+  /** 未真机验证的型号（8k 族在写入路径出现之前用过；未知 PID 也落这里）：只读 */
   | "ro"
+  /** 8k 有线族：读与 4k 同构、写走 0x11 整块写（用户手上无此设备，未真机验证） */
+  | "8k"
+  /** 第四协议族（XM1r / OP1 / OP1 RGB，usagePage 0xFFA1）：只识别型号，不通信 */
+  | "unsupported"
   /** XM2we / OP1we：完全独立的一套卡片 */
   | "we";
 
@@ -75,14 +79,35 @@ const LAYOUT: Record<LayoutKind, { cards: string[]; rows: string[] }> = {
     rows: ["rowLod", "cellRipple"],
   },
 
-  /* 8k 有线族：读取可用（与 4k 同一套 0x12 + 0xA1），但写入路径完全不同（0x11 整块写），
-     且 gen 编码未验证 —— 所以只展示、不给写入入口（guard4k 还会再拦一层）。
-     展示的字段限于经官方工具二进制 + 社区 egctl 双向印证的偏移。 */
+  /* 8k 有线族：可读可写。写入是**整块读-改-写**（0x11），未确认的字段一律保持读回原值。
+     界面只放出「两个独立来源都确认过编码」的字段：
+       ✓ CPI 四档（[xy][X u16][Y u16]，与 4k 逐字节相同）、档位数、当前档、
+         LOD **不列**（family-specific 列表，编码未验证）、角度捕捉、波纹控制、
+         回报率（divider 1/2/4/8 = 8000/4000/2000/1000 Hz）、Motion Sync、
+         Slamclick、抖动过滤（flags bit0 / bit4）
+       ✗ 玻璃面 / 抬离 LED / 角度调校 / 最大 FPS：8k 上是**能力位**或 V2 专属，
+         偏移与 4k 不同（qsxcv: angleTune@128、maxFps@129，4k 在 0x01 与 flags 位），故不列
+       ✗ 省电 / 深度休眠：8k 未见对应偏移定义
+       ✗ 按键区：8k 从 0x3D 起 7 条（4k 是 0x37 起 8 条），另有 HANDED @0x37，未验证 */
+  "8k": {
+    cards: ["cardInfo", "cardSensor", "cardPerf", "cardTools"],
+    rows: ["rowStages", "cellAngleSnap", "cellRipple",
+           "rowPolling", "rowMotionSync", "rowSlamclick", "rowV1Jitter"],
+  },
+
+  /* 未真机验证的型号（当前无对应的产品；未知 PID 也落这里）：信息 + 传感器 + 导出，全部只读。
+     保持这一档存在的意义：任何「协议已匹配但没验证过」的新型号默认都落到最保守的界面。 */
   ro: {
     cards: ["cardInfo", "cardSensor", "cardTools"],
-    /* 不显示档位数/当前档位（写入关闭，禁用的下拉只是噪声），
-       也不显示 LOD —— gen 未验证时 LOD 的编码解释可能是错的，宁可不显示也不给错值。 */
     rows: ["rowDongleFw", "rowBattery", "cellAngleSnap", "cellRipple"],
+  },
+
+  /* 第四协议族（XM1r / OP1 / OP1 RGB）：只显示一张设备信息卡。
+     它的协议是完全独立的第四套（64B 包 + 54 条 kCom* 命令 + 口令握手），
+     本工具尚未实现 —— 列出来是为了让用户看到"已识别但不支持"，而不是空列表。 */
+  unsupported: {
+    cards: ["cardInfo"],
+    rows: [],
   },
 
   /* XM2we / OP1we：2020 代是另一个协议族，界面也完全分开（17B 报告 + EEPROM 模型） */
@@ -139,10 +164,13 @@ function applyLayout(kind: LayoutKind) {
   }
 }
 
-/** 设备类别 → 界面类别。未真机验证的型号（8k 族）与未知 PID 都落到只读布局。 */
-function layoutFor(opts: { xm1?: boolean; we?: boolean; unverified?: boolean; gen?: number | null }): LayoutKind {
+/** 设备类别 → 界面类别。未知/未验证型号一律落到最保守的布局。 */
+function layoutFor(opts: { xm1?: boolean; we?: boolean; eightK?: boolean; family4?: boolean;
+                          unverified?: boolean; gen?: number | null }): LayoutKind {
+  if (opts.family4) return "unsupported";
   if (opts.we) return "we";
   if (opts.xm1) return "xm1";
+  if (opts.eightK) return "8k";
   if (opts.unverified) return "ro";
   return opts.gen === 1 ? "v1" : "v2";
 }
@@ -154,7 +182,7 @@ function applyLayoutFromHash(): boolean {
   const m = /(?:^|[#&])layout=([a-z0-9]+)/i.exec(location.hash || "");
   if (!m) return false;
   const k = m[1] as LayoutKind;
-  if (["v1", "v2", "xm1", "ro", "we"].indexOf(k) < 0) return false;
+  if (["v1", "v2", "xm1", "ro", "we", "8k", "unsupported"].indexOf(k) < 0) return false;
   applyLayout(k);
   return true;
 }
