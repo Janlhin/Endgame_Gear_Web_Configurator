@@ -75,3 +75,20 @@
   其余仓库的 expanded_assets 页面已存档（rel_*.html）可随时补齐。
 - TODO #9（USBPcap 真机抓包）仍需用户配合。
 - angleTune 的 blob 位置（0x01 vs 0x70）按型号分叉，待 XM2w v2 真机改值回读定论。
+
+## UI 参考（op1w.vercel.app，2026-10-08 抓取）
+
+用户意向：采用 zexsso/OP1-WebAPP 的 UI 设计。存档：vercel_index.html（SPA 壳）、
+vercel_style.css（完整设计令牌）、op1web_theme.ts（主题管理器，自称 no-framework-deps）、
+op1web_DeviceView.vue（bento 网格主视图）。
+
+**设计令牌**（深色）：bg #0a0b0e / surface #14161b / surface-2 #1b1e25 / surface-3 #242832 /
+text #f2f4f8·#aeb4c0·#727885 / accent 紫 #8b7cff（accent-2 #b6a4ff）/ ok #4ade80 /
+warn #fbbf24 / err #f87171（各带 -bg/-border 透明变体）/ 圆角 8·11·16·full /
+缓动 cubic-bezier(.22,1,.36,1) / 字体 Inter Variable（回退系统栈）。浅色主题在 [data-theme] 块。
+
+**组件系统**：18 个 Vue 组件（Card/Field/Slider/Switch/SegmentedControl/Badge/Chip/Modal/
+ProgressRing/PageHeader/ThemeToggle/EmptyState…）。布局 = page > header(brand+actions) > section > cell。
+
+**移植策略（待确认）**：方案 A = 零依赖架构不变，把设计令牌+组件样式重写为原生 CSS
+（MIT 允许直接借鉴实现）；方案 B = 迁移到 Vue3+Tailwind（工具链变重，放弃单文件零依赖卖点）。
