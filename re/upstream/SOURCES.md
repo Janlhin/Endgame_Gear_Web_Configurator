@@ -92,3 +92,40 @@ ProgressRing/PageHeader/ThemeToggle/EmptyState…）。布局 = page > header(br
 
 **移植策略（待确认）**：方案 A = 零依赖架构不变，把设计令牌+组件样式重写为原生 CSS
 （MIT 允许直接借鉴实现）；方案 B = 迁移到 Vue3+Tailwind（工具链变重，放弃单文件零依赖卖点）。
+
+## XM1 配置软件 v1.09（2020）分析 —— TODO #9 有线协议
+
+**文件**：`E:/IDM/Compressed/XM1 Configuration Software V1.09\`（exe 7,478,295 B，
+SHA256 `82da585d0039c939…`，同内容 ZIP `ca99bad2…`）。
+
+**结论（静态）**：
+- InstallShield **Basic MSI** 封装：PE 节表到 0x14EA00，其后 6.1MB overlay 为
+  **ISSetupStream** 私有容器（"ISSetupStream" 头 + UTF-16 文件名 + 4 字节哈希 +
+  整体私有压缩流）。逐 zlib 流扫描无果（`is_zlib_scan.py` 留证），无明文 CAB/MSI。
+  → 要拿真实 app 文件需**实际安装**（README：需管理员、带固件刷写 UPDATE 页）。
+- 载荷字符串含 `ISSetup.dll` 与导出名 **`GetCPInfo`** —— 协议大概率在厂商 DLL 内
+  （与 OP1w 的 makalu_67_dll 同一套路）。
+- README：软件 1.09 需固件 2.29；新增 MMB/侧键映射、CPI 档开关；带固件刷写与
+  Recovery Tool 说明。
+- GitHub 无 XM1 专用逆向项目。
+
+**同代有线协议已有社区实现（★重大进展，材料齐备）**：
+`okms/xm2we-linux`（MIT，单文件 Python，304 行）+ `daviddwk/xm2we-util`（GPL-3，C）双源交叉验证：
+
+| 项 | 值 |
+|---|---|
+| VID / PID | **0x3367** / **0x1960(有线 XM2we) · 0x1961(接收器)** ← 新 PID |
+| 接口 | **usage page 0xFF02 / usage 0x02**（不是 4k 系的 FF01） |
+| 报告 | **0x08**(出,17B) / **0x09**(入,17B)（不是 4k 系的 A0/A1） |
+| 帧格式 | [0]=report id, [1]=opcode, [2..15]=payload, [16]=校验 = (0x55 − Σbytes[0..15]) & 0xFF |
+| opcode | 0x03 链路状态 · 0x04 查询 · 0x08 写 · 0x0F · EEPROM 直读写(addr, n) |
+| 配置存储 | EEPROM（0x00–0xBF, 0x100–0x17F），值后跟 0x55 补码配对 + CRC 记录 |
+| CPI | 8×[x,y,mul,crc] @0x0C–0x2B；CPI = (x+1)×(50 或 100) |
+| 按键 | 16×[type,code,param,crc] @0x60–0x9F；左/右/中/后/前 = bit0–4 |
+| 回报率 | 0x00 头部 one-hot 掩码：0x08=125 / 0x04=250 / 0x02=500 / 0x01=1000 Hz（=1000//mask） |
+| 去抖 | 0xA9 配对值 |
+
+→ **三族协议并存**：①2020 有线/2.4G 代（XM1/XM2we，报告 0x08/0x09 + 0x55 校验 + EEPROM）、
+②OP1w 初代（22D4:1503，makalu_67_dll，OP1-WebAPP Part I 已文档化）、③2021+ 4k 无线代
+（3367:1970，报告 A0/A1 + 状态字节 + 1024B blob，本项目实现）。做全系支持（TODO #11）
+需按族分模块，XM2we 族材料已齐（可先做），XM1 待安装后逆向。
