@@ -23,6 +23,11 @@ let dongleFw = "—", mouseFw = "—", battery = null, wired = false;
    ① 状态字节在 [1]（0x01 = 成功，与 4k 同）② 无独立唤醒命令（0x0F 是 4k 无线专属）
    ③ 4 档 CPI ④ 写后 settle 80ms。证据见 re/XM1_NOTES.md 第 3 / 6.7 节。 */
 let xm1 = false;
+/* ★ XM1 写入的两道闸门（2026-10-09）
+   xm1LastRead：最近一次成功读回的线上布局 1024B —— 写入只允许「回声」这份数据。
+   xm1Armed   ：是否处于一次明确的写回测试中；非 arm 状态下一律拦截。 */
+let xm1LastRead: Uint8Array | null = null;
+let xm1Armed = false;
 let stage: any = newS();
 
 function newS() {
@@ -311,6 +316,7 @@ async function readBlobXm1() {
     const cand = u8.slice(off, off + 1024);
     if (looksLikeBlob(cand, true)) {
       blob = cand;
+      xm1LastRead = cand.slice();          // 写入只能「回声」这一份（逐字节相等校验）
       lastFail = false;
       log(`✓ XM1 blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 32)}`);
       return;
@@ -465,6 +471,50 @@ function xm1Parse(b) {
   };
 }
 
+/* ---------------- XM1 写入：**只允许原样回声** ----------------
+ * 官方写事务（0x41A070，2026-10-09 反汇编确证）：
+ *   cmd 0x03 读单字节（握手，返回值只用来判成败，数据不用）
+ *   0x40E0D0 打包对象 → 0x40FB90 写 blob
+ *     报告 = 1041B：A0 08 00 00 | buf[4]=0 | buf[5]=入参 | buf[6..7]=0 | 偏移16起 1024B
+ *     写完 Sleep(80) → 再读 64B 确认
+ *   cmd 0x04 写单字节（值 = 同一个入参）
+ *
+ * 那个入参来自 obj[4]，而 obj[4] 就是解析器读到的缓冲区第 0 字节
+ *   （0x40E550: movzx eax, byte ptr [esi] / mov byte ptr [edi+4], al）
+ * —— 也就是**我们每次读回来的 1024B 的第 0 字节**。没有任何未知量。
+ *
+ * 为什么可证明无损：
+ *   官方写路径 memset(1024B,0) 后只填重排表 A 覆盖的 166 个字节，而三份真机快照的
+ *   非零字节 100% 落在 A 的目的集内 → 把「刚读回来的那份」原样写回，设备侧状态不变。
+ *   发送白名单会把这一点**逐字节强制校验**：载荷不等于刚读回的那份就直接拦截。
+ */
+async function writeBlobXm1Echo() {
+  const ref = xm1LastRead;
+  if (!dev || !xm1) throw new Error("XM1 未连接");
+  if (!ref || ref.length !== 1024) throw new Error("尚未成功读取过配置");
+  if (lastFail) throw new Error("设备状态异常，请先重新读取");
+
+  await xm1QueryByte();                                   // ① 握手（空载荷）
+
+  const data = new Uint8Array(1040);                      // ② 写 blob（data 不含 reportId）
+  data[0] = 0x08;                                         //    buf[1]
+  data[3] = 0x00;                                         //    buf[4]
+  data[4] = ref[0];                                       //    buf[5] = blob[0]（官方传 obj[4]）
+  data.set(ref, 15);                                      //    报告偏移 16 ← data 偏移 15
+  xm1Armed = true;
+  try {
+    await dev.sendFeatureReport(RPT_BULK, data);
+    await sleep(XM1_SETTLE_MS);
+    try { await rawReceive(RPT_CMD); } catch (e) { /* 官方的 64B 确认读，失败不致命 */ }
+    const b = xm1QueryReq(0x04);                          // ③ 写单字节（值 = blob[0]）
+    b[4] = ref[0];
+    await dev.sendFeatureReport(RPT_CMD, b);
+    await sleep(XM1_SETTLE_MS);
+  } finally {
+    xm1Armed = false;                                     // 无论成败，立刻解除武装
+  }
+}
+
 /* XM1 视图：显示解析出的传感器配置（**只读**）。
    ★ 读取路径按官方 0x40FC80 实现；**写入永久停用**——
      写路径 0x40FB90 需要 0x4103D0 重排层，该层未逐字节核实，
@@ -524,6 +574,9 @@ function renderXm1Readonly() {
     const el = $(id); if (el) el.disabled = true;
   }
   const save = $("btnSave"); if (save) save.disabled = false;
+  // 实验性：原样写回测试（回声白名单会逐字节校验，改不了任何东西）
+  const echoBtn = $("btnXm1Echo");
+  if (echoBtn) { echoBtn.style.display = ""; echoBtn.disabled = !xm1LastRead; }
 }
 function render() {
   /* XM1 只读视图：blob 字段语义尚未核实（官方内部布局与线上布局之间还有一层重排，
@@ -813,29 +866,49 @@ async function openDevice(d) {
   xm1 = isXm1(d.vendorId);
   wired = xm1 || d.productId !== DONGLE_PID;
   /* ★ XM1 发送白名单（防止再次损坏配置）
-   * 允许：64B 空请求，命令码为官方**读路径**用到的查询命令 ——
-   *         cmd 0x07（读 1024B blob）、cmd 0x03（读单字节配置/状态）。
-   *       共同特征：63 字节、除首字节命令码外全为 0 → **不含任何配置数据**，
-   *       设备只能据此回送现有值，无法被改写。
-   * 拦截：任何带负载的发送，尤其 1041B —— 那是写配置，会覆盖鼠标设置。
-   *       cmd 0x04（写单字节）也**不在白名单内**：其语义未确认，盲写即改配置。
+   *
+   * 【常驻放行】64B 空请求，命令码为官方**读路径**的两条查询命令：
+   *     cmd 0x07（读 1024B blob）、cmd 0x03（读单字节状态）
+   *   特征：63 字节、除首字节命令码外全为 0 → **不含任何配置数据**。
+   *
+   * 【仅 arm 时放行】官方的**写事务**三步（2026-10-09 反汇编确证）：
+   *     cmd 0x08 写 blob：1041B 报告，A0 08 00 00 + buf[5]=blob[0] + 偏移16起 1024B
+   *     cmd 0x04 写单字节：63B，值为 blob[0]
+   *   放行条件是**逐字节回声**：载荷必须与刚读回来的那份 1024B 完全一致，
+   *   且 buf[5] / cmd0x04 的值必须等于该 blob 的第 0 字节。
+   *   → 发出去的每个字节都是设备刚给我们的值，配置不可能被改坏（可证明无损）。
+   *
+   * 【一律拦截】其余任何发送，尤其"非回声"的 1041B。
    * 依据：2026-10-09 事故（发送 0xA0 全零 1024B blob 导致 DPI/CPI 清零）。
-   * 比"全禁"更精确：全禁会让 XM1 完全不可用，而空请求是可证明安全的。 */
+   * 比"全禁"更精确：全禁会让 XM1 完全不可用，而上述报文可证明安全。 */
   if (xm1) {
     const realSend = d.sendFeatureReport.bind(d);
+    const echo = () => xm1LastRead;
     d.sendFeatureReport = async (reportId: number, data: any) => {
-      const isSafeQueryReq = reportId === RPT_CMD
-        && data instanceof Uint8Array && data.length === 63
-        && (data[0] === 0x03 || data[0] === 0x07)              // 官方读路径的两条查询命令
-        && data.every((b, i) => i < 1 ? true : b === 0);       // 除命令码外全零 = 无负载
-      if (!isSafeQueryReq) {
-        log(`✗ XM1 拦截：非常规发送（reportId=${reportId}, len=${data?.length}, cmd=${data?.[0] ?? "?"}）`);
+      const u8 = data instanceof Uint8Array ? data : null;
+      // ① 常驻：无负载查询
+      const isQuery = !!u8 && reportId === RPT_CMD && u8.length === 63
+        && (u8[0] === 0x03 || u8[0] === 0x07)
+        && u8.every((b, i) => i < 1 ? true : b === 0);
+      // ② arm 时：回声写 blob（1041B 报告 → data 1040B，不含 reportId）
+      const ref = echo();
+      const isEchoBlob = xm1Armed && !!ref && !!u8 && reportId === RPT_BULK && u8.length === 1040
+        && u8[0] === 0x08 && u8[1] === 0 && u8[2] === 0 && u8[3] === 0
+        && u8[4] === ref[0] && u8[5] === 0 && u8[6] === 0
+        && u8.subarray(15).every((b, i) => b === ref[i]);
+      // ③ arm 时：回声写单字节（值必须等于 blob[0]）
+      const isEchoByte = xm1Armed && !!ref && !!u8 && reportId === RPT_CMD && u8.length === 63
+        && u8[0] === 0x04 && u8[3] === 0 && u8[4] === ref[0]
+        && u8.every((b, i) => (i === 0 || i === 4) ? true : b === 0);
+      if (!isQuery && !isEchoBlob && !isEchoByte) {
+        log(`✗ XM1 拦截：非常规发送（reportId=${reportId}, len=${u8?.length}, cmd=${u8?.[0] ?? "?"}, armed=${xm1Armed}）`);
+        xm1Armed = false;
         xm1WriteDisabled();
       }
       return realSend(reportId, data);
     };
     (d as any).__realSend = realSend;
-    log("⚠ XM1 仅允许 0x03/0x07 两条无负载查询；写配置已禁用（保护性拦截）");
+    log("⚠ XM1：读查询常驻放行；写 blob 仅允许「原样回声」（逐字节校验），其余一律拦截");
   }
   dev.addEventListener("inputreport", e => {
     if (e.data.byteLength < 2) return;
@@ -976,6 +1049,27 @@ $("btnSave").onclick = () => {
                 blobHex: hexLines.join("\n") };
   download(JSON.stringify(out, null, 2), `egg-mouse-config-${Date.now()}.json`, "application/json");
 };
+/* XM1 原样写回测试：发送的每个字节都必须等于刚读回的那份（白名单强制）。
+   成功后再读一次比对 —— 一致即说明「读=写同一套布局」闭环成立。 */
+$("btnXm1Echo").onclick = async () => {
+  if (!xm1LastRead) return banner("err", t("bRead"));
+  if (!window.confirm(t("xm1EchoConfirm"))) return;
+  const before = xm1LastRead.slice();
+  banner("warn", t("xm1EchoRunning"));
+  log(`⋯ 回声写回测试：将原样写回 ${before.length} 字节（内容 = 刚读回的那份）`);
+  try {
+    await writeBlobXm1Echo();
+    log("✓ 回声写回已发送，正在回读比对…");
+    await readBlob();
+    const same = !!blob && blob.length === before.length && blob.every((v, i) => v === before[i]);
+    if (same) { banner("ok", t("xm1EchoOk")); log("✓ 回读与写前逐字节一致 —— 布局闭环成立，可以进入下一步"); }
+    else { banner("warn", t("xm1EchoDiff")); log(`⋯ 回读与写前不同：${hex(blob, 32)}`); }
+  } catch (e) {
+    banner("err", t("xm1EchoFail") + e.message);
+    log("✗ 回声写回失败：" + e.message);
+  }
+};
+
 $("btnBlob").onclick = () => { if (blob) download(new Blob([blob]), `egg-mouse-blob-${Date.now()}.bin`); };
 $("btnLoad").onclick = () => $("fileLoad").click();
 $("fileLoad").onchange = async e => {

@@ -409,6 +409,7 @@ a {
       <button id="btnLoad" class="ghost" data-i18n="importCfg">导入配置并写入</button>
       <input type="file" id="fileLoad" accept=".json" style="display:none">
       <button id="btnBlob" class="ghost" data-i18n="exportBlob">导出原始 1024B blob (.bin)</button>
+      <button id="btnXm1Echo" class="ghost" style="display:none" data-i18n="xm1Echo">XM1 实验：原样写回测试</button>
     </div>
     <div class="row">
       <button id="btnPair" class="ghost" data-i18n="pair">重新配对接收器</button>
@@ -495,6 +496,12 @@ a {
       themeLight: "\u6D45\u8272",
       themeDark: "\u6DF1\u8272",
       themeTip: "\u5207\u6362\u6D45\u8272 / \u6DF1\u8272\u4E3B\u9898",
+      xm1Echo: "XM1 \u5B9E\u9A8C\uFF1A\u539F\u6837\u5199\u56DE\u6D4B\u8BD5",
+      xm1EchoConfirm: "\u3010\u5B9E\u9A8C\u529F\u80FD \xB7 \u8BF7\u5148\u8BFB\u5B8C\u3011\n\n\u8FD9\u4E2A\u6309\u94AE\u4F1A\u628A\u521A\u8BFB\u5230\u7684 1024 \u5B57\u8282\u3010\u539F\u5C01\u4E0D\u52A8\u3011\u5199\u56DE\u9F20\u6807\uFF0C\u4E0D\u505A\u4EFB\u4F55\u4FEE\u6539\u3002\n\n\u4E3A\u4EC0\u4E48\u8FD9\u6B21\u662F\u5B89\u5168\u7684\uFF1A\u5B98\u65B9\u5199\u8DEF\u5F84\u53EA\u5199\u5B83\u81EA\u5DF1\u8986\u76D6\u7684 166 \u4E2A\u5B57\u8282\uFF0C\u800C\u5B9E\u6D4B\u4F60\u9F20\u6807\u8BFB\u5230\u7684\u975E\u96F6\u5B57\u8282\u5168\u90E8\u843D\u5728\u8FD9\u4E2A\u8303\u56F4\u5185 \u2014\u2014 \u6240\u4EE5\u300C\u539F\u6837\u5199\u56DE\u300D\u5728\u8BBE\u5907\u4FA7\u7B49\u4E8E\u6CA1\u6539\u52A8\u3002\u7A0B\u5E8F\u91CC\u8FD8\u505A\u4E86\u9010\u5B57\u8282\u6821\u9A8C\uFF1A\u53EA\u8981\u6709\u4EFB\u4F55\u4E00\u4E2A\u5B57\u8282\u4E0D\u7B49\u4E8E\u521A\u8BFB\u56DE\u7684\u503C\uFF0C\u53D1\u9001\u4F1A\u88AB\u76F4\u63A5\u62E6\u622A\u3002\n\n\u76EE\u7684\u53EA\u6709\u4E00\u4E2A\uFF1A\u9A8C\u8BC1\u300C\u8BFB\u53D6\u4E0E\u5199\u5165\u4F7F\u7528\u540C\u4E00\u5957\u5E03\u5C40\u300D\u8FD9\u4E2A\u7ED3\u8BBA\u3002\u6210\u529F\u540E\u4F1A\u518D\u8BFB\u4E00\u6B21\u505A\u6BD4\u5BF9\u3002\n\n\u786E\u8BA4\u5F00\u59CB\u5417\uFF1F",
+      xm1EchoRunning: "\u6B63\u5728\u505A\u539F\u6837\u5199\u56DE\u6D4B\u8BD5\u2026",
+      xm1EchoOk: "\u2713 \u5199\u56DE\u6210\u529F\uFF0C\u4E14\u56DE\u8BFB\u4E0E\u5199\u524D\u9010\u5B57\u8282\u4E00\u81F4 \u2014\u2014 \u5E03\u5C40\u95ED\u73AF\u6210\u7ACB\u3002",
+      xm1EchoDiff: "\u5199\u56DE\u540E\u56DE\u8BFB\u7684\u6570\u636E\u4E0E\u5199\u524D\u4E0D\u540C\uFF1A\u8BF7\u628A\u65E5\u5FD7\u53D1\u6211\uFF0C\u5728\u786E\u8BA4\u539F\u56E0\u524D\u4E0D\u8981\u518D\u91CD\u590D\u5C1D\u8BD5\u3002",
+      xm1EchoFail: "\u5199\u56DE\u5931\u8D25\uFF1A",
       secInfo: "\u8BBE\u5907\u4FE1\u606F",
       model: "\u578B\u53F7",
       mouseFw: "\u9F20\u6807\u56FA\u4EF6",
@@ -646,6 +653,12 @@ a {
       themeLight: "Light",
       themeDark: "Dark",
       themeTip: "Toggle light / dark theme",
+      xm1Echo: "XM1 experiment: echo write-back test",
+      xm1EchoConfirm: "[Experimental - please read first]\n\nThis sends the 1024 bytes that were just read straight back to the mouse, unmodified.\n\nWhy this is safe: the official write path only fills the 166 bytes it covers, and every non-zero byte read from your mouse falls inside that set - so an identical write-back is a no-op on the device. The code verifies it byte by byte too: if any byte differs from what was just read, the send is blocked outright.\n\nIts only purpose is to confirm that reads and writes share one layout. On success I re-read and compare.\n\nProceed?",
+      xm1EchoRunning: "Running the echo write-back test...",
+      xm1EchoOk: "Write-back succeeded and the re-read matches byte for byte - the layout round-trip holds.",
+      xm1EchoDiff: "The re-read differs from before the write. Send me the log and do not retry until we know why.",
+      xm1EchoFail: "Write-back failed: ",
       secInfo: "Device Info",
       model: "Model",
       mouseFw: "Mouse firmware",
@@ -1432,6 +1445,8 @@ a {
   var battery = null;
   var wired2 = false;
   var xm1 = false;
+  var xm1LastRead = null;
+  var xm1Armed = false;
   var stage = newS();
   function newS() {
     return {
@@ -1668,6 +1683,7 @@ a {
       const cand = u8.slice(off, off + 1024);
       if (looksLikeBlob(cand, true)) {
         blob = cand;
+        xm1LastRead = cand.slice();
         lastFail = false;
         log(`\u2713 XM1 blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 32)}`);
         return;
@@ -1810,6 +1826,33 @@ a {
       }))
     };
   }
+  async function writeBlobXm1Echo() {
+    const ref = xm1LastRead;
+    if (!dev2 || !xm1) throw new Error("XM1 \u672A\u8FDE\u63A5");
+    if (!ref || ref.length !== 1024) throw new Error("\u5C1A\u672A\u6210\u529F\u8BFB\u53D6\u8FC7\u914D\u7F6E");
+    if (lastFail) throw new Error("\u8BBE\u5907\u72B6\u6001\u5F02\u5E38\uFF0C\u8BF7\u5148\u91CD\u65B0\u8BFB\u53D6");
+    await xm1QueryByte();
+    const data = new Uint8Array(1040);
+    data[0] = 8;
+    data[3] = 0;
+    data[4] = ref[0];
+    data.set(ref, 15);
+    xm1Armed = true;
+    try {
+      await dev2.sendFeatureReport(RPT_BULK, data);
+      await sleep(XM1_SETTLE_MS);
+      try {
+        await rawReceive(RPT_CMD);
+      } catch (e) {
+      }
+      const b = xm1QueryReq(4);
+      b[4] = ref[0];
+      await dev2.sendFeatureReport(RPT_CMD, b);
+      await sleep(XM1_SETTLE_MS);
+    } finally {
+      xm1Armed = false;
+    }
+  }
   function renderXm1Readonly() {
     $("iModel").textContent = mouseName;
     $("iMouseFw").textContent = "\u2014";
@@ -1876,6 +1919,11 @@ a {
     }
     const save = $("btnSave");
     if (save) save.disabled = false;
+    const echoBtn = $("btnXm1Echo");
+    if (echoBtn) {
+      echoBtn.style.display = "";
+      echoBtn.disabled = !xm1LastRead;
+    }
   }
   function render() {
     if (xm1) return renderXm1Readonly();
@@ -2186,16 +2234,22 @@ a {
     wired2 = xm1 || d.productId !== DONGLE_PID;
     if (xm1) {
       const realSend = d.sendFeatureReport.bind(d);
+      const echo = () => xm1LastRead;
       d.sendFeatureReport = async (reportId, data) => {
-        const isSafeQueryReq = reportId === RPT_CMD && data instanceof Uint8Array && data.length === 63 && (data[0] === 3 || data[0] === 7) && data.every((b, i) => i < 1 ? true : b === 0);
-        if (!isSafeQueryReq) {
-          log(`\u2717 XM1 \u62E6\u622A\uFF1A\u975E\u5E38\u89C4\u53D1\u9001\uFF08reportId=${reportId}, len=${data == null ? void 0 : data.length}, cmd=${(data == null ? void 0 : data[0]) ?? "?"}\uFF09`);
+        const u8 = data instanceof Uint8Array ? data : null;
+        const isQuery = !!u8 && reportId === RPT_CMD && u8.length === 63 && (u8[0] === 3 || u8[0] === 7) && u8.every((b, i) => i < 1 ? true : b === 0);
+        const ref = echo();
+        const isEchoBlob = xm1Armed && !!ref && !!u8 && reportId === RPT_BULK && u8.length === 1040 && u8[0] === 8 && u8[1] === 0 && u8[2] === 0 && u8[3] === 0 && u8[4] === ref[0] && u8[5] === 0 && u8[6] === 0 && u8.subarray(15).every((b, i) => b === ref[i]);
+        const isEchoByte = xm1Armed && !!ref && !!u8 && reportId === RPT_CMD && u8.length === 63 && u8[0] === 4 && u8[3] === 0 && u8[4] === ref[0] && u8.every((b, i) => i === 0 || i === 4 ? true : b === 0);
+        if (!isQuery && !isEchoBlob && !isEchoByte) {
+          log(`\u2717 XM1 \u62E6\u622A\uFF1A\u975E\u5E38\u89C4\u53D1\u9001\uFF08reportId=${reportId}, len=${u8 == null ? void 0 : u8.length}, cmd=${(u8 == null ? void 0 : u8[0]) ?? "?"}, armed=${xm1Armed}\uFF09`);
+          xm1Armed = false;
           xm1WriteDisabled();
         }
         return realSend(reportId, data);
       };
       d.__realSend = realSend;
-      log("\u26A0 XM1 \u4EC5\u5141\u8BB8 0x03/0x07 \u4E24\u6761\u65E0\u8D1F\u8F7D\u67E5\u8BE2\uFF1B\u5199\u914D\u7F6E\u5DF2\u7981\u7528\uFF08\u4FDD\u62A4\u6027\u62E6\u622A\uFF09");
+      log("\u26A0 XM1\uFF1A\u8BFB\u67E5\u8BE2\u5E38\u9A7B\u653E\u884C\uFF1B\u5199 blob \u4EC5\u5141\u8BB8\u300C\u539F\u6837\u56DE\u58F0\u300D\uFF08\u9010\u5B57\u8282\u6821\u9A8C\uFF09\uFF0C\u5176\u4F59\u4E00\u5F8B\u62E6\u622A");
     }
     dev2.addEventListener("inputreport", (e) => {
       if (e.data.byteLength < 2) return;
@@ -2370,6 +2424,29 @@ a {
       blobHex: hexLines.join("\n")
     };
     download(JSON.stringify(out, null, 2), `egg-mouse-config-${Date.now()}.json`, "application/json");
+  };
+  $("btnXm1Echo").onclick = async () => {
+    if (!xm1LastRead) return banner("err", t("bRead"));
+    if (!window.confirm(t("xm1EchoConfirm"))) return;
+    const before = xm1LastRead.slice();
+    banner("warn", t("xm1EchoRunning"));
+    log(`\u22EF \u56DE\u58F0\u5199\u56DE\u6D4B\u8BD5\uFF1A\u5C06\u539F\u6837\u5199\u56DE ${before.length} \u5B57\u8282\uFF08\u5185\u5BB9 = \u521A\u8BFB\u56DE\u7684\u90A3\u4EFD\uFF09`);
+    try {
+      await writeBlobXm1Echo();
+      log("\u2713 \u56DE\u58F0\u5199\u56DE\u5DF2\u53D1\u9001\uFF0C\u6B63\u5728\u56DE\u8BFB\u6BD4\u5BF9\u2026");
+      await readBlob();
+      const same = !!blob && blob.length === before.length && blob.every((v, i) => v === before[i]);
+      if (same) {
+        banner("ok", t("xm1EchoOk"));
+        log("\u2713 \u56DE\u8BFB\u4E0E\u5199\u524D\u9010\u5B57\u8282\u4E00\u81F4 \u2014\u2014 \u5E03\u5C40\u95ED\u73AF\u6210\u7ACB\uFF0C\u53EF\u4EE5\u8FDB\u5165\u4E0B\u4E00\u6B65");
+      } else {
+        banner("warn", t("xm1EchoDiff"));
+        log(`\u22EF \u56DE\u8BFB\u4E0E\u5199\u524D\u4E0D\u540C\uFF1A${hex(blob, 32)}`);
+      }
+    } catch (e) {
+      banner("err", t("xm1EchoFail") + e.message);
+      log("\u2717 \u56DE\u58F0\u5199\u56DE\u5931\u8D25\uFF1A" + e.message);
+    }
   };
   $("btnBlob").onclick = () => {
     if (blob) download(new Blob([blob]), `egg-mouse-blob-${Date.now()}.bin`);
