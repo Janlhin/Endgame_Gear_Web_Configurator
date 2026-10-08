@@ -8,3 +8,4 @@ re/upstream/*.html
 re/upstream/*.exe
 re/upstream/*.json
 re/upstream/eggweb_app.js
+re/.test_xm2we.mjs

@@ -2,6 +2,8 @@
 import { $, sleep, hex, log, banner } from "./util.js";
 import { I18N, LANG, t, applyI18n } from "./i18n.js";
 import { VID, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK, POLLING_LABELS } from "./protocol.js";
+import { isXm2weFamily, WE_MOUSE_PID, WE_DONGLE_PID } from "./xm2we.js";
+import { openXm2we, closeXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
 
 // —— 语言切换时重渲染（i18n.ts 通过事件解耦） ——
 document.addEventListener("langchange", () => render());
@@ -394,30 +396,51 @@ $("btnConnect").onclick = async () => {
     banner("err", why); return;
   }
   try {
-    // 官方配置接口 = usagePage 0xFF01 / usage 0x02（初代 22D4 与现行 3367 一致，两代文档互证）。
-    // 先精确匹配；空结果再放宽到 VID-only、最后全量手选。
-    let devs = await (navigator as any).hid.requestDevice({ filters: [{ vendorId: VID, usagePage: 0xFF01, usage: 0x02 }] });
-    if (!devs.length)
-      devs = await (navigator as any).hid.requestDevice({ filters: [{ vendorId: VID }] });
-    if (!devs.length)
-      devs = await (navigator as any).hid.requestDevice({ filters: [] });
+    /* 两个协议族接口页不同（4k=0xFF01，2020 有线代=0xFF02），必须都试，否则会漏掉 XM2we。
+       顺序：4k 精确 → 有线代精确 → VID-only → 全量手选。 */
+    const attempts = [
+      { vendorId: VID, usagePage: 0xFF01, usage: 0x02 },
+      { vendorId: VID, usagePage: 0xFF02, usage: 0x02 },
+      { vendorId: VID },
+      {},
+    ];
+    let devs = [];
+    for (const f of attempts) {
+      devs = await (navigator as any).hid.requestDevice({ filters: [f] });
+      if (devs.length) break;
+    }
     if (!devs.length) return;
     for (const d of devs) {
-      const kind = d.productId === DONGLE_PID ? "dongle" : (MOUSE_PIDS[d.productId] ? "鼠标" : "未知设备");
-      log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} [${kind}] collections=` +
+      const fam = isXm2weFamily(d.productId, d.collections) ? "XM2we/2020" : "4k";
+      const kind = fam === "XM2we/2020"
+        ? (d.productId === WE_DONGLE_PID ? "接收器" : "鼠标")
+        : (d.productId === DONGLE_PID ? "dongle" : (MOUSE_PIDS[d.productId] ? "鼠标" : "未知设备"));
+      log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} [${fam} · ${kind}] collections=` +
           (d.collections || []).map(c => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
     }
-    // 优先挑 vendor 用法页（0xFF00+）的接口；没有就退而求其次
-    const pick = devs.find(d => (d.collections || []).some(c => c.usagePage >= 0xFF00)) || devs[0];
+    // XM2we 族优先（PID 明确），否则挑 vendor 用法页接口
+    const pick = devs.find(d => isXm2weFamily(d.productId, d.collections))
+              || devs.find(d => (d.collections || []).some(c => c.usagePage >= 0xFF00))
+              || devs[0];
+    if (isXm2weFamily(pick.productId, pick.collections)) {
+      await openXm2we(pick);
+      return;
+    }
     if (pick.productId === DONGLE_PID)
       log("ℹ 已选择接收器。若鼠标此刻插着 USB 线，无线链路是断开的——请改选鼠标设备（或拔线后再连）。");
     await openDevice(pick);
   } catch (e) { banner("err", t("bConnectFail") + e.message); log("✗ " + e.message); }
 };
-$("btnRefresh").onclick = () => refreshAll();
-$("btnApplySensor").onclick = () => applySensor().catch(e => banner("err", t("errWrite") + e.message));
-$("btnApplyPerf").onclick = () => applyPerf().catch(e => banner("err", t("errWrite") + e.message));
+$("btnRefresh").onclick = () => isXm2weOpen() ? refreshWe() : refreshAll();
+/* 护栏：4k 族的写操作绝不能对 XM2we 族执行（协议族完全不同，会写坏 EEPROM）。
+   正常路径下卡片已隐藏，这里再挡一次以防脚本/控制台误调。 */
+function guard4k() {
+  if (isXm2weOpen()) { banner("err", t("bWrongFamily")); log("✗ blocked: XM2we device connected"); throw new Error("wrong protocol family"); }
+}
+$("btnApplySensor").onclick = () => { try { guard4k(); } catch { return; } applySensor().catch(e => banner("err", t("errWrite") + e.message)); };
+$("btnApplyPerf").onclick = () => { try { guard4k(); } catch { return; } applyPerf().catch(e => banner("err", t("errWrite") + e.message)); };
 $("btnPair").onclick = async () => {
+  try { guard4k(); } catch { return; }
   if (!confirm(t("cfPair"))) return;
   try { await guarded(0x70, 0x00, null, { pace: 300 }); log("✓ pair cmd sent"); banner("ok", t("bPairSent")); await sleep(2000); await refreshAll(); }
   catch (e) { banner("err", e.message); }
@@ -426,11 +449,13 @@ $("btnPair").onclick = async () => {
    0x72 = Get Pair Data（读取配对数据，官方等 350ms 后收，负载偏移 16 起 16 字节）
    —— 均来自官方 v1.02 工具逆向，见 re/PROTOCOL_NOTES.md */
 $("btnPairDefault").onclick = async () => {
+  try { guard4k(); } catch { return; }
   if (!confirm(t("cfPairDefault"))) return;
   try { await guarded(0x71, 0x00, null, { pace: 300 }); log("✓ pair-default cmd sent"); banner("ok", t("bPairDefaultOk")); await sleep(2000); await refreshAll(); }
   catch (e) { banner("err", e.message); }
 };
 $("btnPairData").onclick = async () => {
+  try { guard4k(); } catch { return; }
   try {
     const r = await guarded(0x72, 0x00, null, { pace: 350 });
     const d = r.slice(16, 32);
@@ -439,6 +464,7 @@ $("btnPairData").onclick = async () => {
   } catch (e) { banner("err", e.message); }
 };
 $("btnReset").onclick = async () => {
+  try { guard4k(); } catch { return; }
   if (!confirm(t("cfReset1"))) return;
   if (!confirm(t("cfReset2"))) return;
   try { await guarded(0x13, 0x00, null, { pace: resetSettle() }); log("✓ factory reset done"); await refreshAll(); banner("ok", t("bResetOk")); }
@@ -484,6 +510,7 @@ function download(data: any, name: string, type = "application/octet-stream") {
   a.download = name; a.click(); URL.revokeObjectURL(a.href);
 }
 $("btnLog").onclick = () => { const l = $("log"); l.style.display = l.style.display === "none" ? "block" : "none"; };
+bindXm2weUI(download);
 applyI18n();
 log("ℹ ready. Click 'Connect' and pick the Endgame Gear mouse / dongle.");
 if (!("hid" in navigator))

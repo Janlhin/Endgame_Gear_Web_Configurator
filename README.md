@@ -2,19 +2,22 @@
 
 浏览器直连配置 Endgame Gear 无线游戏鼠标的网页工具，**零驱动、零安装**：打开网页 → 点连接 → 改配置。
 
-基于 Chrome/Edge 的 **WebHID** API，通过 HID 特征报告直接与鼠标/接收器的配置通道（usage `0xFF01/0x0002`）通信。协议实现来自社区对官方 Windows 工具的完整逆向（见[致谢](#致谢)），并复刻了官方工具的全部时序怪癖。
+基于 Chrome/Edge 的 **WebHID** API，通过 HID 特征报告直接与鼠标/接收器的配置通道通信。协议实现来自社区对官方 Windows 工具的完整逆向（见[致谢](#致谢)），并复刻了官方工具的全部时序怪癖。
+
+> **两套协议族并存**：Endgame Gear 全系并非一套协议。4k 无线族走 `0xFF01` 接口 + `0xA0/0xA1` 报告 + 1024B 配置 blob；2020 年的 XM2we/XM1 有线族走 `0xFF02` 接口 + `0x08/0x09` 报告 + 17 字节校验帧 + EEPROM 配置。本工具两族都支持，连接时按 PID 自动分流。
 
 ## 支持的设备
 
-| 型号 | 协议代数 | 无线（dongle PID） | 有线（鼠标 PID） | 状态 |
+| 型号 | 协议族 | 无线（dongle PID） | 有线（鼠标 PID） | 状态 |
 |---|---|---|---|---|
-| XM2w 4k | v1 | `0x1970` | `0x1968` / `0x1969` | ✅ 完整支持 |
-| OP1w 4k | v1 | `0x1970` | `0x1972` | ✅ 完整支持 |
-| XM2w 4k v2 | v2 | `0x1970` | `0x1982` / `0x1981` | ✅ 完整支持 |
-| OP1w 4k v2 | v2 | `0x1984` | `0x1984` | ✅ 完整支持 |
-| XM2we / XM1 等有线专用型号 | — | — | — | ⏳ 另一套未公开协议，暂不支持 |
+| XM2w 4k | 4k 无线 v1 | `0x1970` | `0x1968` / `0x1969` | ✅ 完整支持 |
+| OP1w 4k | 4k 无线 v1 | `0x1970` | `0x1972` | ✅ 完整支持 |
+| XM2w 4k v2 | 4k 无线 v2 | `0x1970` | `0x1982` / `0x1981` | ✅ 完整支持 |
+| OP1w 4k v2 | 4k 无线 v2 | `0x1984` | `0x1984` | ✅ 完整支持 |
+| **XM2we** | **2020 有线/2.4G** | `0x1961` | `0x1960` | ✅ 完整支持（CPI/回报率/去抖/按键/EEPROM 导出） |
+| XM1 等同代型号 | 2020 有线 | — | — | ⏳ 协议推测同族，待安装官方软件后逆向验证 |
 
-> 四个无线型号共用 dongle PID `0x1970`，USB 层面无法区分型号；本工具用 cmd `0x0E` 返回的鼠标自身 PID 做判别，v1/v2 两代不兼容的字段编码（LOD、回报率枚举、标志位）已分别处理。变体 PID `0x1969`/`0x1981` 来自官方 v1.02 工具二进制的设备表（见 `re/PROTOCOL_NOTES.md`）。
+> 四个 4k 无线型号共用 dongle PID `0x1970`，USB 层面无法区分型号；本工具用 cmd `0x0E` 返回的鼠标自身 PID 做判别，v1/v2 两代不兼容的字段编码（LOD、回报率枚举、标志位）已分别处理。变体 PID `0x1969`/`0x1981` 来自官方 v1.02 工具二进制的设备表（见 `re/PROTOCOL_NOTES.md`）。XM2we 族按 PID `0x1960`/`0x1961` 与接口页 `0xFF02` 双重判定。
 
 ## 功能
 
@@ -23,6 +26,7 @@
 - **电源**：省电超时、深度休眠（1–120 分钟或关闭）
 - **按键**：映射表与点击过滤展示；过滤值可编辑并写入；GX Safe/Speed 模式（左右键）
 - **工具**：配置导出/导入（JSON + 原始 1024B blob）、重新配对、恢复默认配对（0x71）、读取配对数据（0x72）、恢复出厂（双重确认）、hex 级通讯日志
+- **XM2we 族**：CPI 八槽（槽 1 即时生效）、回报率（125/250/500/1000 Hz one-hot 掩码）、点击去抖、按键矩阵（type 0x01 解码 + 其余原样展示）、EEPROM 导出（.txt / .json）；每次写入均回读校验
 - **i18n**：简体中文 / English，右上角切换，偏好存于 localStorage；`I18N` 字典结构见源码，欢迎提交更多语言
 
 ## 本地运行 / 部署到 GitHub Pages
@@ -80,11 +84,12 @@ LED 页签与 Surface Calibration 在官方 v1.02 中未发现协议实现路径
 
 ## 致谢
 
-- **[johanneszab/vole](https://github.com/johanneszab/vole)** — 完整的 USB 配置协议逆向文档与 Linux 实现（Ghidra + USBPcap + 真机验证），本项目协议层的唯一依据
+- **[johanneszab/vole](https://github.com/johanneszab/vole)** — 完整的 USB 配置协议逆向文档与 Linux 实现（Ghidra + USBPcap + 真机验证），4k 族协议层的唯一依据
+- **[okms/xm2we-linux](https://github.com/okms/xm2we-linux)** — XM2we 2020 有线/2.4G 族的完整协议文档（PROTOCOL.md，真机交叉验证）与 Python 实现，XM2we 支持的全部依据
 - **[stuffz/mouse-battery-monitor](https://github.com/stuffz/mouse-battery-monitor)** — 电池状态 HID 协议文档
-- **[gentoocat/XM2we-Unleashed](https://github.com/gentoocat/XM2we-Unleashed)** — XM2we 直接通信探索
+- **[gentoocat/XM2we-Unleashed](https://github.com/gentoocat/XM2we-Unleashed)** — XM2we 直接通信探索（无许可证，仅作情报参考）
 - **[qsxcv/UnofficialEGGWebConfig](https://github.com/qsxcv/UnofficialEGGWebConfig)** · **[zexsso/OP1-WebAPP](https://github.com/zexsso/OP1-WebAPP)** — 同类 WebHID 网页配置器（8k 系 / OP1w 4k）；XM2w 4k v1/v2 的网页配置器目前仅此一家（生态全景见 `docs/ecosystem-survey.md`）
-- **[jzab.de](https://www.jzab.de/content/linux-configuration-tool-for-endgame-gear-wireless-mice)** — Linux 配置工具的先行实践
+- **[daviddwk/xm2we-util](https://github.com/daviddwk/xm2we-util)** — XM2we 协议的第二个独立实现，用于交叉验证常量
 - **[Endgame Gear / Pro Gamersware GmbH](https://www.endgamegear.com/)** — 硬件本身，以及未混淆、可分析的官方配置工具
 
 ## 免责声明

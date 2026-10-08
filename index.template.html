@@ -75,6 +75,62 @@
     </div>
   </section>
 
+  <section class="card" id="cardWeInfo" style="display:none">
+    <h2 data-i18n="secWeInfo">设备信息（XM2we / 有线代）</h2>
+    <div class="grid2">
+      <div>
+        <div class="row"><label data-i18n="model">型号</label><span class="val" id="weModel">—</span></div>
+        <div class="row"><label data-i18n="connMode">连接方式</label><span class="val" id="weConn">—</span></div>
+      </div>
+      <div>
+        <div class="row"><label data-i18n="battery">电量</label><span class="val" id="weBattery">—</span></div>
+        <div class="row"><label data-i18n="weLink">鼠标链路</label><span class="val" id="weLink">—</span></div>
+      </div>
+    </div>
+    <p class="muted" data-i18n="weFamilyNote">本型号属 2020 年有线/2.4G 协议族（接口页 0xFF02、报告 0x08/0x09、17 字节带校验帧、配置存于 EEPROM），与 4k 无线族完全不兼容。</p>
+  </section>
+
+  <section class="card" id="cardWeCpi" style="display:none">
+    <h2 data-i18n="secWeCpi">CPI 与回报率</h2>
+    <table>
+      <thead><tr>
+        <th data-i18n="stage">档位</th><th>CPI X</th><th>CPI Y</th><th data-i18n="ledColor">LED 颜色</th><th data-i18n="weCheck">校验</th>
+      </tr></thead>
+      <tbody id="weCpiRows"></tbody>
+    </table>
+    <p class="muted" data-i18n="weSlot1Note">槽位 1 是当前生效的 CPI，写入即刻改变指针速度，无需保存或断电。鼠标上的按钮切换的是<b>回报率</b>而非 CPI 档位——它的闪烁次数很容易被误读成档位。</p>
+    <div class="row">
+      <label data-i18n="polling">回报率</label>
+      <select id="wePolling" style="width:120px"></select>
+      <span class="muted" data-i18n="wePollingNote">存放为 one-hot 掩码：0x08=125 / 0x04=250 / 0x02=500 / 0x01=1000 Hz</span>
+    </div>
+    <div class="row">
+      <label data-i18n="weDebounce">点击去抖 (ms)</label>
+      <input type="number" id="weDebounce" min="0" max="255" step="1" style="width:90px">
+      <button id="btnWeApplyCpi" data-i18n="applySensor">应用传感器设置</button>
+      <button id="btnWeApplyPerf" class="ghost" data-i18n="applyPerf">应用性能/电源</button>
+    </div>
+  </section>
+
+  <section class="card" id="cardWeBtns" style="display:none">
+    <h2 data-i18n="secWeBtns">按键矩阵（EEPROM 0x60）</h2>
+    <table>
+      <thead><tr><th data-i18n="button">按键</th><th data-i18n="mapping">映射</th><th>type / code / param</th><th data-i18n="weCheck">校验</th></tr></thead>
+      <tbody id="weBtnRows"></tbody>
+    </table>
+    <p class="muted" data-i18n="weKeyNote">本族仅 type 0x01（鼠标键位掩码：0x01 左 / 0x02 右 / 0x04 中 / 0x08 后退 / 0x10 前进）被社区解出；其余类型语义未知，工具原样读取展示，不做改写。</p>
+  </section>
+
+  <section class="card" id="cardWeTools" style="display:none">
+    <h2 data-i18n="secWeTools">EEPROM 备份 / 恢复</h2>
+    <div class="row">
+      <button id="btnWeExport" class="ghost" data-i18n="weExport">导出 EEPROM (.txt)</button>
+      <button id="btnWeExportJson" class="ghost" data-i18n="exportCfg">导出配置 (.json)</button>
+      <button id="btnWeLog" class="ghost" style="background:#eef0f3;color:var(--sub)" data-i18n="toggleLog">显示/隐藏通讯日志</button>
+    </div>
+    <p class="muted" data-i18n="weWriteNote">配置区为 EEPROM 0x00–0xB4（共 181 字节），每帧最多带 10 字节，故读取需约 19 个来回；每条记录都带 0x55 补码校验，校验只保证记录边界正确、不代表字段语义已解出。写入一律回读验证。</p>
+  </section>
+
   <section class="card" id="cardSensor" style="display:none">
     <h2 data-i18n="secSensor">传感器 / CPI</h2>
     <table>
@@ -158,9 +214,10 @@
   <section class="card" id="cardCredits">
     <h2 data-i18n="secCredits">致谢与参考</h2>
     <ul class="muted" style="line-height:1.9; padding-left:18px; margin:0">
-      <li><a href="https://github.com/johanneszab/vole" target="_blank">johanneszab/vole</a> — <span data-i18n="crVole">完整的 USB 配置协议逆向（Ghidra 反汇编 + 44 次抓包 + 真机验证），本工具的协议实现全部基于其 re/PROTOCOL.md。</span></li>
+      <li><a href="https://github.com/johanneszab/vole" target="_blank">johanneszab/vole</a> — <span data-i18n="crVole">完整的 USB 配置协议逆向（Ghidra 反汇编 + 44 次抓包 + 真机验证），4k 族协议层的唯一依据。</span></li>
+      <li><a href="https://github.com/okms/xm2we-linux" target="_blank">okms/xm2we-linux</a> · <a href="https://github.com/daviddwk/xm2we-util" target="_blank">daviddwk/xm2we-util</a> — <span data-i18n="crXm2we">XM2we 2020 有线/2.4G 族的完整协议文档与两个独立实现（常量互证），本页 XM2we 功能的依据。</span></li>
       <li><a href="https://github.com/stuffz/mouse-battery-monitor" target="_blank">stuffz/mouse-battery-monitor</a> — <span data-i18n="crBattery">电池状态 HID 协议文档。</span></li>
-      <li><a href="https://github.com/gentoocat/XM2we-Unleashed" target="_blank">gentoocat/XM2we-Unleashed</a> — <span data-i18n="crUnleashed">XM2we 直接通信探索。</span></li>
+      <li><a href="https://github.com/gentoocat/XM2we-Unleashed" target="_blank">gentoocat/XM2we-Unleashed</a> — <span data-i18n="crUnleashed">XM2we 直接通信探索（无许可证，仅作情报参考）。</span></li>
       <li><a href="https://github.com/qsxcv/UnofficialEGGWebConfig" target="_blank">qsxcv/UnofficialEGGWebConfig</a> · <a href="https://github.com/zexsso/OP1-WebAPP" target="_blank">zexsso/OP1-WebAPP</a> — <span data-i18n="crSiblings">同类 WebHID 网页配置器（分别覆盖 8k 系与 OP1w 4k）；XM2w 4k v1/v2 的网页配置器目前仅此一家。生态调研见 docs/ecosystem-survey.md。</span></li>
       <li><a href="https://www.jzab.de/content/linux-configuration-tool-for-endgame-gear-wireless-mice" target="_blank">jzab.de</a> — <span data-i18n="crJzab">Linux 配置工具的先行实践与协议验证。</span></li>
       <li><a href="https://www.endgamegear.com/" target="_blank">Endgame Gear (Pro Gamersware GmbH)</a> — <span data-i18n="crVendor">硬件本身，以及未混淆、可分析的官方工具。</span></li>
