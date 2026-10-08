@@ -20,6 +20,7 @@ const FILTER_OPTS = [["off","off"],["1","1"],["2","2"],["3","3"],["4","4"],["5",
 let dev = null, queue = Promise.resolve(), lastFail = false;
 let gen = null, mouseName = "—";
 let unverified = false;   // 该型号仅静态实证、未真机验证 → 只读
+let unknownModel = false;  // PID 不在设备表里 → 无法判断协议族，同样只读
 let blob = null;
 let dongleFw = "—", mouseFw = "—", battery = null, wired = false;
 /* XM1（VID 0x22D4）是 2020 变体：帧格式与 4k 族相同，但
@@ -1039,7 +1040,12 @@ async function refreshAll() {
       if (MOUSE_PIDS[pid]) {
         mouseName = MOUSE_PIDS[pid][0]; gen = MOUSE_PIDS[pid][1];
         unverified = MOUSE_PIDS[pid][2] === 0;
-      } else { mouseName = `Unknown (PID 0x${pid.toString(16)})`; gen = null; unverified = false; }
+      } else {
+        /* ★ fail-safe：PID 不认识 ⇒ 不知道它属于哪一族，绝不能按 4k 的偏移去写。
+           此前这里是 unverified = false，等于给未知型号开了写入口。 */
+        mouseName = `Unknown (PID 0x${pid.toString(16)})`;
+        gen = null; unverified = true; unknownModel = true;
+      }
       mouseFw = fwStr(r[22] | (r[23] << 8));
       mouseOk = true;
     } catch (e) { if (![0x08, 0x11].includes(e.code)) throw e; }
@@ -1047,7 +1053,9 @@ async function refreshAll() {
     showCards();
     if (mouseOk) {
       await readBlob(); parseBlob(); render();
-      if (unverified) banner("warn", t("bUnverifiedModel")); else banner("ok", t("bReadOk"));
+      if (unknownModel) banner("warn", t("bUnknownModel"));
+      else if (unverified) banner("warn", t("bUnverifiedModel"));
+      else banner("ok", t("bReadOk"));
     }
     else { render(); banner("warn", t("bSleep")); }
   } catch (e) { banner("err", t("bRead") + e.message); log("✗ " + e.message); }
@@ -1268,7 +1276,11 @@ function guard4k() {
   /* 未真机验证的型号（8k 有线族）只读：协议同构是静态实证的，
      但 gen 编码与字段语义没在硬件上确认过 —— 按未验证的偏移写回去，
      正是 2026-10-09 把 XM1 配置写坏的同一个错误。 */
-  if (unverified) { banner("err", t("bUnverifiedModel")); log("✗ blocked: model not verified on hardware (read-only)"); throw new Error("unverified model"); }
+  if (unverified) {
+    banner("err", t(unknownModel ? "bUnknownModel" : "bUnverifiedModel"));
+    log("✗ blocked: model not verified on hardware (read-only)");
+    throw new Error("unverified model");
+  }
 }
 $("btnApplySensor").onclick = () => { try { guard4k(); } catch { return; } applySensor().catch(e => banner("err", t("errWrite") + e.message)); };
 $("btnApplyPerf").onclick = () => { try { guard4k(); } catch { return; } applyPerf().catch(e => banner("err", t("errWrite") + e.message)); };
