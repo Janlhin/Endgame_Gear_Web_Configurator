@@ -282,7 +282,7 @@ function fillSelect(sel, opts, val) {
 }
 
 /* XM1 只读视图：仅显示识别信息。
-   ★ 2026-06-09 起 XM1 **不再读取 blob**（此前读操作会向设备发送全零 1024B 报文，
+   ★ 2026-10-09 起 XM1 **不再读取 blob**（此前读操作会向设备发送全零 1024B 报文，
      把用户鼠标的 DPI/CPI 配置清零）。这里只展示 VID/PID 与停用原因。 */
 function renderXm1Readonly() {
   $("iModel").textContent = mouseName;
@@ -461,7 +461,7 @@ async function refreshAll() {
   try {
     await probe();
 
-    /* XM1：写入路径已永久停用（2026-06-09 事故，见 readBlobXm1 注释）。
+    /* XM1：写入路径已永久停用（2026-10-09 事故，见 readBlobXm1 注释）。
        blob 重排层未核实之前不发送任何报文，配置请用官方 v1.09 软件。 */
     if (xm1) {
       mouseName = modelOf(VID_22D4, dev.productId);
