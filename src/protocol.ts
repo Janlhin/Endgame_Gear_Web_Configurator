@@ -49,7 +49,6 @@ const POLLING_LABELS = { 0x02: "4000 Hz", 0x04: "2000 Hz", 0x08: "1000 Hz", 0x40
  * 仍待真机确认：blob 字段语义、命令 0x08 的子命令、blob↔内部布局重排层。 */
 const XM1_MAX_STAGES = 3;
 const XM1_SETTLE_MS = 80;     // 官方写后 Sleep(80)
-const XM1_RETRY_MS = 50;      // 与 4k 族共用的重试间隔
 
 /** 判断是否 XM1（2020 变体）：唯一依据是 VID 0x22D4 */
 const isXm1 = (vendorId: number) => vendorId === VID_22D4;
@@ -61,4 +60,4 @@ function modelOf(vendorId: number, productId: number): string {
 }
 
 export { VIDS, VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, XM1_PIDS, RPT_CMD, RPT_BULK, POLLING_LABELS,
-         XM1_MAX_STAGES, XM1_SETTLE_MS, XM1_RETRY_MS, isXm1, modelOf };
+         XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf };

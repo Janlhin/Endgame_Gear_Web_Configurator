@@ -47,6 +47,11 @@ async function rawReceive(reportId) {
   const out = new Uint8Array(u8.length + 1); out[0] = reportId; out.set(u8, 1); return out;
 }
 async function transact(cmd, target = 0x00, payload = null, opt: any = {}) {
+  /* ★ 安全锁：XM1 一律禁止任何发送。
+   * 事故记录见 readBlobXm1() 上方注释——2026-10-09 曾因发送全零 blob
+   * 把用户鼠标的 DPI/CPI 配置清零。此处从类型层面确保 XM1 走不到任何
+   * sendFeatureReport，即使将来有人新增调用点也会在这里被挡住。 */
+  if (xm1) xm1Unsupported();
   const run = async () => {
     const buf = new Uint8Array(63);                  // sendFeatureReport 的 data 不含 reportId
     buf[0] = cmd; buf[1] = target;
@@ -151,70 +156,35 @@ async function readBlob() {
   throw new Error(`blob read failed after 4 rounds; last head: ${lastDump}`);
 }
 
-/* ---------------- XM1 专用：1041B 大报告读 blob ----------------
- * 严格复刻官方函数 0x40FB90（XM1 Configuration Software v1.09，反汇编见 re/XM1_NOTES.md）：
- *   memset(buf, 0, 0x411)              清零 1041B
- *   mov dword [buf], 0x8A0             报告头 → 线上 A0 08 00 00
- *   buf[4] = 0; buf[5] = 子命令; buf[6..7] = 0
- *   rep movsd 256 dword (1024B)        blob → 报告偏移 16
- *   HidD_SetFeature(1041) → Sleep(80)
- *   再读一次 64B 状态报告（cmp eax,1 判成败）
- * XM1 无状态字节语义，失败判断只看 HidD 调用本身是否抛异常。 */
-async function readBlobXm1() {
-  const SUB = 0x08;                       // 官方 buf[5] 传入的子命令（0x40FB90 的入参）
-  let lastDump = "";
-  for (let round = 1; round <= 4; round++) {
-    // ① 构造 1041B 大报告
-    const buf = new Uint8Array(1041);
-    buf[0] = 0xA0;                        // 报告 ID
-    buf[1] = 0x08;                        // 子命令（同 4k 族的 buf[1] 语义）
-    buf[2] = 0x00;
-    buf[3] = 0x00;
-    buf[4] = 0x00;
-    buf[5] = SUB;
-    buf[6] = 0x00; buf[7] = 0x00;
-    // ② 发送。sendFeatureReport 的 data 不含 reportId → 去掉首字节
-    try {
-      await dev.sendFeatureReport(RPT_BULK, buf.slice(1));
-    } catch (e) {
-      log(`✗ XM1 SetFeature(1041) 失败 (round ${round}): ${e.message}`);
-      lastDump = "send:" + e.message;
-      await sleep(300);
-      continue;
-    }
-    await sleep(XM1_SETTLE_MS);           // 官方 Sleep(80)
-    // ③ 读 1041B 响应
-    let u8;
-    try { u8 = await rawReceive(RPT_BULK); }
-    catch (e) {
-      log(`✗ XM1 读 0xA0 失败 (round ${round}): ${e.message}`);
-      lastDump = "recv:" + e.message;
-      await sleep(250);
-      continue;
-    }
-    log(`  XM1 0xA0 响应 ${u8.length} B  head: ${hex(u8, 20)}`);
-    // ④ blob 在偏移 16（v1 官方路径）
-    const off = 16;
-    if (u8.length >= off + 1024) {
-      const cand = u8.slice(off, off + 1024);
-      if (looksLikeBlob(cand, true)) {
-        blob = cand;
-        lastFail = false;
-        log(`✓ XM1 blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 32)}`);
-        return;
-      }
-      lastDump = hex(cand, 32);
-      log(`⋯ XM1 blob 校验未过, round ${round}, head: ${lastDump}`);
-    } else {
-      // 响应长度不足 —— 可能是被当成 64B 小报告回了
-      lastDump = hex(u8, 32);
-      log(`⋯ XM1 0xA0 长度不足 (${u8.length} B, 需 ≥${off + 1024}), round ${round}, head: ${lastDump}`);
-    }
-    await sleep(300);
-  }
-  lastFail = true;
-  throw new Error("XM1 blob read failed after 4 rounds; last: " + lastDump);
+/* ---------------- XM1：写路径完全停用 ----------------
+ *
+ * ★★★ 2026-10-09 永久停用记录（务必保留此注释）★★★ ★★★
+ *
+ * 事故：此前的 readBlobXm1() 构造并发送了一个 1041B 的 0xA0 大报告，
+ * 头部填好但 **1024B 负载全零**。这个报文在形态上就是一次**写配置**，
+ * 固件执行后**把用户的 DPI / CPI / 回报率等配置清零**了，
+ * 用户的 XM1 鼠标配置因此丢失，只能用官方驱动重新设置 DPI。
+ * 用户的原话："你网页驱动写的不行有 bug，读取或者重置了鼠标，鼠标 dpi 等信息丢失了"。
+ *
+ * 根本原因（设计错误，不是笔误）：
+ *   1. 我把 `buf[1]=0x08` 当成"读命令"填入，但反汇编里它其实是**子命令**，
+ *      真正的读/写语义由设备固件解释，未确认前不应猜测。
+ *   2. 我明知 blob 重排层（函数 0x40FD60，298 条搬运）**未逐字节核实**，
+ *      却仍然构造并发送了完整 blob 报文 —— 标注"只读"不等于安全，
+ *      设备侧根本不知道我是否在读。
+ *   3. 官方流程是「读回 1024B → 改动 → 重排后写回」，
+ *      而我跳过了第一步直接发了个空 blob，等于"读取 = 清空"。
+ *
+ * 结论：**在 blob 重排层核实之前，XM1 不能有任何发送行为。**
+ * 不猜测子命令、不猜测读写方向、不发送任何大报告。
+ * 官方 v1.09 有 GUI 可用，XM1 的配置请用官方软件处理，
+ * 本工具对 XM1 仅保留"识别型号 + 显示 VID/PID"这类纯只读能力。
+ */
+function xm1Unsupported(): never {
+  banner("warn", t("xm1Disabled"));
+  throw new Error("XM1 write path permanently disabled - see re/XM1_NOTES.md");
 }
+async function readBlobXm1() { xm1Unsupported(); }
 
 /* ================= blob 解析 / 编码 ================= */
 function parseBlob() {
@@ -311,10 +281,11 @@ function fillSelect(sel, opts, val) {
   sel.value = String(val);
 }
 
-/* XM1 只读视图：显示已读到的 blob 原始字节与关键区段，供真机比对。
-   故意不做字段解读——重排层 0x40FD60 尚未逐字节核实（re/XM1_NOTES.md 第 3 节）。 */
+/* XM1 只读视图：仅显示识别信息。
+   ★ 2026-06-09 起 XM1 **不再读取 blob**（此前读操作会向设备发送全零 1024B 报文，
+     把用户鼠标的 DPI/CPI 配置清零）。这里只展示 VID/PID 与停用原因。 */
 function renderXm1Readonly() {
-  $("iModel").textContent = mouseName + (xm1 ? "" : "");
+  $("iModel").textContent = mouseName;
   $("iMouseFw").textContent = "—";
   $("iDongleFw").textContent = t("noDongleWired");
   $("iBattery").textContent = "—";
@@ -322,36 +293,16 @@ function renderXm1Readonly() {
   $("iGen").textContent = "2020 (XM1)";
 
   const tb = $("cpiRows"); tb.innerHTML = "";
-  if (!blob || !blob.length) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="5" class="muted">${t("bRead")}</td>`;
-    tb.appendChild(tr);
-  } else {
-    const b = blob;
-    // 按 16 字节一行展示前 256 字节 + 关键区段摘要
-    for (let row = 0; row < 16; row++) {
-      const o = row * 16;
-      const cells = [];
-      for (let i = 0; i < 16; i++) cells.push(b[o + i].toString(16).padStart(2, "0"));
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="muted">0x${o.toString(16).padStart(3, "0")}</td>` +
-        `<td colspan="4" style="font-family:Consolas,monospace;font-size:11.5px">${cells.join(" ")}</td>`;
-      tb.appendChild(tr);
-    }
-    const tail = document.createElement("tr");
-    tail.innerHTML = `<td colspan="5" class="muted">${t("xm1BlobNote")}</td>`;
-    tb.appendChild(tail);
-  }
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td colspan="5">${t("xm1Disabled")}</td>`;
+  tb.appendChild(tr);
 
-  // 禁用所有写入控件
   for (const id of ["btnApplySensor", "btnApplyPerf", "cpiLevels", "cpiActive", "lod", "glass",
                     "angleSnap", "ripple", "ledLiftoff", "angleTune", "polling", "motionSync",
                     "slamclick", "jitter", "maxFps", "multiclick", "powerSaving", "deepSleep",
-                    "btnReset", "btnLoad"]) {
+                    "btnReset", "btnLoad", "btnSave", "btnRefresh"]) {
     const el = $(id); if (el) el.disabled = true;
   }
-  // 导出仍然可用（备份当前 blob 无害）
-  const keep = $("btnSave"); if (keep) keep.disabled = false;
 }
 function render() {
   /* XM1 只读视图：blob 字段语义尚未核实（官方内部布局与线上布局之间还有一层重排，
@@ -510,18 +461,16 @@ async function refreshAll() {
   try {
     await probe();
 
-    /* XM1：命令表只有 4 条（0x03/0x04/0x07/0x08）——没有 0x0D 固件、0x0E 型号、
-       0xB4 电量，所以跳过这些查询，直接读 blob。型号由 VID/PID 已知。 */
+    /* XM1：写入路径已永久停用（2026-06-09 事故，见 readBlobXm1 注释）。
+       blob 重排层未核实之前不发送任何报文，配置请用官方 v1.09 软件。 */
     if (xm1) {
       mouseName = modelOf(VID_22D4, dev.productId);
       gen = 0;
       dongleFw = "—"; mouseFw = "—"; battery = null;
       showCards();
-      await readBlob();
-      parseBlob();
-      render();
-      banner("ok", t("bReadOk"));
-      log(`✓ XM1 blob 已读取（字段语义待核实，仅只读展示）`);
+      renderXm1Readonly();
+      banner("warn", t("xm1Disabled"));
+      log("⚠ XM1：仅识别型号，不做任何读取或写入（保护性停用）");
       return;
     }
 
@@ -612,6 +561,16 @@ async function openDevice(d) {
   dev = d;
   xm1 = isXm1(d.vendorId);
   wired = xm1 || d.productId !== DONGLE_PID;
+  /* ★ 最后一道运行时兜底：直接在 device 对象上包一层，XM1 情况下
+   * 任何 sendFeatureReport 都会抛错。这样无论将来新增哪条写入路径、
+   * 是否记得检查 xm1 标志，都不可能再把报文发到 XM1。
+   * （2026-10-09 事故的直接原因就是绕过了这种保护。） */
+  if (xm1) {
+    const realSend = d.sendFeatureReport.bind(d);
+    d.sendFeatureReport = async () => { xm1Unsupported(); };
+    (d as any).__realSend = realSend;
+    log("⚠ XM1 写入已全局禁用（保护性拦截，不影响鼠标本身）");
+  }
   dev.addEventListener("inputreport", e => {
     if (e.data.byteLength < 2) return;
     const code = e.data.getUint8(0), v = e.data.getUint8(1);
