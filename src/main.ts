@@ -19,6 +19,7 @@ const FILTER_OPTS = [["off","off"],["1","1"],["2","2"],["3","3"],["4","4"],["5",
 
 let dev = null, queue = Promise.resolve(), lastFail = false;
 let gen = null, mouseName = "—";
+let unverified = false;   // 该型号仅静态实证、未真机验证 → 只读
 let blob = null;
 let dongleFw = "—", mouseFw = "—", battery = null, wired = false;
 /* XM1（VID 0x22D4）是 2020 变体：帧格式与 4k 族相同，但
@@ -807,6 +808,14 @@ function render() {
     sel.value = String(stage.filters[i]);
     sel.onchange = e => stage.filters[i] = +(e.target as HTMLSelectElement).value;
   });
+
+  /* 未真机验证的型号：禁用全部写入入口（guard4k 还会再兜一层）。
+     读取、导出照常可用 —— 只读本身是有价值的，写入必须等硬件确认。 */
+  if (unverified) {
+    for (const id of ["btnApplySensor", "btnApplyPerf", "btnReset", "btnLoad"]) {
+      const el = $(id); if (el) el.disabled = true;
+    }
+  }
 }
 function describeMap(b) {
   switch (b.type) {
@@ -827,7 +836,112 @@ function describeMap(b) {
 const writeSettle = () => wired ? 500 : 880;
 const resetSettle = () => wired ? 800 : 1080;
 
+/* ================= 写入后回读校验（4k 族） =================
+   0x14 / 0x15 / 0x16 这些写入命令只回执行状态，**不回报配置内容**，
+   所以"到底写进去没有"只能靠写完之后**重新读取**来确认。
+   三个 apply 路径都已经调用 refreshAll()（内部 readBlob + parseBlob），
+   因此校验就是：把「写入前的期望值」与「读回后的实际值」逐项比对。
+
+   ⚠️ 刻意不校验的两类：
+     · v1 的档位切换 —— v1 硬件忽略软件切换（见 v1StageNote）
+     · 字节级差异 —— 设备可能对数值做规范化，语义比较更可靠 */
+
+/** 写入前：记录传感器页期望值 */
+function snapSensor(): any {
+  return {
+    cpi: stage.cpi.map((r: number[]) => [r[0] ? 1 : 0, r[1] | 0, r[2] | 0]),
+    levels: stage.levels | 0,
+    active: stage.active | 0,
+    angleSnap: stage.angleSnap ? 1 : 0,
+    ripple: stage.ripple ? 1 : 0,
+    ledLiftoff: stage.ledLiftoff ? 1 : 0,
+    lodMM: +stage.lodMM,
+    glass: stage.glass ? 1 : 0,
+    angleTune: (stage.angleTune << 24) >> 24,
+  };
+}
+
+/** 写入后：比对传感器页，返回不一致项（空数组 = 一致） */
+function verifySensor(w: any): string[] {
+  const bad: string[] = [];
+  for (let n = 0; n < 4; n++) {
+    const a = stage.cpi[n] || [0, 0, 0];
+    if (w.cpi[n][0] !== (a[0] ? 1 : 0)) bad.push(`CPI ${n + 1} XY-enable`);
+    if (w.cpi[n][1] !== (a[1] | 0)) bad.push(`CPI ${n + 1} X ${w.cpi[n][1]}→${a[1] | 0}`);
+    if (w.cpi[n][2] !== (a[2] | 0)) bad.push(`CPI ${n + 1} Y ${w.cpi[n][2]}→${a[2] | 0}`);
+  }
+  if (w.levels !== (stage.levels | 0)) bad.push(`Levels ${w.levels}→${stage.levels}`);
+  if (gen === 2 && w.active !== (stage.active & 3)) bad.push(`Active stage ${w.active + 1}→${(stage.active & 3) + 1}`);
+  if (w.angleSnap !== (stage.angleSnap ? 1 : 0)) bad.push("Angle Snap");
+  if (w.ripple !== (stage.ripple ? 1 : 0)) bad.push("Ripple");
+  if (w.ledLiftoff !== (stage.ledLiftoff ? 1 : 0)) bad.push("LED liftoff");
+  if (Math.abs(w.lodMM - +stage.lodMM) > 0.05) bad.push(`LOD ${w.lodMM}mm→${stage.lodMM}mm`);
+  if (gen === 2 && w.glass !== (stage.glass ? 1 : 0)) bad.push("Glass mode");
+  if (gen === 2 && w.angleTune !== ((stage.angleTune << 24) >> 24)) bad.push("Angle Tune");
+  return bad;
+}
+
+/** 写入前：记录性能/电源页期望值（开关位从 flags 现拆，不依赖 render 是否跑过） */
+function snapPerf(): any {
+  const f = stage.flags | 0;
+  return {
+    polling: stage.polling, motionSync: stage.motionSync ? 1 : 0,
+    slamclick: f & 1 ? 1 : 0, jitter: f & 0x10 ? 1 : 0,
+    multiclick: f & 0x20 ? 1 : 0, maxFps: f & 0x40 ? 1 : 0,
+    powerSaving: stage.powerSaving, deepSleep: stage.deepSleep,
+    filters: (stage.filters || []).slice(),
+  };
+}
+
+/** 写入后：比对性能/电源页 */
+function verifyPerf(w: any): string[] {
+  const bad: string[] = [];
+  const f = stage.flags | 0;
+  if (w.polling !== stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}→0x${stage.polling.toString(16)}`);
+  if (w.motionSync !== (stage.motionSync ? 1 : 0)) bad.push("Motion Sync");
+  if (w.slamclick !== (f & 1 ? 1 : 0)) bad.push("Slamclick");
+  if (gen === 1 && w.jitter !== (f & 0x10 ? 1 : 0)) bad.push("Jitter filter");
+  if (gen === 2 && w.multiclick !== (f & 0x20 ? 1 : 0)) bad.push("Multiclick");
+  if (gen === 2 && w.maxFps !== (f & 0x40 ? 1 : 0)) bad.push("Force max FPS");
+  if (w.powerSaving !== stage.powerSaving) bad.push(`Power saving ${w.powerSaving}→${stage.powerSaving}`);
+  if (w.deepSleep !== stage.deepSleep) bad.push(`Deep sleep ${w.deepSleep}→${stage.deepSleep}`);
+  for (let i = 0; i < w.filters.length; i++)
+    if (w.filters[i] !== stage.filters[i]) bad.push(`Filter ${i + 1} ${w.filters[i]}→${stage.filters[i]}`);
+  return bad;
+}
+
+/** 写入前：记录按键映射 */
+function snapButtons(): any {
+  return (stage.buttons || []).map((b: any) => ({ type: b.type, code: b.code, key: b.key, filter: b.filter }));
+}
+
+/** 写入后：比对按键映射 */
+function verifyButtons(w: any[]): string[] {
+  const bad: string[] = [];
+  for (let i = 0; i < w.length; i++) {
+    const a = (stage.buttons || [])[i];
+    if (!a) { bad.push(`Button ${i + 1} missing`); continue; }
+    if (w[i].type !== a.type || w[i].code !== a.code || w[i].key !== a.key)
+      bad.push(`Button ${i + 1} mapping`);
+    if (w[i].filter !== a.filter) bad.push(`Button ${i + 1} filter ${w[i].filter}→${a.filter}`);
+  }
+  return bad;
+}
+
+/** 统一报告：不一致 → 列出具体项；一致 → 明确通过 */
+function reportVerify(okKey: string, bad: string[]) {
+  if (bad.length) {
+    banner("warn", t("verifyFail") + bad.join("、"));
+    log("⋯ 回读校验不一致（" + bad.length + " 项）：" + bad.join("、"));
+  } else {
+    banner("ok", t(okKey) + " · " + t("verifyOk"));
+    log("✓ 回读校验通过：" + t(okKey));
+  }
+}
+
 async function applySensor() {
+  const want = snapSensor();                     // 期望值（写入前）
+  const wantPerf = snapPerf();                   // 联动写 0x15 时玻璃模式也在里面
   const glassChanged = gen === 2 && (blob[0x6F] ? 1 : 0) !== stage.glass;
   await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
   log("✓ cmd 0x14 written");
@@ -835,10 +949,14 @@ async function applySensor() {
     await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
     log("✓ glass-mode linked cmd 0x15 written");
   }
-  await refreshAll();
-  banner("ok", t("bSensor"));
+  await refreshAll();                            // 内部 readBlob + parseBlob
+  const bad = verifySensor(want);
+  if (glassChanged) bad.push(...verifyPerf(wantPerf));   // 联动写过的字段一并核对
+  reportVerify("bSensor", bad);
 }
 async function applyPerf() {
+  const want = snapPerf();                       // 期望值（写入前）
+  const wantSensor = snapSensor();               // 联动写 0x14 时传感器字段也在里面
   const glassChanged = gen === 2 && (blob[0x6F] ? 1 : 0) !== stage.glass;
   await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
   log("✓ cmd 0x15 written");
@@ -847,7 +965,9 @@ async function applyPerf() {
     log("✓ glass-mode linked cmd 0x14 written");
   }
   await refreshAll();
-  banner("ok", t("bPerf"));
+  const bad = verifyPerf(want);
+  if (glassChanged) bad.push(...verifySensor(wantSensor));
+  reportVerify("bPerf", bad);
 }
 async function refreshAll() {
   banner("warn", "");
@@ -888,14 +1008,19 @@ async function refreshAll() {
     try {
       const r = await guarded(0x0E, 0x00, null, { pace: 150 });
       const pid = r[18] | (r[19] << 8);
-      if (MOUSE_PIDS[pid]) { mouseName = MOUSE_PIDS[pid][0]; gen = MOUSE_PIDS[pid][1]; }
-      else { mouseName = `Unknown (PID 0x${pid.toString(16)})`; gen = null; }
+      if (MOUSE_PIDS[pid]) {
+        mouseName = MOUSE_PIDS[pid][0]; gen = MOUSE_PIDS[pid][1];
+        unverified = MOUSE_PIDS[pid][2] === 0;
+      } else { mouseName = `Unknown (PID 0x${pid.toString(16)})`; gen = null; unverified = false; }
       mouseFw = fwStr(r[22] | (r[23] << 8));
       mouseOk = true;
     } catch (e) { if (![0x08, 0x11].includes(e.code)) throw e; }
     try { const r = await guarded(0xB4, 0x00, null, { pace: 150 }); battery = r[16]; } catch (e) { battery = null; }
     showCards();
-    if (mouseOk) { await readBlob(); parseBlob(); render(); banner("ok", t("bReadOk")); }
+    if (mouseOk) {
+      await readBlob(); parseBlob(); render();
+      if (unverified) banner("warn", t("bUnverifiedModel")); else banner("ok", t("bReadOk"));
+    }
     else { render(); banner("warn", t("bSleep")); }
   } catch (e) { banner("err", t("bRead") + e.message); log("✗ " + e.message); }
 }
@@ -1112,6 +1237,10 @@ $("btnRefresh").onclick = () => isXm2weOpen() ? refreshWe() : refreshAll();
    正常路径下卡片已隐藏，这里再挡一次以防脚本/控制台误调。 */
 function guard4k() {
   if (isXm2weOpen()) { banner("err", t("bWrongFamily")); log("✗ blocked: XM2we device connected"); throw new Error("wrong protocol family"); }
+  /* 未真机验证的型号（8k 有线族）只读：协议同构是静态实证的，
+     但 gen 编码与字段语义没在硬件上确认过 —— 按未验证的偏移写回去，
+     正是 2026-10-09 把 XM1 配置写坏的同一个错误。 */
+  if (unverified) { banner("err", t("bUnverifiedModel")); log("✗ blocked: model not verified on hardware (read-only)"); throw new Error("unverified model"); }
 }
 $("btnApplySensor").onclick = () => { try { guard4k(); } catch { return; } applySensor().catch(e => banner("err", t("errWrite") + e.message)); };
 $("btnApplyPerf").onclick = () => { try { guard4k(); } catch { return; } applyPerf().catch(e => banner("err", t("errWrite") + e.message)); };
@@ -1216,6 +1345,7 @@ $("fileLoad").onchange = async e => {
     stage.jitter = !!(stage.flags & 0x10);
     stage.multiclick = !!(stage.flags & 0x20);
     stage.maxFps = !!(stage.flags & 0x40);
+    const wantSensor = snapSensor(), wantPerf = snapPerf(), wantBtns = snapButtons();
     await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
     await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
     for (let chunk = 1; chunk <= 2; chunk++) {
@@ -1228,7 +1358,8 @@ $("fileLoad").onchange = async e => {
     }
     log("✓ config restored (0x14 + 0x15 + 0x16×2)");
     await refreshAll();
-    banner("ok", t("bImportOk"));
+    const bad = [...verifySensor(wantSensor), ...verifyPerf(wantPerf), ...verifyButtons(wantBtns)];
+    reportVerify("bImportOk", bad);
   } catch (err) { banner("err", t("bImportFail") + err.message); }
   e.target.value = "";
 };

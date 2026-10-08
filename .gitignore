@@ -24,3 +24,5 @@ re/upstream/xm1_strings_*.txt
 
 # ── 真机配置快照（含用户设备数据，不入库）──
 re/xm1_blob_*.bin
+re/upstream/_Endgame_Gear_*/
+re/upstream/*.zip

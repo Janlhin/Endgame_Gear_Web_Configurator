@@ -509,6 +509,9 @@ a {
       xm1UndoOk: "\u2713 \u5DF2\u56DE\u9000\u5230\u4E0A\u4E00\u4EFD\u5FEB\u7167\u3002",
       xm1NoSnap: "\u8FD8\u6CA1\u6709\u53EF\u56DE\u9000\u7684\u5FEB\u7167\uFF08\u81F3\u5C11\u8981\u5148\u8BFB\u53D6\u4E00\u6B21\uFF09\u3002",
       xm1NoChange: "\u6CA1\u6709\u4EFB\u4F55\u6539\u52A8 \u2014\u2014 \u5148\u6539\u4E00\u4E2A\u503C\u518D\u70B9\u5E94\u7528\u3002",
+      bUnverifiedModel: "\u8BE5\u578B\u53F7\uFF088k \u6709\u7EBF\u65CF\uFF09\u7684\u534F\u8BAE\u540C\u6784\u5DF2\u901A\u8FC7\u5B98\u65B9\u5DE5\u5177\u4E8C\u8FDB\u5236\u9759\u6001\u5B9E\u8BC1\uFF08\u62A5\u544A ID 0xA1\u3001\u540C\u4E00\u5957 HidD API\u3001PDB \u4EE3\u53F7 K26\uFF09\uFF0C\u4F46**\u5C1A\u672A\u5728\u771F\u673A\u9A8C\u8BC1** \u2014\u2014 gen \u7F16\u7801\u4E0E\u5B57\u6BB5\u8BED\u4E49\u53EF\u80FD\u4E0D\u540C\uFF0C\u56E0\u6B64\u672C\u9875\u53EA\u5141\u8BB8\u8BFB\u53D6\uFF0C\u5199\u5165\u5165\u53E3\u5DF2\u7981\u7528\u3002",
+      verifyOk: "\u5DF2\u56DE\u8BFB\u6821\u9A8C\u901A\u8FC7",
+      verifyFail: "\u5199\u5165\u540E\u56DE\u8BFB\u4E0D\u4E00\u81F4\uFF08\u8BBE\u5907\u672A\u63A5\u53D7\u4E0B\u5217\u9879\uFF09\uFF1A",
       xm1ApplyConfirm: "\u5373\u5C06\u5199\u5165 {0} \u4E2A\u5B57\u8282\uFF08\u53EA\u6D89\u53CA\u5DF2\u5B9E\u6D4B\u786E\u8BA4\u7684\u5B57\u6BB5\uFF09\u3002\n\n\u672A\u8BC6\u522B\u7684\u5B57\u8282\u4E00\u5F8B\u4FDD\u6301\u8BFB\u56DE\u7684\u539F\u503C\u3002\u786E\u8BA4\u5199\u5165\u5417\uFF1F",
       xm1Applying: "\u6B63\u5728\u5199\u5165\u2026",
       xm1Applied: "\u2713 \u5199\u5165\u6210\u529F\uFF0C\u4E14\u5DF2\u56DE\u8BFB\u6821\u9A8C\uFF1A\u8BBE\u5907\u4E0A\u7684\u503C\u4E0E\u4F60\u7684\u8BBE\u7F6E\u4E00\u81F4\u3002",
@@ -686,6 +689,9 @@ a {
       xm1UndoOk: "Rolled back to the previous snapshot.",
       xm1NoSnap: "No snapshot to roll back to yet (read the config at least once).",
       xm1NoChange: "Nothing changed - edit a value before applying.",
+      bUnverifiedModel: "This model (8k wired family) is statically confirmed to match the 4k protocol (report id 0xA1, same HidD APIs, PDB codename K26) but has NOT been verified on real hardware - the gen encoding and field semantics may differ, so this page is read-only and the write controls are disabled.",
+      verifyOk: "read-back verified",
+      verifyFail: "Read-back mismatch after write (device did not accept): ",
       xm1ApplyConfirm: "About to write {0} bytes (verified fields only).\n\nUnrecognised bytes keep the exact values just read. Write now?",
       xm1Applying: "Writing...",
       xm1Applied: "Write succeeded and the read-back check matches your settings.",
@@ -874,7 +880,11 @@ a {
     6505: ["XM2w 4k (\u53D8\u4F53)", 1],
     6530: ["XM2w 4k v2", 2],
     6532: ["OP1w 4k v2", 2],
-    6529: ["XM2w 4k v2 (\u53D8\u4F53)", 2]
+    6529: ["XM2w 4k v2 (\u53D8\u4F53)", 2],
+    6502: ["XM2 8k", 1, 0],
+    6500: ["OP1 8k / Purple Frost", 1, 0],
+    6528: ["XM2 8k v2", 2, 0],
+    6520: ["OP1 8k v2 / Raw Input", 2, 0]
   };
   var XM1_PIDS = { 6147: ["XM1", 0] };
   var RPT_CMD = 161;
@@ -1547,6 +1557,7 @@ a {
   var lastFail = false;
   var gen = null;
   var mouseName = "\u2014";
+  var unverified = false;
   var blob = null;
   var dongleFw = "\u2014";
   var mouseFw = "\u2014";
@@ -2262,6 +2273,12 @@ a {
       sel.value = String(stage.filters[i]);
       sel.onchange = (e) => stage.filters[i] = +e.target.value;
     });
+    if (unverified) {
+      for (const id of ["btnApplySensor", "btnApplyPerf", "btnReset", "btnLoad"]) {
+        const el = $(id);
+        if (el) el.disabled = true;
+      }
+    }
   }
   function describeMap(b) {
     switch (b.type) {
@@ -2287,7 +2304,95 @@ a {
   }
   var writeSettle = () => wired2 ? 500 : 880;
   var resetSettle = () => wired2 ? 800 : 1080;
+  function snapSensor() {
+    return {
+      cpi: stage.cpi.map((r) => [r[0] ? 1 : 0, r[1] | 0, r[2] | 0]),
+      levels: stage.levels | 0,
+      active: stage.active | 0,
+      angleSnap: stage.angleSnap ? 1 : 0,
+      ripple: stage.ripple ? 1 : 0,
+      ledLiftoff: stage.ledLiftoff ? 1 : 0,
+      lodMM: +stage.lodMM,
+      glass: stage.glass ? 1 : 0,
+      angleTune: stage.angleTune << 24 >> 24
+    };
+  }
+  function verifySensor(w) {
+    const bad = [];
+    for (let n = 0; n < 4; n++) {
+      const a = stage.cpi[n] || [0, 0, 0];
+      if (w.cpi[n][0] !== (a[0] ? 1 : 0)) bad.push(`CPI ${n + 1} XY-enable`);
+      if (w.cpi[n][1] !== (a[1] | 0)) bad.push(`CPI ${n + 1} X ${w.cpi[n][1]}\u2192${a[1] | 0}`);
+      if (w.cpi[n][2] !== (a[2] | 0)) bad.push(`CPI ${n + 1} Y ${w.cpi[n][2]}\u2192${a[2] | 0}`);
+    }
+    if (w.levels !== (stage.levels | 0)) bad.push(`Levels ${w.levels}\u2192${stage.levels}`);
+    if (gen === 2 && w.active !== (stage.active & 3)) bad.push(`Active stage ${w.active + 1}\u2192${(stage.active & 3) + 1}`);
+    if (w.angleSnap !== (stage.angleSnap ? 1 : 0)) bad.push("Angle Snap");
+    if (w.ripple !== (stage.ripple ? 1 : 0)) bad.push("Ripple");
+    if (w.ledLiftoff !== (stage.ledLiftoff ? 1 : 0)) bad.push("LED liftoff");
+    if (Math.abs(w.lodMM - +stage.lodMM) > 0.05) bad.push(`LOD ${w.lodMM}mm\u2192${stage.lodMM}mm`);
+    if (gen === 2 && w.glass !== (stage.glass ? 1 : 0)) bad.push("Glass mode");
+    if (gen === 2 && w.angleTune !== stage.angleTune << 24 >> 24) bad.push("Angle Tune");
+    return bad;
+  }
+  function snapPerf() {
+    const f = stage.flags | 0;
+    return {
+      polling: stage.polling,
+      motionSync: stage.motionSync ? 1 : 0,
+      slamclick: f & 1 ? 1 : 0,
+      jitter: f & 16 ? 1 : 0,
+      multiclick: f & 32 ? 1 : 0,
+      maxFps: f & 64 ? 1 : 0,
+      powerSaving: stage.powerSaving,
+      deepSleep: stage.deepSleep,
+      filters: (stage.filters || []).slice()
+    };
+  }
+  function verifyPerf(w) {
+    const bad = [];
+    const f = stage.flags | 0;
+    if (w.polling !== stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}\u21920x${stage.polling.toString(16)}`);
+    if (w.motionSync !== (stage.motionSync ? 1 : 0)) bad.push("Motion Sync");
+    if (w.slamclick !== (f & 1 ? 1 : 0)) bad.push("Slamclick");
+    if (gen === 1 && w.jitter !== (f & 16 ? 1 : 0)) bad.push("Jitter filter");
+    if (gen === 2 && w.multiclick !== (f & 32 ? 1 : 0)) bad.push("Multiclick");
+    if (gen === 2 && w.maxFps !== (f & 64 ? 1 : 0)) bad.push("Force max FPS");
+    if (w.powerSaving !== stage.powerSaving) bad.push(`Power saving ${w.powerSaving}\u2192${stage.powerSaving}`);
+    if (w.deepSleep !== stage.deepSleep) bad.push(`Deep sleep ${w.deepSleep}\u2192${stage.deepSleep}`);
+    for (let i = 0; i < w.filters.length; i++)
+      if (w.filters[i] !== stage.filters[i]) bad.push(`Filter ${i + 1} ${w.filters[i]}\u2192${stage.filters[i]}`);
+    return bad;
+  }
+  function snapButtons() {
+    return (stage.buttons || []).map((b) => ({ type: b.type, code: b.code, key: b.key, filter: b.filter }));
+  }
+  function verifyButtons(w) {
+    const bad = [];
+    for (let i = 0; i < w.length; i++) {
+      const a = (stage.buttons || [])[i];
+      if (!a) {
+        bad.push(`Button ${i + 1} missing`);
+        continue;
+      }
+      if (w[i].type !== a.type || w[i].code !== a.code || w[i].key !== a.key)
+        bad.push(`Button ${i + 1} mapping`);
+      if (w[i].filter !== a.filter) bad.push(`Button ${i + 1} filter ${w[i].filter}\u2192${a.filter}`);
+    }
+    return bad;
+  }
+  function reportVerify(okKey, bad) {
+    if (bad.length) {
+      banner("warn", t("verifyFail") + bad.join("\u3001"));
+      log("\u22EF \u56DE\u8BFB\u6821\u9A8C\u4E0D\u4E00\u81F4\uFF08" + bad.length + " \u9879\uFF09\uFF1A" + bad.join("\u3001"));
+    } else {
+      banner("ok", t(okKey) + " \xB7 " + t("verifyOk"));
+      log("\u2713 \u56DE\u8BFB\u6821\u9A8C\u901A\u8FC7\uFF1A" + t(okKey));
+    }
+  }
   async function applySensor() {
+    const want = snapSensor();
+    const wantPerf = snapPerf();
     const glassChanged = gen === 2 && (blob[111] ? 1 : 0) !== stage.glass;
     await guarded(20, 15, buildSensorPayload(), { pace: writeSettle() });
     log("\u2713 cmd 0x14 written");
@@ -2296,9 +2401,13 @@ a {
       log("\u2713 glass-mode linked cmd 0x15 written");
     }
     await refreshAll();
-    banner("ok", t("bSensor"));
+    const bad = verifySensor(want);
+    if (glassChanged) bad.push(...verifyPerf(wantPerf));
+    reportVerify("bSensor", bad);
   }
   async function applyPerf2() {
+    const want = snapPerf();
+    const wantSensor = snapSensor();
     const glassChanged = gen === 2 && (blob[111] ? 1 : 0) !== stage.glass;
     await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: writeSettle() });
     log("\u2713 cmd 0x15 written");
@@ -2307,7 +2416,9 @@ a {
       log("\u2713 glass-mode linked cmd 0x14 written");
     }
     await refreshAll();
-    banner("ok", t("bPerf"));
+    const bad = verifyPerf(want);
+    if (glassChanged) bad.push(...verifySensor(wantSensor));
+    reportVerify("bPerf", bad);
   }
   async function refreshAll() {
     banner("warn", "");
@@ -2350,9 +2461,11 @@ a {
         if (MOUSE_PIDS[pid]) {
           mouseName = MOUSE_PIDS[pid][0];
           gen = MOUSE_PIDS[pid][1];
+          unverified = MOUSE_PIDS[pid][2] === 0;
         } else {
           mouseName = `Unknown (PID 0x${pid.toString(16)})`;
           gen = null;
+          unverified = false;
         }
         mouseFw = fwStr(r[22] | r[23] << 8);
         mouseOk = true;
@@ -2370,7 +2483,8 @@ a {
         await readBlob();
         parseBlob();
         render();
-        banner("ok", t("bReadOk"));
+        if (unverified) banner("warn", t("bUnverifiedModel"));
+        else banner("ok", t("bReadOk"));
       } else {
         render();
         banner("warn", t("bSleep"));
@@ -2546,6 +2660,11 @@ a {
       log("\u2717 blocked: XM2we device connected");
       throw new Error("wrong protocol family");
     }
+    if (unverified) {
+      banner("err", t("bUnverifiedModel"));
+      log("\u2717 blocked: model not verified on hardware (read-only)");
+      throw new Error("unverified model");
+    }
   }
   $("btnApplySensor").onclick = () => {
     try {
@@ -2706,6 +2825,7 @@ a {
       stage.jitter = !!(stage.flags & 16);
       stage.multiclick = !!(stage.flags & 32);
       stage.maxFps = !!(stage.flags & 64);
+      const wantSensor = snapSensor(), wantPerf = snapPerf(), wantBtns = snapButtons();
       await guarded(20, 15, buildSensorPayload(), { pace: writeSettle() });
       await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: writeSettle() });
       for (let chunk = 1; chunk <= 2; chunk++) {
@@ -2721,7 +2841,8 @@ a {
       }
       log("\u2713 config restored (0x14 + 0x15 + 0x16\xD72)");
       await refreshAll();
-      banner("ok", t("bImportOk"));
+      const bad = [...verifySensor(wantSensor), ...verifyPerf(wantPerf), ...verifyButtons(wantBtns)];
+      reportVerify("bImportOk", bad);
     } catch (err) {
       banner("err", t("bImportFail") + err.message);
     }

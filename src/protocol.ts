@@ -24,10 +24,22 @@ const VID_22D4 = 0x22D4;
 const DONGLE_PID = 0x1970;
 
 /* PID 表已对照官方 v1.02 工具二进制（0x17200 处的设备表：0x1982/0x1981 鼠标、0x1970/0x1969 接收器族，
-   见 re/PROTOCOL_NOTES.md）；0x1968/0x1972/0x1984 来自 vole 社区逆向。 */
-const MOUSE_PIDS: Record<number, [string, number]> = {
+   见 re/PROTOCOL_NOTES.md）；0x1968/0x1972/0x1984 来自 vole 社区逆向。
+
+   ★ 8k 有线族的 PID 来自官方工具二进制的设备匹配常量
+     （x86 `push 0x3367` + `push 0x<PID>`，扫描脚本 re/upstream/tool8k_pids.py）：
+       XM2 8k     = 0x1966   OP1 8k     = 0x1964   （工具 v1.12，两者只差这 1 个常量）
+       XM2 8k v2  = 0x1980   OP1 8k v2  = 0x1978   （工具 v1.07）
+     限定/变体共用工具 → 同 PID：OP1 8k Purple Frost = 0x1964、OP1 8k v2 Raw Input = 0x1978。
+
+   ★ 第三个元素 verified=0 表示「协议同构已静态实证，但**未在真机验证**」：
+     这种型号只允许读取（写入入口会被禁用，guard4k 也会兜一层）。
+     gen 值（1/2）是按 PID 分组推测的，**真机确认前不要写入**。 */
+const MOUSE_PIDS: Record<number, [string, number, number?]> = {
   0x1968: ["XM2w 4k", 1], 0x1972: ["OP1w 4k", 1], 0x1969: ["XM2w 4k (变体)", 1],
   0x1982: ["XM2w 4k v2", 2], 0x1984: ["OP1w 4k v2", 2], 0x1981: ["XM2w 4k v2 (变体)", 2],
+  0x1966: ["XM2 8k", 1, 0], 0x1964: ["OP1 8k / Purple Frost", 1, 0],
+  0x1980: ["XM2 8k v2", 2, 0], 0x1978: ["OP1 8k v2 / Raw Input", 2, 0],
 };
 
 /* XM1 的型号表单独一份（VID 0x22D4，与 4k 族区分）。
