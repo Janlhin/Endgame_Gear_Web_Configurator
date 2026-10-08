@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>XM1 集合诊断 — WebHID 视角</title>
+<style>
+  body { font-family: "Segoe UI","Microsoft YaHei",sans-serif; max-width: 940px; margin: 24px auto; padding: 0 16px; }
+  button { padding: 9px 16px; margin: 4px 4px 4px 0; font-size: 13px; cursor: pointer; }
+  pre { background:#10141c; color:#9fd0a0; padding:14px; border-radius:8px; font-size:12px;
+        max-height:460px; overflow:auto; white-space:pre-wrap; }
+  .warn { background:#fef3c7; padding:10px 14px; border-radius:6px; margin:12px 0; font-size:13px; }
+  .bad { background:#fee2e2; padding:10px 14px; border-radius:6px; margin:12px 0; font-size:13px; }
+</style>
+</head>
+<body>
+<h2>XM1 集合诊断（WebHID 视角）</h2>
+<div class="warn">
+  <b>安全提示</b>：诊断只读取设备信息，<b>不发送任何报文</b>。
+  但 WebHID 一旦 open() 某接口就会独占它——所以本页<b>不做 open()</b>，
+  只 requestDevice 拿 collections 看完就退出。请勿在 open 状态下拔插设备。
+</div>
+<button id="btn">读取 XM1 的集合信息（不 open）</button>
+<pre id="log">就绪。</pre>
+<script>
+const logEl = document.getElementById("log");
+function log(s) {
+  const t = new Date().toLocaleTimeString();
+  logEl.textContent += t + "  " + s + "\n";
+  logEl.scrollTop = logEl.scrollHeight;
+}
+const VID_22D4 = 0x22D4;
+const VENDOR_MIN = 0xFF00;
+
+document.getElementById("btn").onclick = async () => {
+  logEl.textContent = "";
+  log("requestDevice（精确 filter: 22D4 + FF01:02）…");
+  let devs = [];
+  try {
+    devs = await navigator.hid.requestDevice({
+      filters: [{ vendorId: VID_22D4, usagePage: 0xFF01, usage: 0x02 }]
+    });
+  } catch (e) { log("✗ " + e.name + ": " + e.message); return; }
+
+  if (!devs.length) {
+    log("精确 filter 未匹配。改用 VID-only…");
+    try {
+      devs = await navigator.hid.requestDevice({ filters: [{ vendorId: VID_22D4 }] });
+    } catch (e) { log("✗ " + e.message); return; }
+  }
+  if (!devs.length) { log("✗ 仍未匹配到任何设备"); return; }
+
+  devs.forEach((d, idx) => {
+    log("");
+    log("=== 设备[" + idx + "] " + d.productName + " ===");
+    log("  VID = 0x" + d.vendorId.toString(16).toUpperCase().padStart(4, "0"));
+    log("  PID = 0x" + d.productId.toString(16).toUpperCase().padStart(4, "0"));
+    const cols = d.collections || [];
+    log("  collections 数量: " + cols.length);
+    cols.forEach((c, i) => {
+      const pg = "0x" + c.usagePage.toString(16).toUpperCase().padStart(4, "0");
+      const u  = "0x" + c.usage.toString(16).toUpperCase().padStart(4, "0");
+      const isVendor = c.usagePage >= VENDOR_MIN;
+      const isPointer = c.usagePage === 0x0001 && c.usage === 0x0002;
+      const tag = isPointer ? " ★鼠标指针（绝不能开）" : isVendor ? " 厂商集合" : " 系统集合";
+      log("    [" + i + "] UP=" + pg + " U=" + u + tag);
+    });
+    const hasVendor = cols.some(c => c.usagePage >= VENDOR_MIN);
+    const onlyNonVendor = cols.length > 0 && !hasVendor;
+    log("");
+    log("  判定：");
+    log("    含厂商集合? " + (hasVendor ? "是" : "否"));
+    if (onlyNonVendor) {
+      log("    ★ 该接口 collections 全是系统集合 —— 当前闸门会拒绝它");
+      log("      这说明厂商接口在 Windows 上是**独立 HID 设备实例**，");
+      log("      WebHID 里必须选中它才会显示 collections。");
+    }
+    log("    本设备的接口可直接打开? " + (hasVendor ? "可以" : "不可（会破坏鼠标）"));
+  });
+
+  log("");
+  log("提示：若列表里有多个设备实例，选 collections 含 FF01/FF02 的那个。");
+  log("      名称通常显示为「符合 HID 标准的供应商定义设备」。");
+  log("注意：这些设备已被授权，刷新页面后无需再选即可用 getDevices() 查看。");
+  // 不 open，直接结束
+  log("");
+  log("✔ 诊断结束（未 open 任何接口，鼠标安全）");
+};
+</script>
+</body>
+</html>

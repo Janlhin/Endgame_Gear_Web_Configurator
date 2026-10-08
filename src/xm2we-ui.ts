@@ -25,14 +25,16 @@ function setConn(on: boolean, text: string) {
   p.textContent = text;
 }
 
-/** 安全闸门：只允许打开厂商配置集合（UP:FF00-FFFF）。
- *  绝不能打开系统鼠标指针集合（UP:0001/0002）——WebHID 打开即独占该接口，
- *  Windows HID 驱动会失去访问权，导致**鼠标无法移动**（实测发生过）。 */
+/** 安全闸门：只拒绝鼠标指针 / 键盘集合；其余系统集合允许
+ *  （厂商接口可能同时暴露消费者控制等集合，误拒会导致连不上）。
+ *  详见 main.ts isSafeToOpen 的注释（事故背景）。 */
 function isSafeToOpen(d): { ok: boolean; why?: string } {
   const cols = d.collections || [];
   if (!cols.length) return { ok: false, why: t("bNoCollections") };
   if (cols.some(c => c.usagePage === 0x0001 && c.usage === 0x0002))
     return { ok: false, why: t("bRefusePointer") };
+  if (cols.some(c => c.usagePage === 0x0001 && c.usage === 0x0006))
+    return { ok: false, why: t("bRefuseKeyboard") };
   if (!cols.some(c => c.usagePage >= 0xFF00)) return { ok: false, why: t("bNotVendor") };
   return { ok: true };
 }

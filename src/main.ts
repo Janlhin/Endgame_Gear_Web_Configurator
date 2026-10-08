@@ -613,17 +613,34 @@ document.addEventListener("visibilitychange", () => {
  *  Windows HID 驱动会失去访问权，导致**鼠标无法移动**（实测发生过：
  *  用户插拔无反应，必须关闭浏览器窗口才释放）。
  *  规则：宁可拒绝连接，也绝不能猜错接口。 */
-const POINTER_PAGE = 0x0001, POINTER_USAGE = 0x0002, VENDOR_PAGE_MIN = 0xFF00;
+/* 安全闸门：只拒绝真正会致残的系统集合。
+ *
+ * 事故背景（2026-10-09）：曾因 filter 里放裸 vendorId，把 XM1 的 MI_00
+ * 鼠标指针集合暴露到选择器；用户选中后 WebHID 独占该接口，
+ * Windows HID 驱动失去访问权 → **鼠标完全无法移动，插拔无用，
+ * 必须关闭浏览器窗口才释放**。硬件与固件均无损坏。
+ *
+ * 因此这里**只**拦两类：
+ *   · 鼠标指针  UP:0001/0002 —— 会让鼠标变砖
+ *   · 键盘      UP:0001/0006 —— 会让键盘失效，同类风险
+ * 其余系统集合（消费者控制 000C:0001 等）**允许**——
+ * 厂商接口在 Windows 上可能同时暴露这些，误拒会让 XM1 完全连不上。
+ * 只要集合里含厂商用法页（>=0xFF00），且不含指针/键盘，就放行。 */
+const POINTER_PAGE = 0x0001, POINTER_USAGE = 0x0002;
+const KEYBOARD_PAGE = 0x0001, KEYBOARD_USAGE = 0x0006;
+const VENDOR_PAGE_MIN = 0xFF00;
+
 function isSafeToOpen(d) {
   const cols = d.collections || [];
   if (!cols.length) return { ok: false, why: t("bNoCollections") };
-  // 指针 / 键盘 / 消费者控制等系统集合一律拒绝
-  const bad = cols.find(c => c.usagePage < VENDOR_PAGE_MIN);
-  if (bad) {
-    return { ok: false,
-      why: (bad.usagePage === POINTER_PAGE && bad.usage === POINTER_USAGE)
-        ? t("bRefusePointer") : t("bNotVendor") };
-  }
+  // ① 致命项：鼠标指针 / 键盘 —— 独占会让系统输入设备失效
+  if (cols.some(c => c.usagePage === POINTER_PAGE && c.usage === POINTER_USAGE))
+    return { ok: false, why: t("bRefusePointer") };
+  if (cols.some(c => c.usagePage === KEYBOARD_PAGE && c.usage === KEYBOARD_USAGE))
+    return { ok: false, why: t("bRefuseKeyboard") };
+  // ② 必须含厂商集合，否则不是配置接口
+  if (!cols.some(c => c.usagePage >= VENDOR_PAGE_MIN))
+    return { ok: false, why: t("bNotVendor") };
   return { ok: true };
 }
 
