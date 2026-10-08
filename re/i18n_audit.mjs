@@ -54,11 +54,11 @@ for (const [lang, map] of Object.entries(blocks)) {
 
 // 按 LANG 直接取用的表（src/main.ts）必须覆盖全部语言，否则运行时 undefined。
 // 这是最容易漏的一处：字典加了语言、忘记加这两张表 → 一打开该语言就崩。
-console.log("\n按 LANG 直接取用的表（src/main.ts）：");
-const mainSrc = read("main.ts");
+console.log("\n按 LANG 直接取用的表（src/render.ts）：");
+const renderSrc = read("render.ts");
 const langs = Object.keys(blocks);
 for (const name of ["STAGE_COLORS", "BTN_NAMES"]) {
-  const seg = mainSrc.split(`const ${name} = {`)[1];
+  const seg = renderSrc.split(`const ${name} = {`)[1];
   if (!seg) { console.log(`  ${name.padEnd(13)} 未找到  FAIL`); fails++; continue; }
   const got = new Set([...seg.split("\n};")[0].matchAll(/"([a-zA-Z-]+)":/g)].map((m) => m[1]));
   const missing = langs.filter((l) => !got.has(l));
