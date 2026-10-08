@@ -15,8 +15,19 @@
 | XM2w 4k v2 | 4k 无线 v2 | `0x1970` | `0x1982` / `0x1981` | ✅ 完整支持 |
 | OP1w 4k v2 | 4k 无线 v2 | `0x1984` | `0x1984` | ✅ 完整支持 |
 | **XM2we** | **2020 有线/2.4G** | `0x1961` | `0x1960` | ✅ 完整支持（CPI/回报率/去抖/按键/EEPROM 导出） |
-| XM1 等同代型号 | 2020 有线 | — | — | 🧪 协议已逆向（见下），未做界面 |
+| XM2 8k / OP1 8k（含 v2） | 4k 族同构（有线 8k） | — | 待补 PID | 🧡 协议同构已确认，缺 VID/PID |
+| OP1 / OP1 RGB | 4k 族同构（有线） | — | 待补 PID | 🧡 同上 |
+| XM1 / XM1 RGB | 2020 有线 | — | — | 🧡 协议已逆向，未做界面 |
+| XM1r / OP1we | — | — | — | ❌ 单独立线，未支持 |
 
+> **完整产品清单与版本对照**见 **[`docs/official-product-catalog.md`](docs/official-product-catalog.md)**
+> （2026-10-08 抓官网下载总页 + 在售商品页整理：16 款鼠标的固件/工具版本、官方 CDN 下载 URL、
+> 官方 GitHub 仓库对应关系）。2020 代产品（XM1/XM1r/XM2we/OP1we）**没有官方 GitHub 仓库**。
+>
+> **8k 有线族已实证属 4k 族同构**：从官网 CDN 下载 XM2 8k 工具 v1.12 静态鉴定——报告 ID 同为
+> `0xA1` 位于首字节、同 7 个 `HidD_*` API、PDB 代号 `K26_046_config_v1.12_8k_motion_jjitter`。
+> 所以支持它们**无需新协议代码**，只需把 VID/PID 加进 `MOUSE_PIDS` 表。
+>
 > 四个 4k 无线型号共用 dongle PID `0x1970`，USB 层面无法区分型号；本工具用 cmd `0x0E` 返回的鼠标自身 PID 做判别，v1/v2 两代不兼容的字段编码（LOD、回报率枚举、标志位）已分别处理。变体 PID `0x1969`/`0x1981` 来自官方 v1.02 工具二进制的设备表（见 `re/PROTOCOL_NOTES.md`）。XM2we 族按 PID `0x1960`/`0x1961` 与接口页 `0xFF02` 双重判定。
 
 ## 功能
@@ -93,7 +104,7 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 
 ## 三族协议对照（Endgame Gear 并非一套协议）
 
-| | **XM1**（2020 有线） | **XM2we**（2020 有线/2.4G） | **4k 无线族**（2021+） |
+| | **XM1**（2020 有线） | **XM2we**（2020 有线/2.4G） | **4k 族**（4k 无线 + **8k 有线**） |
 |---|---|---|---|
 | usage page | — | `0xFF02` | `0xFF01` |
 | 报告 ID | `0xA1` | `0x08` 出 / `0x09` 入 | `0xA1` 出 / `0xA0` 入 |
@@ -102,7 +113,7 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 | 命令数 | **3 条**（`0x03`/`0x04`/`0x07`） | 5 opcode | 13 条 |
 | 配置载体 | **文件**（`.profile`/`pfList.dat`） | **EEPROM** `0x00–0xB4` | **1024 B blob** |
 | 厂商 DLL | 无（协议在主 exe） | `OemDrv.exe` | `hidapi` 静态链接 |
-| 内部代号 | K25A / K25B | — | OP1w 4k |
+| 内部代号 | K25A / K25B | — | W25（4k 无线）/ **K26**（8k 有线） |
 
 三者共用同一套 HID 通讯封装：`HidD_SetFeature` 失败时对错误码
 `{0x15, 0x17, 0x1D, 0x57, 0x65B}` 按 50 ms 间隔重试 4 次——在官方 4k 工具与 XM1 主程序里

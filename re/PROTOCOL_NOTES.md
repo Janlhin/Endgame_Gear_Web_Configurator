@@ -163,8 +163,34 @@ dongle/鼠标类型标注与提示。0x72 的 16 字节按 OP1-WebAPP 记载为 
 
 - 官方 GitHub org `EndgameGear` 挂 8 个固件仓库（XM2w-4k / XM2w-4k-v2 / OP1w-4k / OP1w-4k-v2 /
   OP1-8k / OP1-8k-v2 / XM2-8k / OP1-8k-Purple-Frost-LE），只发固件 release + 工具 exe，无源码。
+  ⚠️ **实为 9 个**（站内搜索补回 org 主页漏抓的 `OP1w-4k` 与 `XM2w-4k-v2`），另有非产品仓库
+  `achievements`。**2020 代（XM1/XM1r/XM2we/OP1we）没有官方仓库**。
 - 本项目所逆向的 v1.02 original exe 的官方出处即该 org 的 release 通道；`EndgameGear/XM2w-4k`
   已挂 **v1.04** 工具（SHA256 前缀 `6e635fb5`），做哈希比对可验真伪，也可下载 v1.04 复核
   新版是否引入协议变化。
 - 2025-06/07 官网分发的 OP1w 4k v2 工具曾被植入 XRed 木马——给官方写信与"第三方可审计工具"
   价值的直接论据。
+
+## 协议族总数修正：三类而非四类（2026-10-08 实证）
+
+完整产品清单见 `docs/official-product-catalog.md`。原先"8k 有线族可能是第四族"的猜测
+**已被证伪**——从官网 CDN 下载 `endgame-gear-xm2-8k-configuration-tool.v1.12.exe`
+（2,146,304 B，SHA256 `580a47db784a535dc72d051c7f4c2cb8c9907898fd08061d3c0ce54e2b3c7dfe`）
+静态鉴定后确认：
+
+- 报告 ID **同样是 `0xA1` 位于首字节**（`mov dword [buf], 0x02A1 / 0x12A1 / 0x13A1`）
+- **同样 7 个 `HidD_*` API** + `GetCPInfo`
+- PDB：`H:\Project\K26\Config\K26_046_config_v1.12_8k_motion_jjitter\Release\Endgame Gear OP1 8k Configuration Tool.pdb`
+  → 内部代号 **K26**（4k 无线工具是 W25/XM1 是 K25），**`8k_motion_jjitter` 说明 jitter
+  是继承自 4k 族的功能**，8k 有线属 4k 族延伸
+
+**所以 Endgame Gear 实际只有三类协议**：
+
+| 族 | 型号 | 报告 | 状态字节 | 配置载体 | 命令数 |
+|---|---|---|---|---|---|
+| ①2020 有线 | XM1 / XM1r | 64B `0xA1` | **无** | 文件 `.profile`/`pfList.dat` | 3 |
+| ②2020 有线/2.4G | XM2we / OP1we | 17B `0x08`+`0x09` + `0x55` 校验 | 无 | EEPROM `0x00–0xB4` | 5 |
+| ③4k 族 | 4k 无线 + **8k 有线** | 64B `0xA1` + `0xA0` 大报告 | **有** | 1024B blob | 13 |
+
+**实践意义**：支持 8k 有线族（XM2 8k / OP1 8k / OP1 8k v2 / XM2 8k v2）**不需要写新协议代码**，
+只需补上它们的 VID/PID 进 `MOUSE_PIDS` 表即可。
