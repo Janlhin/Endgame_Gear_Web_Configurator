@@ -1552,9 +1552,9 @@ a {
       await sleep(XM1_SETTLE_MS);
       let u8;
       try {
-        u8 = await rawReceive(RPT_CMD, 1041);
+        u8 = await rawReceive(RPT_BULK);
       } catch (e) {
-        log(`\u2717 XM1 GetFeature(0xA1,1041) \u5931\u8D25 (round ${round}): ${e.message}`);
+        log(`\u2717 XM1 GetFeature(0xA0) \u5931\u8D25 (round ${round}): ${e.message}`);
         lastDump = "recv:" + e.message;
         await sleep(250);
         continue;

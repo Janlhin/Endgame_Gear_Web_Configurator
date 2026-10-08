@@ -181,10 +181,11 @@ async function readBlob() {
  *      **不含任何配置数据** ← 这是我上次误读成"负载"的地方
  *      ★ WebHID 侧对应：reportId=0xA1，data=buf[1..] 的 63 字节
  *   ② SetFeature(64B) → Sleep(80)          ← 空请求：只说"给我配置"
- *   ③ memset(1041B, 0) / buf[0] = 0xA1      ← ★ GetFeature 的 reportId 取自首字节
- *   ④ GetFeature(0xA1, 1041)                ← ★ 设备在此回送现有 1024B 配置
- *      （封装 0x40F8A0 的签名是 HidD_GetFeature(hDev, buf, len)，
- *        buf 首字节即 reportId；我曾误传 0xA0，设备把空请求原样回显。）
+ *   ③ memset(1041B, 0) / buf[0] = 0xA1      ← 官方在 Windows API 里设的请求 ID
+ *   ④ GetFeature(1041B)                     ← ★ 设备回送 [0xA0][0x01 状态][…数据…]
+ *      （实测反推：日志 `a1 a0 01 00…` ⇒ 设备真实返回 [0xA0, 0x01, 0x00, …]，
+ *        0xA0 是报告的 ID、0x01 是状态。WebHID 侧用 receiveFeatureReport(0xA0)，
+ *        与 4k 族读大报告的写法一致；用 0xA1 会让 rawReceive 多补一字节造成错位。）
  *   ⑤ cmp byte [buf+1], 1                   ← 状态判定（XM1 有状态字节，在 [1]）
  *   ⑥ rep movsd 256 dword                   ← 报告偏移 16 → blob
  *   ⑦ call 0x4103D0                         ← 重排（0x40FD60 的逆运算），本工具暂不涉及
@@ -225,12 +226,18 @@ async function readBlobXm1() {
       continue;
     }
     await sleep(XM1_SETTLE_MS);          // 官方 Sleep(80)
-    // ② GetFeature 读回 —— ★ reportId 必须是 0xA1（官方缓冲区首字节），
-    //    长度 1041（官方 push 0x411）。曾误传 0xA0 导致设备原样回显空请求。
+    /* ② 读取响应：reportId = **0xA0**（设备的 1041B 报告 ID）。
+       实证反推：日志出现 `a1 a0 01 00 …`
+         → 设备真实返回 [0xA0, 0x01, 0x00, …]
+             [0]=0xA0 报告 ID，[1]=0x01 状态（读取成功）
+         → 用 0xA1 请求时 rawReceive 多补一字节，整体右移一格才得到 a1 a0 01
+       所以这里必须用 RPT_BULK(0xA0)：u8[0] === reportId 命中，rawReceive 不补位，
+         u8[1] 才是真正的状态字节，blob 在偏移 16。
+       （这与 4k 族读 0xA0 大报告的写法一致。） */
     let u8;
-    try { u8 = await rawReceive(RPT_CMD, 1041); }
+    try { u8 = await rawReceive(RPT_BULK); }
     catch (e) {
-      log(`✗ XM1 GetFeature(0xA1,1041) 失败 (round ${round}): ${e.message}`);
+      log(`✗ XM1 GetFeature(0xA0) 失败 (round ${round}): ${e.message}`);
       lastDump = "recv:" + e.message;
       await sleep(250);
       continue;
