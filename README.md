@@ -91,6 +91,16 @@ LED 页签与 Surface Calibration 在官方 v1.02 中未发现协议实现路径
 
 本项目为独立开源工具，与 Endgame Gear / Pro Gamersware GmbH 无隶属关系。它只读写用户配置，不修改固件、不绕过任何保护机制。使用风险自负；对设备配置的任何更改请自行承担（协议文档已验证写入双向可行，但请理性使用"恢复出厂"以外的底层操作）。
 
+## 许可证
+
+本项目以 **GPL-3.0-or-later** 发布（见 `LICENSE`）。你可以自由使用、修改、再分发，
+任何基于本代码的衍生分发同样必须以 GPL-3 开源。
+
+第三方素材：`re/upstream/` 内收录的 `op1web_PROTOCOL.md`（MIT © zexsso）、
+`eggweb_protocol.js`（**AGPL-3** © qsxcv）仅作研究存档、不参与构建；
+`docs/community-code-scan.md` 是全社区扫描与合规结论。协议事实本身不受版权保护，
+但请尊重各上游项目的许可证条款。
+
 ## 路线图
 
 中期战役计划（官方仓库摸底 → 有线协议逆向 → 全系网页驱动 → 收尾）见 **[TODO.md](TODO.md)**（#8–#12）。

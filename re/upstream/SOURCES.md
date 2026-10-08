@@ -3,10 +3,11 @@
 > 2026-10-08 抓取。完整原始页面在本目录（*.html / *.exe，已 gitignore），
 > 本文件是沉淀结论。GitHub API 匿名限流，全部走 HTML/raw 通道抓取。
 
-## 官方 org `EndgameGear` — 实际 7 个仓库（调研报告写的 8 个有误）
+## 官方 org `EndgameGear` — 实际 9 个仓库（后经 GitHub 搜索补全）
 
-`OP1-8k`、`OP1-8k-Purple-Frost-LE`、`OP1-8k-v2`、`OP1w-4k-v2`、`XM2-8k`、`XM2w-4k`、`achievements`
-（**没有** `OP1w-4k`、`XM2w-4k-v2` 仓库；XM2w 4k v2 的固件/工具未在公开 repo 单列）。
+`OP1-8k`、`OP1-8k-Purple-Frost-LE`、`OP1-8k-v2`、`OP1w-4k`、`OP1w-4k-v2`、
+`XM2-8k`、`XM2w-4k`、`XM2w-4k-v2`、`achievements`（首次 org 主页抓取漏了 2 个，
+以 GitHub 站内搜索为准；"无源码，只发固件/工具二进制"）。
 
 ### XM2w-4k 仓库 release 谱系（配置工具版本线）
 
