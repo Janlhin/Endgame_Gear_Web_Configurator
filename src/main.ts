@@ -1012,6 +1012,28 @@ function download(data: any, name: string, type = "application/octet-stream") {
 }
 $("btnLog").onclick = () => { const l = $("log"); l.style.display = l.style.display === "none" ? "block" : "none"; };
 bindXm2weUI(download);
+
+/* ================= 主题切换 =================
+   颜色全部走 CSS 自定义属性（scss/_tokens.scss 的 $theme-light / $theme-dark），
+   组件样式一行不改 —— 这里只切 <html data-theme>。首帧主题由模板 <head> 里的
+   内联脚本提前设好，避免闪白。 */
+function applyThemeButton() {
+  const dark = document.documentElement.dataset.theme === "dark";
+  const b = $("btnTheme");
+  if (!b) return;
+  b.textContent = t(dark ? "themeDark" : "themeLight");
+  b.title = t("themeTip");
+}
+$("btnTheme").onclick = () => {
+  const dark = document.documentElement.dataset.theme === "dark";
+  if (dark) delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = "dark";
+  try { localStorage.setItem("egg-theme", dark ? "light" : "dark"); } catch (e) { /* 隐私模式忽略 */ }
+  applyThemeButton();
+};
+document.addEventListener("langchange", applyThemeButton);
+applyThemeButton();
+
 applyI18n();
 log("ℹ ready. Click 'Connect' and pick the Endgame Gear mouse / dongle.");
 if (!("hid" in navigator))

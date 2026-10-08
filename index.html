@@ -5,6 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Endgame Gear Web Configurator</title>
 <style>
+:root {
+  --c-bg: #f5f6f8;
+  --c-card: #ffffff;
+  --c-surface-2: #f0f2f6;
+  --c-surface-3: #eef0f3;
+  --c-line: #e2e5ea;
+  --c-text: #1c2330;
+  --c-sub: #6b7484;
+  --c-acc: #2563eb;
+  --c-acc-soft: #eaf0fe;
+  --c-on-acc: #ffffff;
+  --c-ok: #16a34a;
+  --c-warn: #d97706;
+  --c-err: #dc2626;
+  --c-sem-ok-bg: #dcfce7;
+  --c-sem-ok-fg: #166534;
+  --c-sem-warn-bg: #fef3c7;
+  --c-sem-warn-fg: #92400e;
+  --c-sem-err-bg: #fee2e2;
+  --c-sem-err-fg: #991b1b;
+  --c-log-bg: #10141c;
+  --c-log-fg: #9fd0a0;
+  color-scheme: light;
+}
+
+[data-theme=dark] {
+  --c-bg: #14171c;
+  --c-card: #1b1f26;
+  --c-surface-2: #22262e;
+  --c-surface-3: #262b34;
+  --c-line: #2f353f;
+  --c-text: #e6e9ef;
+  --c-sub: #9aa3b2;
+  --c-acc: #5b8cff;
+  --c-acc-soft: #1e2a44;
+  --c-on-acc: #0d1117;
+  --c-ok: #34d399;
+  --c-warn: #e0a53a;
+  --c-err: #f87171;
+  --c-sem-ok-bg: #123024;
+  --c-sem-ok-fg: #86efac;
+  --c-sem-warn-bg: #33280d;
+  --c-sem-warn-fg: #fcd34d;
+  --c-sem-err-bg: #3a1d1d;
+  --c-sem-err-fg: #fca5a5;
+  --c-log-bg: #0b0e13;
+  --c-log-fg: #8fd39a;
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -12,8 +62,8 @@
 body {
   margin: 0;
   font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-  background: #f5f6f8;
-  color: #1c2330;
+  background: var(--c-bg);
+  color: var(--c-text);
 }
 
 header {
@@ -22,8 +72,8 @@ header {
   gap: 16px;
   flex-wrap: wrap;
   padding: 8px 20px;
-  background: #ffffff;
-  border-bottom: 1px solid #e2e5ea;
+  background: var(--c-card);
+  border-bottom: 1px solid var(--c-line);
 }
 header h1 {
   margin: 0;
@@ -43,14 +93,14 @@ main {
 
 .card {
   padding: 16px 20px;
-  background: #ffffff;
-  border: 1px solid #e2e5ea;
+  background: var(--c-card);
+  border: 1px solid var(--c-line);
   border-radius: 10px;
 }
 .card h2 {
   margin: 0 0 16px;
   font-size: 15px;
-  color: #2563eb;
+  color: var(--c-acc);
 }
 
 .row {
@@ -63,7 +113,7 @@ main {
 .row label {
   min-width: 140px;
   font-size: 13px;
-  color: #6b7484;
+  color: var(--c-sub);
 }
 .row .val {
   font-weight: 600;
@@ -72,17 +122,18 @@ main {
 select, input[type=number] {
   padding: 6px 8px;
   font-size: 13px;
-  background: #fff;
-  border: 1px solid #e2e5ea;
+  background: var(--c-card);
+  color: var(--c-text);
+  border: 1px solid var(--c-line);
   border-radius: 6px;
 }
 
 button {
   padding: 8px 16px;
   font-size: 13px;
-  color: #fff;
+  color: var(--c-on-acc);
   cursor: pointer;
-  background: #2563eb;
+  background: var(--c-acc);
   border: none;
   border-radius: 7px;
 }
@@ -94,11 +145,11 @@ button:disabled {
   cursor: not-allowed;
 }
 button.ghost {
-  color: #2563eb;
-  background: #eaf0fe;
+  color: var(--c-acc);
+  background: var(--c-acc-soft);
 }
 button.danger {
-  background: #dc2626;
+  background: var(--c-err);
 }
 
 table {
@@ -109,12 +160,12 @@ table {
 table th, table td {
   padding: 7px 9px;
   text-align: left;
-  border: 1px solid #e2e5ea;
+  border: 1px solid var(--c-line);
 }
 table th {
   font-weight: 600;
-  color: #6b7484;
-  background: #f0f2f6;
+  color: var(--c-sub);
+  background: var(--c-surface-2);
 }
 table td input {
   width: 90px;
@@ -124,13 +175,13 @@ table td input {
   display: inline-block;
   padding: 3px 10px;
   font-size: 12px;
-  color: #2563eb;
-  background: #eaf0fe;
+  color: var(--c-acc);
+  background: var(--c-acc-soft);
   border-radius: 99px;
 }
 .status-pill.off {
-  color: #6b7484;
-  background: #f0f2f6;
+  color: var(--c-sub);
+  background: var(--c-surface-2);
 }
 
 .banner {
@@ -142,18 +193,18 @@ table td input {
 }
 .banner.warn {
   display: block;
-  background-color: #fef3c7;
-  color: #92400e;
+  background-color: var(--c-sem-warn-bg);
+  color: var(--c-sem-warn-fg);
 }
 .banner.err {
   display: block;
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: var(--c-sem-err-bg);
+  color: var(--c-sem-err-fg);
 }
 .banner.ok {
   display: block;
-  background-color: #dcfce7;
-  color: #166534;
+  background-color: var(--c-sem-ok-bg);
+  color: var(--c-sem-ok-fg);
 }
 
 #log {
@@ -163,19 +214,19 @@ table td input {
   overflow-y: auto;
   font-family: Consolas, monospace;
   font-size: 11.5px;
-  color: #9fd0a0;
+  color: var(--c-log-fg);
   white-space: pre-wrap;
-  background: #10141c;
+  background: var(--c-log-bg);
   border-radius: 7px;
 }
 
 .muted {
   font-size: 12px;
-  color: #6b7484;
+  color: var(--c-sub);
 }
 
 a {
-  color: #2563eb;
+  color: var(--c-acc);
 }
 
 .grid2 {
@@ -189,6 +240,18 @@ a {
   }
 }
 </style>
+<script>
+/* 尽早设置主题，避免首帧闪白：优先用户上次选择，否则跟随系统。 */
+(function () {
+  try {
+    var t = localStorage.getItem("egg-theme");
+    if (t !== "dark" && t !== "light") {
+      t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    if (t === "dark") document.documentElement.dataset.theme = "dark";
+  } catch (e) { /* 隐私模式下 localStorage 可能不可用，忽略 */ }
+})();
+</script>
 </head>
 <body>
 <header>
@@ -201,6 +264,7 @@ a {
   </select>
   <button id="btnConnect" data-i18n="connect">连接设备</button>
   <button id="btnRefresh" class="ghost" disabled data-i18n="refresh">重新读取</button>
+  <button id="btnTheme" class="ghost" data-i18n="themeLight">浅色</button>
 </header>
 <main>
   <div id="banner" class="banner"></div>
@@ -428,6 +492,9 @@ a {
       connectedWireless: "\u5DF2\u8FDE\u63A5\uFF08\u65E0\u7EBF\uFF09",
       connect: "\u8FDE\u63A5\u8BBE\u5907",
       refresh: "\u91CD\u65B0\u8BFB\u53D6",
+      themeLight: "\u6D45\u8272",
+      themeDark: "\u6DF1\u8272",
+      themeTip: "\u5207\u6362\u6D45\u8272 / \u6DF1\u8272\u4E3B\u9898",
       secInfo: "\u8BBE\u5907\u4FE1\u606F",
       model: "\u578B\u53F7",
       mouseFw: "\u9F20\u6807\u56FA\u4EF6",
@@ -576,6 +643,9 @@ a {
       connectedWireless: "Connected (wireless)",
       connect: "Connect device",
       refresh: "Reload",
+      themeLight: "Light",
+      themeDark: "Dark",
+      themeTip: "Toggle light / dark theme",
       secInfo: "Device Info",
       model: "Model",
       mouseFw: "Mouse firmware",
@@ -2351,6 +2421,25 @@ a {
     l.style.display = l.style.display === "none" ? "block" : "none";
   };
   bindXm2weUI(download);
+  function applyThemeButton() {
+    const dark = document.documentElement.dataset.theme === "dark";
+    const b = $("btnTheme");
+    if (!b) return;
+    b.textContent = t(dark ? "themeDark" : "themeLight");
+    b.title = t("themeTip");
+  }
+  $("btnTheme").onclick = () => {
+    const dark = document.documentElement.dataset.theme === "dark";
+    if (dark) delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = "dark";
+    try {
+      localStorage.setItem("egg-theme", dark ? "light" : "dark");
+    } catch (e) {
+    }
+    applyThemeButton();
+  };
+  document.addEventListener("langchange", applyThemeButton);
+  applyThemeButton();
   applyI18n();
   log("\u2139 ready. Click 'Connect' and pick the Endgame Gear mouse / dongle.");
   var _a;

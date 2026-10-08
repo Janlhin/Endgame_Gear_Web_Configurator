@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Endgame Gear Blob Studio — 离线配置分析 / 对比</title>
+<style>
+/*__STYLES__*/
+</style>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem("egg-theme");
+    if (t !== "dark" && t !== "light") {
+      t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    if (t === "dark") document.documentElement.dataset.theme = "dark";
+  } catch (e) {}
+})();
+</script>
+</head>
+<body>
+
+<header>
+  <h1>Endgame Gear Blob Studio</h1>
+  <span class="hint" style="margin:0">离线分析 / 对比 · 不连接任何设备 · 纯本地运行</span>
+</header>
+
+<div id="banner" class="banner"></div>
+
+<section class="card">
+  <h2>1. 粘贴数据</h2>
+  <p class="hint">
+    两种都认：<b>十六进制文本</b>（从日志里复制的那一串 <span class="mono">00 00 04 00 …</span>），
+    或网页版「导出配置」出来的 <b>JSON 整段</b>（含 <span class="mono">blobHex</span> / <span class="mono">blobB64</span>）。
+    <br>第二块留空就是单份解析；填上第二份就会做<b>字段级对比</b>（这就是逆向时定位字段用的差分法）。
+  </p>
+  <div class="panes">
+    <div>
+      <label>A — 基准快照</label>
+      <textarea id="taA" placeholder='00 00 04 00 00 01 01 00 …  或  {"blobHex": "..."}'></textarea>
+    </div>
+    <div>
+      <label>B — 对比快照（可选）</label>
+      <textarea id="taB" placeholder="改了一个设置之后导出的那一份"></textarea>
+    </div>
+  </div>
+  <p class="hint" style="margin-top:8px">
+    <label>布局</label>
+    <select id="selLayout" style="padding:6px 8px;border:1px solid var(--c-line);border-radius:6px;background:var(--c-card);color:var(--c-text)">
+      <option value="xm1">XM1（2020 有线 · 线上布局）</option>
+      <option value="k4">4k 族（4k 无线 / 8k 有线）</option>
+    </select>
+  </p>
+  <div class="actions" style="margin-top:8px">
+    <button id="btnRun">解析 / 对比</button>
+    <button id="btnSample" class="ghost">填入示例</button>
+    <button id="btnClear" class="ghost">清空</button>
+    <button id="btnTheme" class="ghost">浅色</button>
+  </div>
+</section>
+
+<section class="card" id="cardFields" style="display:none">
+  <h2>2. 解析出的字段 <span class="hint" id="layoutName" style="margin:0"></span></h2>
+  <table>
+    <thead><tr><th>字段</th><th>偏移</th><th>原始字节</th><th>A 的值</th><th id="thB" style="display:none">B 的值</th><th id="thDelta" style="display:none">变化</th></tr></thead>
+    <tbody id="fieldRows"></tbody>
+  </table>
+</section>
+
+<section class="card" id="cardDiff" style="display:none">
+  <h2>3. 差异摘要</h2>
+  <p class="hint" id="diffSummary" style="margin:0 0 8px"></p>
+  <table>
+    <thead><tr><th>偏移</th><th>A</th><th>B</th><th>归属字段</th></tr></thead>
+    <tbody id="diffRows"></tbody>
+  </table>
+</section>
+
+<section class="card" id="cardHex" style="display:none">
+  <h2>4. 原始字节</h2>
+  <table class="hex">
+    <thead><tr><th>偏移</th><th colspan="16">0 1 2 3 4 5 6 7 8 9 A B C D E F</th></tr></thead>
+    <tbody id="hexRows"></tbody>
+  </table>
+  <div class="legend">
+    <span><i style="background:var(--c-acc-soft)"></i>已知字段覆盖</span>
+    <span><i style="background:var(--c-sem-err-bg)"></i>A 与 B 不一致</span>
+  </div>
+</section>
+
+<footer class="hint" style="margin-top:16px">
+  字段偏移来自真机差分实测（见 <span class="mono">re/XM1_NOTES.md</span> 6.7 节与
+  <span class="mono">re/PROTOCOL_NOTES.md</span>）。未识别区段一律不解读 —— 只显示原始字节。
+</footer>
+
+<script>
+/* ============================================================
+   布局表：字段 → 偏移。全部来自真机差分实测，不含推测。
+   ============================================================ */
+const LAYOUTS = {
+  xm1: {
+    name: "XM1 · 线上布局（读回来的就是这套）",
+    stages: [[0x033, 0x034, 0x036], [0x03C, 0x03D, 0x03F], [0x051, 0x052, 0x054], [0x05B, 0x05C, 0x05E]],
+    active: 0x032,
+    extra: [
+      { off: 0x046, len: 1, name: "Lift Cut-Off", dec: v => ((v + 4) / 5).toFixed(1) + " mm" },
+      { off: 0x057, len: 1, name: "Ripple Control", dec: v => (v ? "On" : "Off") },
+      { off: 0x06B, len: 42, name: "表 A（6 × 7 字节，未解）", dec: () => "—" },
+      { off: 0x0C7, len: 35, name: "按键表（7 × 5 字节，未解）", dec: () => "—" },
+    ],
+  },
+  k4: {
+    name: "4k 族 · 配置 blob（1024B @ 报告偏移 16）",
+    stages: null,
+    active: 0x0D,
+    extra: [
+      { off: 0x0B, len: 1, name: "Ripple Control", dec: v => (v ? "On" : "Off") },
+      { off: 0x0C, len: 1, name: "Motion Sync", dec: v => (v ? "On" : "Off") },
+      { off: 0x0E, len: 1, name: "CPI 档数", dec: v => String(v) },
+      { off: 0x6F, len: 1, name: "玻璃模式", dec: v => (v ? "On" : "Off") },
+      { off: 0x37, len: 56, name: "按键表（8 × 7 字节）", dec: () => "—" },
+    ],
+  },
+};
+
+const $ = id => document.getElementById(id);
+const hex2 = b => b.toString(16).padStart(2, "0");
+const u16 = (b, o) => b[o] | (b[o + 1] << 8);
+
+/* 解析输入：JSON / hex 文本都认，返回 Uint8Array 或抛错。 */
+function parseBlob(text) {
+  const s = text.trim();
+  if (!s) return null;
+  if (s[0] === "{") {
+    const j = JSON.parse(s);
+    if (j.blobHex) return fromHex(j.blobHex);
+    if (j.blobB64) {
+      const bin = atob(j.blobB64);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+    throw new Error("JSON 里没有 blobHex / blobB64");
+  }
+  return fromHex(s);
+}
+function fromHex(s) {
+  const t = s.replace(/0x/gi, " ").replace(/[^0-9a-fA-F]/g, " ").trim().split(/\s+/).filter(Boolean);
+  const bytes = t.map(x => {
+    if (x.length > 2) throw new Error("十六进制片段过长：" + x);
+    return parseInt(x, 16);
+  });
+  if (bytes.length % 16 !== 0)
+    throw new Error("字节数 " + bytes.length + " 不是 16 的倍数，可能没复制完整");
+  return new Uint8Array(bytes);
+}
+
+/* 生成字段行：{name, off, len, a, b, changed} */
+function fieldsOf(blob, key) {
+  const L = LAYOUTS[key];
+  const rows = [], marks = [];
+  const push = (name, off, len, fmt) => {
+    for (let i = 0; i < len; i++) marks.push(off + i);
+    rows.push({ name, off, len, fmt });
+  };
+  if (key === "xm1") {
+    push("当前激活档索引", L.active, 1, v => v + 1 + " (CPI " + (v + 1) + ")");
+    L.stages.forEach(([f, x, y], i) => {
+      push("CPI " + (i + 1) + " 启用", f, 1, v => (v === 0 ? "On" : v === 0xFF ? "Off" : "0x" + hex2(v)));
+      push("CPI " + (i + 1) + " X", x, 2, v => String(v));
+      push("CPI " + (i + 1) + " Y", y, 2, v => String(v));
+    });
+  } else {
+    push("当前激活档索引", L.active, 1, v => v + 1 + " (CPI " + (v + 1) + ")");
+    for (let n = 0; n < 4; n++) {
+      const o = 0x23 + 5 * n;
+      push("CPI " + (n + 1) + " XY 独立", o, 1, v => (v ? "On" : "Off"));
+      push("CPI " + (n + 1) + " X", o + 1, 2, v => String(v));
+      push("CPI " + (n + 1) + " Y", o + 3, 2, v => String(v));
+    }
+  }
+  L.extra.forEach(e => push(e.name, e.off, e.len, e.dec));
+  rows.forEach(r => {
+    const lo = r.len === 2 ? u16(blob, r.off) : blob[r.off];
+    r.raw = Array.from(blob.slice(r.off, r.off + r.len)).map(hex2).join(" ");
+    r.a = r.len === 1 && r.fmt === undefined ? lo : (r.len === 2 ? r.fmt(lo) : r.fmt(lo));
+  });
+  return { rows, marks };
+}
+
+function render(blobA, blobB, key) {
+  const A = fieldsOf(blobA, key);
+  if (blobB) {
+    const B = fieldsOf(blobB, key);
+    A.rows.forEach((r, i) => {
+      r.b = B.rows[i].a;
+      r.changed = r.a !== r.b;
+    });
+  }
+  $("layoutName").textContent = "— " + LAYOUTS[key].name;
+
+  const hasB = !!blobB;
+  $("thB").style.display = hasB ? "" : "none";
+  $("thDelta").style.display = hasB ? "" : "none";
+  $("fieldRows").innerHTML = A.rows.map(r =>
+    "<tr><td>" + r.name + "</td><td class='mono'>0x" + r.off.toString(16).toUpperCase().padStart(3, "0") +
+    "</td><td class='mono'>" + r.raw + "</td><td class='mono'>" + r.a + "</td>" +
+    (hasB ? "<td class='mono'>" + r.b + "</td><td>" + (r.changed ? "≠" : "") + "</td>" : "") +
+    "</tr>").join("");
+
+  $("cardFields").style.display = "";
+
+  if (hasB) {
+    const diff = [];
+    for (let i = 0; i < Math.min(blobA.length, blobB.length); i++) {
+      if (blobA[i] !== blobB[i]) {
+        const owner = A.rows.find(r => i >= r.off && i < r.off + r.len);
+        diff.push([i, blobA[i], blobB[i], owner ? owner.name : "未识别"]);
+      }
+    }
+    $("cardDiff").style.display = "";
+    $("diffSummary").textContent = diff.length
+      ? "共 " + diff.length + " 个字节不同，涉及字段：" + [...new Set(diff.map(d => d[3]))].join("、")
+      : "两份数据完全一致 —— 说明这次改动没有写进这份快照。";
+    $("diffRows").innerHTML = diff.map(([o, a, b, n]) =>
+      "<tr><td class='mono'>0x" + o.toString(16).toUpperCase().padStart(3, "0") + "</td>" +
+      "<td class='mono'>" + hex2(a) + "</td><td class='mono'>" + hex2(b) + "</td><td>" + n + "</td></tr>").join("");
+  } else {
+    $("cardDiff").style.display = "none";
+  }
+
+  const marks = new Set(A.marks);
+  $("hexRows").innerHTML = Array.from({ length: blobA.length / 16 }, (_, row) => {
+    const base = row * 16;
+    let tds = "<td class='off'>0x" + base.toString(16).toUpperCase().padStart(3, "0") + "</td>";
+    for (let i = 0; i < 16; i++) {
+      const o = base + i, v = blobA[o];
+      const cls = (blobB && v !== blobB[o]) ? "d" : (marks.has(o) ? "k" : "");
+      tds += "<td class='" + cls + "'>" + hex2(v) + "</td>";
+    }
+    return "<tr>" + tds + "</tr>";
+  }).join("");
+  $("cardHex").style.display = "";
+}
+
+function banner(kind, msg) {
+  const b = $("banner");
+  b.className = "banner show " + kind;
+  b.textContent = msg;
+}
+
+/* 示例：按 XM1 偏移造一份合成数据（不含任何真机内容） */
+const SAMPLE = (() => {
+  const b = new Uint8Array(1024);
+  const w16 = (o, v) => { b[o] = v & 0xFF; b[o + 1] = v >> 8; };
+  b[0x032] = 0; w16(0x034, 800); w16(0x036, 800); b[0x033] = 0x00;
+  b[0x03C] = 0xFF; w16(0x03D, 1600); w16(0x03F, 1600);
+  b[0x051] = 0xFF; w16(0x052, 3200); w16(0x054, 3200);
+  b[0x05B] = 0xFF; w16(0x05C, 6400); w16(0x05E, 6400);
+  b[0x046] = 0x06; b[0x057] = 1;
+  return b;
+})();
+
+$("btnRun").onclick = () => {
+  try {
+    const A = parseBlob($("taA").value);
+    if (!A) return banner("warn", "请先在 A 里粘贴十六进制字节或导出的 JSON。");
+    const B = parseBlob($("taB").value);
+    if (A.length !== 1024) banner("warn", "A 解出 " + A.length + " 字节（配置 blob 通常是 1024）。");
+    if (B && B.length !== A.length) banner("warn", "A 与 B 长度不同（" + A.length + " / " + B.length + "），只比较重合部分。");
+    else if (A.length === 1024) banner("ok", "解析完成" + (B ? "，已与 B 对比。" : "。"));
+    render(A, B, $("selLayout").value);
+  } catch (e) {
+    banner("err", "解析失败：" + e.message);
+  }
+};
+$("btnSample").onclick = () => {
+  const hex = Array.from(SAMPLE).map(hex2);
+  const lines = [];
+  for (let i = 0; i < hex.length; i += 16) lines.push(hex.slice(i, i + 16).join(" "));
+  $("taA").value = lines.join("\n");
+  $("taB").value = "";
+  banner("ok", "已填入合成示例（800/1600/3200/6400 四档，仅用于试用界面）。");
+};
+$("btnClear").onclick = () => {
+  $("taA").value = ""; $("taB").value = "";
+  ["cardFields", "cardDiff", "cardHex"].forEach(id => $(id).style.display = "none");
+  $("banner").className = "banner";
+};
+$("btnTheme").onclick = () => {
+  const dark = document.documentElement.dataset.theme === "dark";
+  if (dark) delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = "dark";
+  try { localStorage.setItem("egg-theme", dark ? "light" : "dark"); } catch (e) {}
+  $("btnTheme").textContent = dark ? "浅色" : "深色";
+};
+$("btnTheme").textContent = document.documentElement.dataset.theme === "dark" ? "深色" : "浅色";
+
+/* 打开 tools/blob-studio.html#sample 时自动填入示例并解析（便于快速试看 / 截图核对）。 */
+if (location.hash === "#sample") {
+  $("btnSample").onclick();
+  $("btnRun").onclick();
+}
+</script>
+</body>
+</html>

@@ -49,3 +49,17 @@ writeFileSync("index.html", html);
 
 const kb = (n) => (n / 1024).toFixed(1);
 console.log(`dist/index.html + index.html written, ${kb(html.length)} KB  (js ${kb(js.length)} KB, css ${kb(css.length)} KB)`);
+
+// ---------- 4. 独立工具页：离线 blob 分析 / 对比 ----------
+// 与主程序同源：共用 scss/ 令牌（因此深浅主题一致），产物同样是零依赖单文件，
+// 可单独拷给别人用。逻辑是纯前端，不需要 esbuild，只做 SCSS 注入。
+const studioCss = sass.compile("scss/studio.scss", {
+  style: minify ? "compressed" : "expanded",
+  loadPaths: ["scss"],
+}).css.replace(/\/\*[\s\S]*?\*\//g, "").trim();
+
+const studioTpl = readFileSync("tools/blob-studio.template.html", "utf-8");
+if (!studioTpl.includes("/*__STYLES__*/")) throw new Error("studio 模板缺少 /*__STYLES__*/ 占位符");
+const studioHtml = studioTpl.replace("/*__STYLES__*/", () => studioCss);
+writeFileSync("tools/blob-studio.html", studioHtml);
+console.log(`tools/blob-studio.html written, ${kb(studioHtml.length)} KB  (css ${kb(studioCss.length)} KB)`);

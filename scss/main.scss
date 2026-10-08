@@ -86,7 +86,8 @@ main {
 select, input[type="number"] {
   padding: 6px 8px;
   font-size: $fs-sm;
-  background: #fff;
+  background: $card;
+  color: $text;
   border: 1px solid $line;
   border-radius: $radius-sm;
 }
@@ -95,7 +96,7 @@ select, input[type="number"] {
 button {
   padding: 8px 16px;
   font-size: $fs-sm;
-  color: #fff;
+  color: $on-acc;
   cursor: pointer;
   background: $acc;
   border: none;
@@ -160,9 +161,9 @@ table {
   // 用 map 而非逗号元组 —— @each 里的 (a, b, c) 逗号列表会被 Dart Sass
   // 当成一个整体值解构不掉，编译出 `background: c1, c2` 这种非法 CSS。
   $variants: (
-    "warn": (bg: #fef3c7, fg: #92400e),
-    "err":  (bg: #fee2e2, fg: #991b1b),
-    "ok":   (bg: #dcfce7, fg: #166534),
+    "warn": (bg: $sem-warn-bg, fg: $sem-warn-fg),
+    "err":  (bg: $sem-err-bg,  fg: $sem-err-fg),
+    "ok":   (bg: $sem-ok-bg,   fg: $sem-ok-fg),
   );
   @each $cls, $c in $variants {
     &.#{$cls} {
@@ -181,9 +182,9 @@ table {
   overflow-y: auto;
   font-family: $font-mono;
   font-size: 11.5px;
-  color: #9fd0a0;
+  color: $log-fg;
   white-space: pre-wrap;
-  background: #10141c;
+  background: $log-bg;
   border-radius: $radius-md;
 }
 

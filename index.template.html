@@ -7,6 +7,18 @@
 <style>
 /*__STYLES__*/
 </style>
+<script>
+/* 尽早设置主题，避免首帧闪白：优先用户上次选择，否则跟随系统。 */
+(function () {
+  try {
+    var t = localStorage.getItem("egg-theme");
+    if (t !== "dark" && t !== "light") {
+      t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    if (t === "dark") document.documentElement.dataset.theme = "dark";
+  } catch (e) { /* 隐私模式下 localStorage 可能不可用，忽略 */ }
+})();
+</script>
 </head>
 <body>
 <header>
@@ -19,6 +31,7 @@
   </select>
   <button id="btnConnect" data-i18n="connect">连接设备</button>
   <button id="btnRefresh" class="ghost" disabled data-i18n="refresh">重新读取</button>
+  <button id="btnTheme" class="ghost" data-i18n="themeLight">浅色</button>
 </header>
 <main>
   <div id="banner" class="banner"></div>

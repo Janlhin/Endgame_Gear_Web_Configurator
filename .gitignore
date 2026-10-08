@@ -27,3 +27,5 @@ re/upstream/xm1_funcs/
 re/upstream/xm1_proto/
 re/upstream/xm1_strings_*.txt
 re/xm1_blob_*.bin
+re/studio_check.png
+re/*_check.png

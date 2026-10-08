@@ -5,6 +5,7 @@ const I18N = {
   "zh-CN": {
     appTitle: "Endgame Gear 网页版驱动", notConnected: "未连接", connectedWired: "已连接（有线）", connectedWireless: "已连接（无线）",
     connect: "连接设备", refresh: "重新读取",
+    themeLight: "浅色", themeDark: "深色", themeTip: "切换浅色 / 深色主题",
     secInfo: "设备信息", model: "型号", mouseFw: "鼠标固件", dongleFw: "接收器固件", battery: "电量", connMode: "连接方式", gen: "协议代数",
     secSensor: "传感器 / CPI", stage: "档位", ledColor: "LED 颜色", xySplit: "XY 独立", cpiLevels: "启用档位数", activeStage: "当前档位",
     lod: "抬离距离 (LOD)", glassMode: "玻璃面模式", off: "关", on: "开", glassNote: "v2 专属；切换时 LOD 编码会随之换算",
@@ -76,6 +77,7 @@ const I18N = {
   "en": {
     appTitle: "Endgame Gear Web Configurator", notConnected: "Not connected", connectedWired: "Connected (wired)", connectedWireless: "Connected (wireless)",
     connect: "Connect device", refresh: "Reload",
+    themeLight: "Light", themeDark: "Dark", themeTip: "Toggle light / dark theme",
     secInfo: "Device Info", model: "Model", mouseFw: "Mouse firmware", dongleFw: "Dongle firmware", battery: "Battery", connMode: "Connection", gen: "Protocol gen",
     secSensor: "Sensor / CPI", stage: "Stage", ledColor: "LED color", xySplit: "XY split", cpiLevels: "Active stages", activeStage: "Current stage",
     lod: "Lift-off distance (LOD)", glassMode: "Glass mode", off: "Off", on: "On", glassNote: "v2 only; LOD encoding switches with it",

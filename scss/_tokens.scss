@@ -1,23 +1,103 @@
 // 设计令牌：所有颜色/间距/字号集中在此，改主题只改这里。
-// 注意：颜色目前是浅色主题（跟随系统）。若后续引入深色主题，
-// 在此处加一组 [data-theme="dark"] 覆盖即可，组件样式无需改动。
+//
+// ★ 颜色通过 **CSS 自定义属性** 暴露（编译期 SCSS 变量只是转发引用）：
+//   $bg: var(--c-bg)
+// 这样组件样式（main.scss）继续写 $bg/$card/...，一行不用改，
+// 切换主题只需在 <html> 上改 data-theme —— 这正是把样式抽成 SCSS 的收益。
+// 注意：因此**不要**对颜色令牌用 SCSS 颜色函数（lighten/darken/rgba），
+// 那些在编译期求值，var() 会让它们失效。（当前全库已确认无此类用法。）
 
-// ---------- 颜色 ----------
-$bg:        #f5f6f8;
-$card:      #ffffff;
-$surface-2: #f0f2f6;   // 表头 / 次级面
-$surface-3: #eef0f3;   // 中性按钮
-$line:      #e2e5ea;
+// ---------- 色彩表（浅色 / 深色）----------
+$theme-light: (
+  "bg":        #f5f6f8,
+  "card":      #ffffff,
+  "surface-2": #f0f2f6,   // 表头 / 次级面
+  "surface-3": #eef0f3,   // 中性按钮
+  "line":      #e2e5ea,
+  "text":      #1c2330,
+  "sub":       #6b7484,   // 次要文字
+  "acc":       #2563eb,
+  "acc-soft":  #eaf0fe,
+  "on-acc":    #ffffff,   // 强调色上的文字
+  "ok":        #16a34a,
+  "warn":      #d97706,
+  "err":       #dc2626,
+  "sem-ok-bg":   #dcfce7,
+  "sem-ok-fg":   #166534,
+  "sem-warn-bg": #fef3c7,
+  "sem-warn-fg": #92400e,
+  "sem-err-bg":  #fee2e2,
+  "sem-err-fg":  #991b1b,
+  "log-bg":    #10141c,
+  "log-fg":    #9fd0a0,
+);
 
-$text:      #1c2330;
-$sub:       #6b7484;   // 次要文字
+$theme-dark: (
+  "bg":        #14171c,
+  "card":      #1b1f26,
+  "surface-2": #22262e,
+  "surface-3": #262b34,
+  "line":      #2f353f,
+  "text":      #e6e9ef,
+  "sub":       #9aa3b2,
+  "acc":       #5b8cff,
+  "acc-soft":  #1e2a44,
+  "on-acc":    #0d1117,
+  "ok":        #34d399,
+  "warn":      #e0a53a,
+  "err":       #f87171,
+  "sem-ok-bg":   #123024,
+  "sem-ok-fg":   #86efac,
+  "sem-warn-bg": #33280d,
+  "sem-warn-fg": #fcd34d,
+  "sem-err-bg":  #3a1d1d,
+  "sem-err-fg":  #fca5a5,
+  "log-bg":    #0b0e13,
+  "log-fg":    #8fd39a,
+);
 
-$acc:       #2563eb;
-$acc-soft:  #eaf0fe;
+// ---------- 发射 CSS 变量 ----------
+:root {
+  @each $name, $value in $theme-light {
+    --c-#{$name}: #{$value};
+  }
+  color-scheme: light;
+}
 
-$ok:        #16a34a;
-$warn:      #d97706;
-$err:       #dc2626;
+[data-theme="dark"] {
+  @each $name, $value in $theme-dark {
+    --c-#{$name}: #{$value};
+  }
+  color-scheme: dark;
+}
+
+// ---------- 颜色令牌（转发到 CSS 变量）----------
+$bg:        var(--c-bg);
+$card:      var(--c-card);
+$surface-2: var(--c-surface-2);
+$surface-3: var(--c-surface-3);
+$line:      var(--c-line);
+
+$text:      var(--c-text);
+$sub:       var(--c-sub);
+
+$acc:       var(--c-acc);
+$acc-soft:  var(--c-acc-soft);
+$on-acc:    var(--c-on-acc);
+
+$ok:        var(--c-ok);
+$warn:      var(--c-warn);
+$err:       var(--c-err);
+
+$sem-ok-bg:   var(--c-sem-ok-bg);
+$sem-ok-fg:   var(--c-sem-ok-fg);
+$sem-warn-bg: var(--c-sem-warn-bg);
+$sem-warn-fg: var(--c-sem-warn-fg);
+$sem-err-bg:  var(--c-sem-err-bg);
+$sem-err-fg:  var(--c-sem-err-fg);
+
+$log-bg:    var(--c-log-bg);
+$log-fg:    var(--c-log-fg);
 
 // ---------- 间距 ----------
 $gap-xs: 4px;

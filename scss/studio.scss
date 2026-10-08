@@ -1,0 +1,128 @@
+// 独立工具页（离线 blob 分析 / 对比）的样式。
+// 与主界面共用同一套设计令牌，因此深浅主题自动跟随。
+@use "tokens" as *;
+@use "mixins" as *;
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: $gap-lg;
+  font-family: $font-stack;
+  font-size: $fs-sm;
+  color: $text;
+  background: $bg;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $gap-md;
+  align-items: baseline;
+  margin-bottom: $gap-sm;
+}
+
+h1 { margin: 0; font-size: $fs-lg; }
+
+.card {
+  padding: $gap-md;
+  margin-bottom: $gap-md;
+  background: $card;
+  border: 1px solid $line;
+  border-radius: $radius-lg;
+}
+
+h2 { margin: 0 0 $gap-sm; font-size: $fs-md; }
+
+.hint {
+  margin: 0 0 $gap-sm;
+  font-size: $fs-xs;
+  line-height: 1.6;
+  color: $sub;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $gap-md;
+
+  @include below($bp-md) { grid-template-columns: 1fr; }
+}
+
+textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 8px;
+  font-family: $font-mono;
+  font-size: 11.5px;
+  color: $text;
+  resize: vertical;
+  background: $card;
+  border: 1px solid $line;
+  border-radius: $radius-sm;
+}
+
+label { display: block; margin-bottom: $gap-xs; font-size: $fs-xs; color: $sub; }
+
+button {
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: $fs-sm;
+  color: $on-acc;
+  cursor: pointer;
+  background: $acc;
+  border: none;
+  border-radius: $radius-md;
+
+  &.ghost {
+    color: $text;
+    background: $surface-3;
+    border: 1px solid $line;
+  }
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: $gap-sm; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 6px 8px;
+  font-size: $fs-xs;
+  text-align: left;
+  border-bottom: 1px solid $line;
+}
+
+th { font-weight: 500; background: $surface-2; }
+
+td.mono, .mono { font-family: $font-mono; }
+
+.banner {
+  display: none;
+  padding: 10px 14px;
+  margin-bottom: $gap-sm;
+  font-size: $fs-sm;
+  border-radius: $radius-md;
+
+  &.show { display: block; }
+  &.err { color: $sem-err-fg; background: $sem-err-bg; }
+  &.ok { color: $sem-ok-fg; background: $sem-ok-bg; }
+  &.warn { color: $sem-warn-fg; background: $sem-warn-bg; }
+}
+
+// ---------- 十六进制网格 ----------
+.hex td {
+  font-family: $font-mono;
+  font-size: 11px;
+  text-align: center;
+}
+
+.hex td.off { text-align: right; color: $sub; }
+
+.hex td.k { color: $acc; background: $acc-soft; }          // 已知字段覆盖的字节
+.hex td.d { font-weight: 500; color: $sem-err-fg; background: $sem-err-bg; }  // 两份数据的差异
+
+.legend { display: flex; gap: $gap-md; margin: $gap-sm 0 0; font-size: $fs-xs; color: $sub; }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: -1px; border-radius: 2px; }
