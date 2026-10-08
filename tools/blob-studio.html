@@ -325,9 +325,6 @@ td.mono, .mono {
 </footer>
 
 <script>
-/* ============================================================
-   布局表：字段 → 偏移。全部来自真机差分实测，不含推测。
-   ============================================================ */
 const LAYOUTS = {
   xm1: {
     name: "XM1 · 线上布局（读回来的就是这套）",
@@ -358,7 +355,6 @@ const $ = id => document.getElementById(id);
 const hex2 = b => b.toString(16).padStart(2, "0");
 const u16 = (b, o) => b[o] | (b[o + 1] << 8);
 
-/* 解析输入：JSON / hex 文本都认，返回 Uint8Array 或抛错。 */
 function parseBlob(text) {
   const s = text.trim();
   if (!s) return null;
@@ -386,7 +382,6 @@ function fromHex(s) {
   return new Uint8Array(bytes);
 }
 
-/* 生成字段行：{name, off, len, a, b, changed} */
 function fieldsOf(blob, key) {
   const L = LAYOUTS[key];
   const rows = [], marks = [];
@@ -480,7 +475,6 @@ function banner(kind, msg) {
   b.textContent = msg;
 }
 
-/* 示例：按 XM1 偏移造一份合成数据（不含任何真机内容） */
 const SAMPLE = (() => {
   const b = new Uint8Array(1024);
   const w16 = (o, v) => { b[o] = v & 0xFF; b[o + 1] = v >> 8; };
@@ -527,7 +521,6 @@ $("btnTheme").onclick = () => {
 };
 $("btnTheme").textContent = document.documentElement.dataset.theme === "dark" ? "深色" : "浅色";
 
-/* 打开 tools/blob-studio.html#sample 时自动填入示例并解析（便于快速试看 / 截图核对）。 */
 if (location.hash === "#sample") {
   $("btnSample").onclick();
   $("btnRun").onclick();

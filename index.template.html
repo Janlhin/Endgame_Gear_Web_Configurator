@@ -8,7 +8,6 @@
 /*__STYLES__*/
 </style>
 <script>
-/* 尽早设置主题，避免首帧闪白：优先用户上次选择，否则跟随系统。 */
 (function () {
   try {
     var t = localStorage.getItem("egg-theme");
@@ -16,7 +15,7 @@
       t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
     if (t === "dark") document.documentElement.dataset.theme = "dark";
-  } catch (e) { /* 隐私模式下 localStorage 可能不可用，忽略 */ }
+  } catch (e) {}
 })();
 </script>
 </head>

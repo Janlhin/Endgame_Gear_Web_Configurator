@@ -12,9 +12,30 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 
 mkdirSync("dist", { recursive: true });
 
+// 产物是发给使用者的，不该携带开发注释（注释属于 src/ 和模板的开发者便笺）。
+// esbuild 那条链路由 minifyWhitespace 保证；模板里的内联 <script> 不经 esbuild，
+// 所以这里兜一道断言 —— 谁在模板里写了注释，构建就会失败。
+// 判据必须是「行首的 /* 或 //」：只看 // + 中文会误报，文案里
+// 「（须 https:// 或 file://），WebHID 被禁用」这种字符串就会中招。
+// 产物里的字符串不会出现真实换行（换行在源码里是 \n 两个字符），所以行首判据是安全的。
+function assertNoDevComments(out, label) {
+  const m = out.match(/<!--/) || out.match(/(^|\n)[ \t]*(\/\*|\/\/)/);
+  if (m) {
+    const at = out.indexOf(m[0]);
+    throw new Error(
+      `${label} 里残留开发注释：\n    ${JSON.stringify(out.slice(at, at + 70))}\n` +
+      `  注释请写在 src/ 下（会随 minifyWhitespace 被剥离）或模板之外 —— 模板内联脚本会原样进产物。`
+    );
+  }
+}
+
 const minify = process.argv.includes("--minify");
 
 // ---------- 1. TS → JS ----------
+// 产物是发给使用者的，不该承载开发注释 —— 注释留在 src/ 里。
+// esbuild 只在压缩阶段移除注释，所以默认构建也开 minifyWhitespace：
+// 它去掉注释和多余空白，但**不改标识符名**，产物仍可读（利于「开源可审计」这一卖点）。
+// --minify 再额外开启语法压缩与标识符混淆。
 const result = await build({
   entryPoints: ["src/main.ts"],
   bundle: true,
@@ -22,7 +43,13 @@ const result = await build({
   target: ["es2020", "chrome89"],
   write: false,
   minify,
-  legalComments: "inline",
+  minifyWhitespace: true,
+  // esbuild 默认 charset="ascii"，会把所有非 ASCII 转义成 \uXXXX（实测 18105 处、
+  // 白占约 106 KB），中文文案在产物里变成 \u811A\u672C 一串码点 —— 既大又不可读。
+  // 模板已声明 <meta charset="UTF-8">，这里保持 UTF-8 原样输出。
+  charset: "utf8",
+  // 本项目无第三方代码进入产物，故无法律注释需要保留；若将来引入，改成 "inline"。
+  legalComments: "none",
 });
 const js = result.outputFiles[0].text;
 
@@ -41,6 +68,8 @@ for (const marker of ["/*__BUNDLE__*/", "/*__STYLES__*/"]) {
 const html = template
   .replace("/*__STYLES__*/", () => css)
   .replace("/*__BUNDLE__*/", () => js);
+
+assertNoDevComments(html, "index.html");
 
 writeFileSync("dist/index.html", html);
 // 同步写根目录 index.html：保持"双击即用 + GitHub Pages 指向仓库根"的工作流，
@@ -61,5 +90,7 @@ const studioCss = sass.compile("scss/studio.scss", {
 const studioTpl = readFileSync("tools/blob-studio.template.html", "utf-8");
 if (!studioTpl.includes("/*__STYLES__*/")) throw new Error("studio 模板缺少 /*__STYLES__*/ 占位符");
 const studioHtml = studioTpl.replace("/*__STYLES__*/", () => studioCss);
+
+assertNoDevComments(studioHtml, "tools/blob-studio.html");
 writeFileSync("tools/blob-studio.html", studioHtml);
 console.log(`tools/blob-studio.html written, ${kb(studioHtml.length)} KB  (css ${kb(studioCss.length)} KB)`);
