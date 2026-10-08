@@ -1733,12 +1733,13 @@ a {
       "deepSleep",
       "btnReset",
       "btnLoad",
-      "btnSave",
       "btnRefresh"
     ]) {
       const el = $(id);
       if (el) el.disabled = true;
     }
+    const save = $("btnSave");
+    if (save) save.disabled = false;
   }
   function render() {
     if (xm1) return renderXm1Readonly();
@@ -2216,7 +2217,21 @@ a {
   };
   $("btnSave").onclick = () => {
     if (!blob) return banner("err", t("cfgNoRead"));
-    const out = { app: "endgame-gear-web-configurator", savedAt: (/* @__PURE__ */ new Date()).toISOString(), device: mouseName, gen, lang: LANG, blobB64: btoa(String.fromCharCode(...blob)) };
+    const hexLines = [];
+    for (let o = 0; o < blob.length; o += 16) {
+      const row = [];
+      for (let i = 0; i < 16 && o + i < blob.length; i++) row.push(blob[o + i].toString(16).padStart(2, "0"));
+      hexLines.push(o.toString(16).padStart(4, "0") + ": " + row.join(" "));
+    }
+    const out = {
+      app: "endgame-gear-web-configurator",
+      savedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      device: mouseName,
+      gen,
+      lang: LANG,
+      blobB64: btoa(String.fromCharCode(...blob)),
+      blobHex: hexLines.join("\n")
+    };
     download(JSON.stringify(out, null, 2), `egg-mouse-config-${Date.now()}.json`, "application/json");
   };
   $("btnBlob").onclick = () => {

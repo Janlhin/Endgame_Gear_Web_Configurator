@@ -408,13 +408,15 @@ function renderXm1Readonly() {
     tb.appendChild(tail);
   }
 
-  // 禁用所有写入与刷新控件（读取本身已由 refreshAll 完成）
+  // 禁用所有写入控件；但**导出保持可用**——导出是纯本地操作，无害，
+  // 且是定位 blob 字段语义（差分对比）的必要手段。
   for (const id of ["btnApplySensor", "btnApplyPerf", "cpiLevels", "cpiActive", "lod", "glass",
                     "angleSnap", "ripple", "ledLiftoff", "angleTune", "polling", "motionSync",
                     "slamclick", "jitter", "maxFps", "multiclick", "powerSaving", "deepSleep",
-                    "btnReset", "btnLoad", "btnSave", "btnRefresh"]) {
+                    "btnReset", "btnLoad", "btnRefresh"]) {
     const el = $(id); if (el) el.disabled = true;
   }
+  const save = $("btnSave"); if (save) save.disabled = false;
 }
 function render() {
   /* XM1 只读视图：blob 字段语义尚未核实（官方内部布局与线上布局之间还有一层重排，
@@ -848,7 +850,17 @@ $("btnReset").onclick = async () => {
 };
 $("btnSave").onclick = () => {
   if (!blob) return banner("err", t("cfgNoRead"));
-  const out = { app: "endgame-gear-web-configurator", savedAt: new Date().toISOString(), device: mouseName, gen, lang: LANG, blobB64: btoa(String.fromCharCode(...blob)) };
+  // 附带可读的 hex dump，便于人工比对与差分分析
+  const hexLines = [];
+  for (let o = 0; o < blob.length; o += 16) {
+    const row = [];
+    for (let i = 0; i < 16 && o + i < blob.length; i++) row.push(blob[o + i].toString(16).padStart(2, "0"));
+    hexLines.push(o.toString(16).padStart(4, "0") + ": " + row.join(" "));
+  }
+  const out = { app: "endgame-gear-web-configurator", savedAt: new Date().toISOString(),
+                device: mouseName, gen, lang: LANG,
+                blobB64: btoa(String.fromCharCode(...blob)),
+                blobHex: hexLines.join("\n") };
   download(JSON.stringify(out, null, 2), `egg-mouse-config-${Date.now()}.json`, "application/json");
 };
 $("btnBlob").onclick = () => { if (blob) download(new Blob([blob]), `egg-mouse-blob-${Date.now()}.bin`); };
