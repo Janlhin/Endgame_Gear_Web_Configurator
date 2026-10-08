@@ -1,0 +1,144 @@
+func 0x00418F80
+============================================================
+00418F80  55                       push ebp
+00418F81  8b ec                    mov ebp, esp
+00418F83  83 e4 c0                 and esp, 0xffffffc0
+00418F86  6a ff                    push -1
+00418F88  68 4b 43 54 00           push 0x54434b
+00418F8D  64 a1 00 00 00 00        mov eax, dword ptr fs:[0]
+00418F93  50                       push eax
+00418F94  83 ec 34                 sub esp, 0x34
+00418F97  b8 34 a1 02 00           mov eax, 0x2a134
+00418F9C  e8 ef aa 10 00           call 0x523a90
+00418FA1  a1 10 8b 59 00           mov eax, dword ptr [0x598b10]
+00418FA6  33 c4                    xor eax, esp
+00418FA8  89 84 24 30 a1 02 00     mov dword ptr [esp + 0x2a130], eax
+00418FAF  53                       push ebx
+00418FB0  56                       push esi
+00418FB1  57                       push edi
+00418FB2  a1 10 8b 59 00           mov eax, dword ptr [0x598b10]
+00418FB7  33 c4                    xor eax, esp
+00418FB9  50                       push eax
+00418FBA  8d 84 24 78 a1 02 00     lea eax, [esp + 0x2a178]
+00418FC1  64 a3 00 00 00 00        mov dword ptr fs:[0], eax
+00418FC7  0f b7 05 e4 18 5a 00     movzx eax, word ptr [0x5a18e4]
+00418FCE  8b f9                    mov edi, ecx
+00418FD0  0f b7 0d e2 18 5a 00     movzx ecx, word ptr [0x5a18e2]
+00418FD7  50                       push eax
+00418FD8  51                       push ecx
+00418FD9  89 7c 24 24              mov dword ptr [esp + 0x24], edi
+00418FDD  e8 4e 65 ff ff           call 0x40f530
+00418FE2  83 c4 08                 add esp, 8
+00418FE5  85 c0                    test eax, eax
+00418FE7  0f 84 1c 01 00 00        je 0x419109
+00418FED  e8 08 7c 00 00           call 0x420bfa
+00418FF2  33 c9                    xor ecx, ecx
+00418FF4  85 c0                    test eax, eax
+00418FF6  0f 95 c1                 setne cl
+00418FF9  85 c9                    test ecx, ecx
+00418FFB  75 0a                    jne 0x419007
+00418FFD  68 05 40 00 80           push 0x80004005
+00419002  e8 09 da fe ff           call 0x406a10
+00419007  8b 10                    mov edx, dword ptr [eax]
+00419009  8b c8                    mov ecx, eax
+0041900B  8b 42 0c                 mov eax, dword ptr [edx + 0xc]
+0041900E  ff d0                    call eax
+00419010  83 c0 10                 add eax, 0x10
+00419013  89 44 24 20              mov dword ptr [esp + 0x20], eax
+00419017  c7 84 24 80 a1 02 00 00 00 00 00 mov dword ptr [esp + 0x2a180], 0
+00419022  c6 44 24 17 00           mov byte ptr [esp + 0x17], 0
+00419027  e8 04 67 ff ff           call 0x40f730
+0041902C  0f b7 c8                 movzx ecx, ax
+0041902F  89 4c 24 18              mov dword ptr [esp + 0x18], ecx
+00419033  83 ec 08                 sub esp, 8
+00419036  8d 54 24 28              lea edx, [esp + 0x28]
+0041903A  db 44 24 20              fild dword ptr [esp + 0x20]
+0041903E  dc 35 28 64 57 00        fdiv qword ptr [0x576428]
+00419044  d9 5c 24 20              fstp dword ptr [esp + 0x20]
+00419048  d9 44 24 20              fld dword ptr [esp + 0x20]
+0041904C  dd 1c 24                 fstp qword ptr [esp]
+0041904F  68 94 47 57 00           push 0x574794
+00419054  52                       push edx
+00419055  e8 a6 d6 fe ff           call 0x406700
+0041905A  8b 5c 24 30              mov ebx, dword ptr [esp + 0x30]
+0041905E  83 c4 0c                 add esp, 0xc
+00419061  83 c3 f0                 add ebx, -0x10
+00419064  89 64 24 1c              mov dword ptr [esp + 0x1c], esp
+00419068  8b f4                    mov esi, esp
+0041906A  53                       push ebx
+0041906B  e8 30 fa fe ff           call 0x408aa0
+00419070  83 c0 10                 add eax, 0x10
+00419073  89 06                    mov dword ptr [esi], eax
+00419075  8b b7 b0 08 00 00        mov esi, dword ptr [edi + 0x8b0]
+0041907B  83 c4 04                 add esp, 4
+0041907E  81 c6 b0 02 00 00        add esi, 0x2b0
+00419084  e8 b7 42 00 00           call 0x41d340
+00419089  8b 87 b0 08 00 00        mov eax, dword ptr [edi + 0x8b0]
+0041908F  8b 80 d0 02 00 00        mov eax, dword ptr [eax + 0x2d0]
+00419095  6a 01                    push 1
+00419097  6a 00                    push 0
+00419099  50                       push eax
+0041909A  ff 15 34 77 54 00        call dword ptr [0x547734]
+004190A0  8d 4c 24 17              lea ecx, [esp + 0x17]
+004190A4  51                       push ecx
+004190A5  e8 86 69 ff ff           call 0x40fa30
+004190AA  83 c4 04                 add esp, 4
+004190AD  3c 01                    cmp al, 1
+004190AF  75 32                    jne 0x4190e3
+004190B1  8d 54 24 24              lea edx, [esp + 0x24]
+004190B5  52                       push edx
+004190B6  e8 c5 6b ff ff           call 0x40fc80
+004190BB  83 c4 04                 add esp, 4
+004190BE  3c 01                    cmp al, 1
+004190C0  75 21                    jne 0x4190e3
+004190C2  8b bf 84 0c 00 00        mov edi, dword ptr [edi + 0xc84]
+004190C8  8d 74 24 24              lea esi, [esp + 0x24]
+004190CC  e8 7f 54 ff ff           call 0x40e550
+004190D1  8b 44 24 1c              mov eax, dword ptr [esp + 0x1c]
+004190D5  8b 88 84 0c 00 00        mov ecx, dword ptr [eax + 0xc84]
+004190DB  89 88 88 0c 00 00        mov dword ptr [eax + 0xc88], ecx
+004190E1  8b f8                    mov edi, eax
+004190E3  c7 84 24 80 a1 02 00 ff ff ff ff mov dword ptr [esp + 0x2a180], 0xffffffff
+004190EE  8d 53 0c                 lea edx, [ebx + 0xc]
+004190F1  83 c8 ff                 or eax, 0xffffffff
+004190F4  f0 0f c1 02              lock xadd dword ptr [edx], eax
+004190F8  48                       dec eax
+004190F9  85 c0                    test eax, eax
+004190FB  7f 45                    jg 0x419142
+004190FD  8b 0b                    mov ecx, dword ptr [ebx]
+004190FF  8b 11                    mov edx, dword ptr [ecx]
+00419101  8b 42 04                 mov eax, dword ptr [edx + 4]
+00419104  53                       push ebx
+00419105  ff d0                    call eax
+00419107  eb 39                    jmp 0x419142
+00419109  51                       push ecx
+0041910A  8b cc                    mov ecx, esp
+0041910C  89 64 24 1c              mov dword ptr [esp + 0x1c], esp
+00419110  68 a0 47 57 00           push 0x5747a0
+00419115  e8 76 d4 fe ff           call 0x406590
+0041911A  8b b7 b0 08 00 00        mov esi, dword ptr [edi + 0x8b0]
+00419120  81 c6 b0 02 00 00        add esi, 0x2b0
+00419126  e8 15 42 00 00           call 0x41d340
+0041912B  8b 8f b0 08 00 00        mov ecx, dword ptr [edi + 0x8b0]
+00419131  8b 91 d0 02 00 00        mov edx, dword ptr [ecx + 0x2d0]
+00419137  6a 01                    push 1
+00419139  6a 00                    push 0
+0041913B  52                       push edx
+0041913C  ff 15 34 77 54 00        call dword ptr [0x547734]
+00419142  8b 9f 88 0c 00 00        mov ebx, dword ptr [edi + 0xc88]
+00419148  8b b7 a4 08 00 00        mov esi, dword ptr [edi + 0x8a4]
+0041914E  e8 9d b1 fe ff           call 0x4042f0
+00419153  8b bf a0 08 00 00        mov edi, dword ptr [edi + 0x8a0]
+00419159  e8 f2 e9 fe ff           call 0x407b50
+0041915E  8b 8c 24 78 a1 02 00     mov ecx, dword ptr [esp + 0x2a178]
+00419165  64 89 0d 00 00 00 00     mov dword ptr fs:[0], ecx
+0041916C  59                       pop ecx
+0041916D  5f                       pop edi
+0041916E  5e                       pop esi
+0041916F  5b                       pop ebx
+00419170  8b 8c 24 30 a1 02 00     mov ecx, dword ptr [esp + 0x2a130]
+00419177  33 cc                    xor ecx, esp
+00419179  e8 01 68 10 00           call 0x51f97f
+0041917E  8b e5                    mov esp, ebp
+00419180  5d                       pop ebp
+00419181  c3                       ret 

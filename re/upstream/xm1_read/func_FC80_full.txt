@@ -1,0 +1,316 @@
+0040EC80  00 00                    add byte ptr [eax], al
+0040EC82  c3                       ret 
+0040EC83  b8 3c 08 00 00           mov eax, 0x83c
+0040EC88  c3                       ret 
+0040EC89  b8 3d 08 00 00           mov eax, 0x83d
+0040EC8E  c3                       ret 
+0040EC8F  98                       cwde 
+0040EC90  05 4b ff ff ff           add eax, 0xffffff4b
+0040EC95  83 f8 35                 cmp eax, 0x35
+0040EC98  77 a8                    ja 0x40ec42
+0040EC9A  0f b6 90 a4 f0 40 00     movzx edx, byte ptr [eax + 0x40f0a4]
+0040ECA1  ff 24 95 84 f0 40 00     jmp dword ptr [edx*4 + 0x40f084]
+0040ECA8  b8 99 08 00 00           mov eax, 0x899
+0040ECAD  c3                       ret 
+0040ECAE  b8 9a 08 00 00           mov eax, 0x89a
+0040ECB3  c3                       ret 
+0040ECB4  b8 9b 08 00 00           mov eax, 0x89b
+0040ECB9  c3                       ret 
+0040ECBA  b8 9c 08 00 00           mov eax, 0x89c
+0040ECBF  c3                       ret 
+0040ECC0  b8 9d 08 00 00           mov eax, 0x89d
+0040ECC5  c3                       ret 
+0040ECC6  b8 9e 08 00 00           mov eax, 0x89e
+0040ECCB  c3                       ret 
+0040ECCC  b8 9f 08 00 00           mov eax, 0x89f
+0040ECD1  c3                       ret 
+0040ECD2  98                       cwde 
+0040ECD3  3d f3 00 00 00           cmp eax, 0xf3
+0040ECD8  0f 87 64 ff ff ff        ja 0x40ec42
+0040ECDE  0f b6 80 04 f1 40 00     movzx eax, byte ptr [eax + 0x40f104]
+0040ECE5  ff 24 85 dc f0 40 00     jmp dword ptr [eax*4 + 0x40f0dc]
+0040ECEC  b8 fd 08 00 00           mov eax, 0x8fd
+0040ECF1  c3                       ret 
+0040ECF2  b8 fe 08 00 00           mov eax, 0x8fe
+0040ECF7  c3                       ret 
+0040ECF8  b8 04 09 00 00           mov eax, 0x904
+0040ECFD  c3                       ret 
+0040ECFE  b8 05 09 00 00           mov eax, 0x905
+0040ED03  c3                       ret 
+0040ED04  b8 ff 08 00 00           mov eax, 0x8ff
+0040ED09  c3                       ret 
+0040ED0A  b8 00 09 00 00           mov eax, 0x900
+0040ED0F  c3                       ret 
+0040ED10  b8 01 09 00 00           mov eax, 0x901
+0040ED15  c3                       ret 
+0040ED16  b8 02 09 00 00           mov eax, 0x902
+0040ED1B  c3                       ret 
+0040ED1C  b8 03 09 00 00           mov eax, 0x903
+0040ED21  c3                       ret 
+0040ED22  98                       cwde 
+0040ED23  05 8a 13 00 00           add eax, 0x138a
+0040ED28  c3                       ret 
+0040ED29  98                       cwde 
+0040ED2A  83 c0 bf                 add eax, -0x41
+0040ED2D  83 f8 05                 cmp eax, 5
+0040ED30  0f 87 0c ff ff ff        ja 0x40ec42
+0040ED36  ff 24 85 f8 f1 40 00     jmp dword ptr [eax*4 + 0x40f1f8]
+0040ED3D  b8 61 09 00 00           mov eax, 0x961
+0040ED42  c3                       ret 
+0040ED43  b8 62 09 00 00           mov eax, 0x962
+0040ED48  c3                       ret 
+0040ED49  b8 63 09 00 00           mov eax, 0x963
+0040ED4E  c3                       ret 
+0040ED4F  b8 64 09 00 00           mov eax, 0x964
+0040ED54  c3                       ret 
+0040ED55  b8 65 09 00 00           mov eax, 0x965
+0040ED5A  c3                       ret 
+0040ED5B  b8 66 09 00 00           mov eax, 0x966
+0040ED60  c3                       ret 
+0040ED61  98                       cwde 
+0040ED62  05 72 17 00 00           add eax, 0x1772
+0040ED67  c3                       ret 
+0040ED68  b8 f0 0a 00 00           mov eax, 0xaf0
+0040ED6D  c3                       ret 
+0040ED6E  98                       cwde 
+0040ED6F  83 c0 8f                 add eax, -0x71
+0040ED72  83 f8 0e                 cmp eax, 0xe
+0040ED75  0f 87 c7 fe ff ff        ja 0x40ec42
+0040ED7B  ff 24 85 10 f2 40 00     jmp dword ptr [eax*4 + 0x40f210]
+0040ED82  b8 8d 0a 00 00           mov eax, 0xa8d
+0040ED87  c3                       ret 
+0040ED88  b8 8e 0a 00 00           mov eax, 0xa8e
+0040ED8D  c3                       ret 
+0040ED8E  b8 8f 0a 00 00           mov eax, 0xa8f
+0040ED93  c3                       ret 
+0040ED94  b8 90 0a 00 00           mov eax, 0xa90
+0040ED99  c3                       ret 
+0040ED9A  b8 91 0a 00 00           mov eax, 0xa91
+0040ED9F  c3                       ret 
+0040EDA0  b8 92 0a 00 00           mov eax, 0xa92
+0040EDA5  c3                       ret 
+0040EDA6  b8 93 0a 00 00           mov eax, 0xa93
+0040EDAB  c3                       ret 
+0040EDAC  b8 94 0a 00 00           mov eax, 0xa94
+0040EDB1  c3                       ret 
+0040EDB2  b8 95 0a 00 00           mov eax, 0xa95
+0040EDB7  c3                       ret 
+0040EDB8  b8 96 0a 00 00           mov eax, 0xa96
+0040EDBD  c3                       ret 
+0040EDBE  b8 97 0a 00 00           mov eax, 0xa97
+0040EDC3  c3                       ret 
+0040EDC4  b8 98 0a 00 00           mov eax, 0xa98
+0040EDC9  c3                       ret 
+0040EDCA  b8 99 0a 00 00           mov eax, 0xa99
+0040EDCF  c3                       ret 
+0040EDD0  b8 9a 0a 00 00           mov eax, 0xa9a
+0040EDD5  c3                       ret 
+0040EDD6  33 c0                    xor eax, eax
+0040EDD8  c3                       ret 
+0040EDD9  8d 49 00                 lea ecx, [ecx]
+0040EDDC  2d ec 40 00 60           sub eax, 0x600040ec
+0040EDE1  ec                       in al, dx
+0040EDE2  40                       inc eax
+0040EDE3  00 df                    add bh, bl
+0040EDE5  eb 40                    jmp 0x40ee27
+0040EDE7  00 26                    add byte ptr [esi], ah
+0040EDE9  ec                       in al, dx
+0040EDEA  40                       inc eax
+0040EDEB  00 d2                    add dl, dl
+0040EDED  ec                       in al, dx
+0040EDEE  40                       inc eax
+0040EDEF  00 e6                    add dh, ah
+0040EDF1  eb 40                    jmp 0x40ee33
+0040EDF3  00 68 ed                 add byte ptr [eax - 0x13], ch
+0040EDF6  40                       inc eax
+0040EDF7  00 22                    add byte ptr [edx], ah
+0040EDF9  ed                       in eax, dx
+0040EDFA  40                       inc eax
+0040EDFB  00 29                    add byte ptr [ecx], ch
+0040EDFD  ed                       in eax, dx
+0040EDFE  40                       inc eax
+0040EDFF  00 61 ed                 add byte ptr [ecx - 0x13], ah
+0040EE02  40                       inc eax
+0040EE03  00 6e ed                 add byte ptr [esi - 0x13], ch
+0040EE06  40                       inc eax
+0040EE07  00 8f ec 40 00 42        add byte ptr [edi + 0x420040ec], cl
+0040EE0D  ec                       in al, dx
+0040EE0E  40                       inc eax
+0040EE0F  00 00                    add byte ptr [eax], al
+0040EE11  01 02                    add dword ptr [edx], eax
+0040EE13  03 0c 0c                 add ecx, dword ptr [esp + ecx]
+0040EE16  0c 0c                    or al, 0xc
+0040EE18  04 05                    add al, 5
+0040EE1A  0c 0c                    or al, 0xc
+0040EE1C  06                       push es
+0040EE1D  0c 0c                    or al, 0xc
+0040EE1F  0c 0c                    or al, 0xc
+0040EE21  0c 0c                    or al, 0xc
+0040EE23  07                       pop es
+0040EE24  08 0c 09                 or byte ptr [ecx + ecx], cl
+0040EE27  0c 0a                    or al, 0xa
+0040EE29  0c 0c                    or al, 0xc
+0040EE2B  0c 0c                    or al, 0xc
+0040EE2D  0c 0c                    or al, 0xc
+0040EE2F  0c 0b                    or al, 0xb
+0040EE31  8d 49 00                 lea ecx, [ecx]
+0040EE34  14 ec                    adc al, 0xec
+0040EE36  40                       inc eax
+0040EE37  00 1a                    add byte ptr [edx], bl
+0040EE39  ec                       in al, dx
+0040EE3A  40                       inc eax
+0040EE3B  00 20                    add byte ptr [eax], ah
+0040EE3D  ec                       in al, dx
+0040EE3E  40                       inc eax
+0040EE3F  00 fc                    add ah, bh
+0040EE41  eb 40                    jmp 0x40ee83
+0040EE43  00 08                    add byte ptr [eax], cl
+0040EE45  ec                       in al, dx
+0040EE46  40                       inc eax
+0040EE47  00 02                    add byte ptr [edx], al
+0040EE49  ec                       in al, dx
+0040EE4A  40                       inc eax
+0040EE4B  00 0e                    add byte ptr [esi], cl
+0040EE4D  ec                       in al, dx
+0040EE4E  40                       inc eax
+0040EE4F  00 42 ec                 add byte ptr [edx - 0x14], al
+0040EE52  40                       inc eax
+0040EE53  00 00                    add byte ptr [eax], al
+0040EE55  01 02                    add dword ptr [edx], eax
+0040EE57  07                       pop es
+0040EE58  07                       pop es
+0040EE59  07                       pop es
+0040EE5A  07                       pop es
+0040EE5B  07                       pop es
+0040EE5C  07                       pop es
+0040EE5D  07                       pop es
+0040EE5E  07                       pop es
+0040EE5F  07                       pop es
+0040EE60  07                       pop es
+0040EE61  07                       pop es
+0040EE62  07                       pop es
+0040EE63  07                       pop es
+0040EE64  07                       pop es
+0040EE65  07                       pop es
+0040EE66  07                       pop es
+0040EE67  07                       pop es
+0040EE68  07                       pop es
+0040EE69  07                       pop es
+0040EE6A  07                       pop es
+0040EE6B  07                       pop es
+0040EE6C  07                       pop es
+0040EE6D  07                       pop es
+0040EE6E  07                       pop es
+0040EE6F  07                       pop es
+0040EE70  07                       pop es
+0040EE71  07                       pop es
+0040EE72  07                       pop es
+0040EE73  07                       pop es
+0040EE74  07                       pop es
+0040EE75  07                       pop es
+0040EE76  07                       pop es
+0040EE77  07                       pop es
+0040EE78  07                       pop es
+0040EE79  07                       pop es
+0040EE7A  07                       pop es
+0040EE7B  07                       pop es
+0040EE7C  07                       pop es
+0040EE7D  07                       pop es
+0040EE7E  07                       pop es
+0040EE7F  07                       pop es
+0040EE80  07                       pop es
+0040EE81  07                       pop es
+0040EE82  07                       pop es
+0040EE83  07                       pop es
+0040EE84  07                       pop es
+0040EE85  07                       pop es
+0040EE86  07                       pop es
+0040EE87  07                       pop es
+0040EE88  07                       pop es
+0040EE89  07                       pop es
+0040EE8A  07                       pop es
+0040EE8B  07                       pop es
+0040EE8C  07                       pop es
+0040EE8D  07                       pop es
+0040EE8E  07                       pop es
+0040EE8F  07                       pop es
+0040EE90  07                       pop es
+0040EE91  07                       pop es
+0040EE92  07                       pop es
+0040EE93  07                       pop es
+0040EE94  07                       pop es
+0040EE95  07                       pop es
+0040EE96  07                       pop es
+0040EE97  07                       pop es
+0040EE98  07                       pop es
+0040EE99  07                       pop es
+0040EE9A  07                       pop es
+0040EE9B  07                       pop es
+0040EE9C  07                       pop es
+0040EE9D  07                       pop es
+0040EE9E  07                       pop es
+0040EE9F  07                       pop es
+0040EEA0  07                       pop es
+0040EEA1  07                       pop es
+0040EEA2  07                       pop es
+0040EEA3  07                       pop es
+0040EEA4  07                       pop es
+0040EEA5  07                       pop es
+0040EEA6  07                       pop es
+0040EEA7  07                       pop es
+0040EEA8  07                       pop es
+0040EEA9  07                       pop es
+0040EEAA  07                       pop es
+0040EEAB  07                       pop es
+0040EEAC  07                       pop es
+0040EEAD  07                       pop es
+0040EEAE  07                       pop es
+0040EEAF  07                       pop es
+0040EEB0  07                       pop es
+0040EEB1  07                       pop es
+0040EEB2  07                       pop es
+0040EEB3  07                       pop es
+0040EEB4  07                       pop es
+0040EEB5  07                       pop es
+0040EEB6  07                       pop es
+0040EEB7  07                       pop es
+0040EEB8  07                       pop es
+0040EEB9  07                       pop es
+0040EEBA  07                       pop es
+0040EEBB  07                       pop es
+0040EEBC  07                       pop es
+0040EEBD  07                       pop es
+0040EEBE  07                       pop es
+0040EEBF  07                       pop es
+0040EEC0  07                       pop es
+0040EEC1  07                       pop es
+0040EEC2  07                       pop es
+0040EEC3  07                       pop es
+0040EEC4  07                       pop es
+0040EEC5  07                       pop es
+0040EEC6  07                       pop es
+0040EEC7  07                       pop es
+0040EEC8  07                       pop es
+0040EEC9  07                       pop es
+0040EECA  07                       pop es
+0040EECB  07                       pop es
+0040EECC  07                       pop es
+0040EECD  07                       pop es
+0040EECE  07                       pop es
+0040EECF  07                       pop es
+0040EED0  07                       pop es
+0040EED1  07                       pop es
+0040EED2  07                       pop es
+0040EED3  07                       pop es
+0040EED4  07                       pop es
+0040EED5  07                       pop es
+0040EED6  07                       pop es
+0040EED7  07                       pop es
+0040EED8  07                       pop es
+0040EED9  07                       pop es
+0040EEDA  07                       pop es
+0040EEDB  07                       pop es
+0040EEDC  07                       pop es
+0040EEDD  07                       pop es
+0040EEDE  07                       pop es
+0040EEDF  07                       pop es
