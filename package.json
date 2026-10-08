@@ -1,0 +1,16 @@
+{
+  "name": "egg-web-configurator",
+  "version": "1.2.0",
+  "description": "Web-based configurator for Endgame Gear wireless mice (XM2w/OP1w, 4k) over WebHID",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "tsc --noEmit",
+    "dev": "node build.mjs --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "typescript": "^5.9.3"
+  }
+}

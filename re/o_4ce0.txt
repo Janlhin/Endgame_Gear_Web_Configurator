@@ -1,0 +1,158 @@
+0x004CE0  0fb65102               movzx edx, byte ptr [ecx + 2]
+0x004CE4  8810                   mov byte ptr [eax], dl
+0x004CE6  0fb6510a               movzx edx, byte ptr [ecx + 0xa]
+0x004CEA  885001                 mov byte ptr [eax + 1], dl
+0x004CED  0fb6510b               movzx edx, byte ptr [ecx + 0xb]
+0x004CF1  885002                 mov byte ptr [eax + 2], dl
+0x004CF4  0fb65103               movzx edx, byte ptr [ecx + 3]
+0x004CF8  885003                 mov byte ptr [eax + 3], dl
+0x004CFB  0fb65104               movzx edx, byte ptr [ecx + 4]
+0x004CFF  885004                 mov byte ptr [eax + 4], dl
+0x004D02  0fb65107               movzx edx, byte ptr [ecx + 7]
+0x004D06  885005                 mov byte ptr [eax + 5], dl
+0x004D09  0fb65101               movzx edx, byte ptr [ecx + 1]
+0x004D0D  885006                 mov byte ptr [eax + 6], dl
+0x004D10  0fb611                 movzx edx, byte ptr [ecx]
+0x004D13  885007                 mov byte ptr [eax + 7], dl
+0x004D16  0fb6510c               movzx edx, byte ptr [ecx + 0xc]
+0x004D1A  885008                 mov byte ptr [eax + 8], dl
+0x004D1D  0fb6510e               movzx edx, byte ptr [ecx + 0xe]
+0x004D21  885009                 mov byte ptr [eax + 9], dl
+0x004D24  0fb6510f               movzx edx, byte ptr [ecx + 0xf]
+0x004D28  88500a                 mov byte ptr [eax + 0xa], dl
+0x004D2B  0fb65110               movzx edx, byte ptr [ecx + 0x10]
+0x004D2F  88500b                 mov byte ptr [eax + 0xb], dl
+0x004D32  0fb65111               movzx edx, byte ptr [ecx + 0x11]
+0x004D36  88500c                 mov byte ptr [eax + 0xc], dl
+0x004D39  0fb65112               movzx edx, byte ptr [ecx + 0x12]
+0x004D3D  88500d                 mov byte ptr [eax + 0xd], dl
+0x004D40  0fb65114               movzx edx, byte ptr [ecx + 0x14]
+0x004D44  88500e                 mov byte ptr [eax + 0xe], dl
+0x004D47  0fb65115               movzx edx, byte ptr [ecx + 0x15]
+0x004D4B  88500f                 mov byte ptr [eax + 0xf], dl
+0x004D4E  0fb65116               movzx edx, byte ptr [ecx + 0x16]
+0x004D52  885010                 mov byte ptr [eax + 0x10], dl
+0x004D55  0fb65117               movzx edx, byte ptr [ecx + 0x17]
+0x004D59  885011                 mov byte ptr [eax + 0x11], dl
+0x004D5C  0fb65118               movzx edx, byte ptr [ecx + 0x18]
+0x004D60  885012                 mov byte ptr [eax + 0x12], dl
+0x004D63  0fb6511a               movzx edx, byte ptr [ecx + 0x1a]
+0x004D67  885013                 mov byte ptr [eax + 0x13], dl
+0x004D6A  0fb6511b               movzx edx, byte ptr [ecx + 0x1b]
+0x004D6E  885014                 mov byte ptr [eax + 0x14], dl
+0x004D71  0fb6511c               movzx edx, byte ptr [ecx + 0x1c]
+0x004D75  885015                 mov byte ptr [eax + 0x15], dl
+0x004D78  0fb6511d               movzx edx, byte ptr [ecx + 0x1d]
+0x004D7C  885016                 mov byte ptr [eax + 0x16], dl
+0x004D7F  0fb6511e               movzx edx, byte ptr [ecx + 0x1e]
+0x004D83  885017                 mov byte ptr [eax + 0x17], dl
+0x004D86  0fb65120               movzx edx, byte ptr [ecx + 0x20]
+0x004D8A  885018                 mov byte ptr [eax + 0x18], dl
+0x004D8D  0fb65121               movzx edx, byte ptr [ecx + 0x21]
+0x004D91  885019                 mov byte ptr [eax + 0x19], dl
+0x004D94  0fb65122               movzx edx, byte ptr [ecx + 0x22]
+0x004D98  88501a                 mov byte ptr [eax + 0x1a], dl
+0x004D9B  8a4923                 mov cl, byte ptr [ecx + 0x23]
+0x004D9E  88481b                 mov byte ptr [eax + 0x1b], cl
+0x004DA1  c3                     ret 
+0x004DA2  cc                     int3 
+0x004DA3  cc                     int3 
+0x004DA4  cc                     int3 
+0x004DA5  cc                     int3 
+0x004DA6  cc                     int3 
+0x004DA7  cc                     int3 
+0x004DA8  cc                     int3 
+0x004DA9  cc                     int3 
+0x004DAA  cc                     int3 
+0x004DAB  cc                     int3 
+0x004DAC  cc                     int3 
+0x004DAD  cc                     int3 
+0x004DAE  cc                     int3 
+0x004DAF  cc                     int3 
+0x004DB0  0fb611                 movzx edx, byte ptr [ecx]
+0x004DB3  8810                   mov byte ptr [eax], dl
+0x004DB5  0fb65111               movzx edx, byte ptr [ecx + 0x11]
+0x004DB9  885001                 mov byte ptr [eax + 1], dl
+0x004DBC  0fb65106               movzx edx, byte ptr [ecx + 6]
+0x004DC0  885003                 mov byte ptr [eax + 3], dl
+0x004DC3  0fb65105               movzx edx, byte ptr [ecx + 5]
+0x004DC7  885004                 mov byte ptr [eax + 4], dl
+0x004DCA  0fb65104               movzx edx, byte ptr [ecx + 4]
+0x004DCE  885005                 mov byte ptr [eax + 5], dl
+0x004DD1  0fb65107               movzx edx, byte ptr [ecx + 7]
+0x004DD5  885006                 mov byte ptr [eax + 6], dl
+0x004DD8  0fb6510c               movzx edx, byte ptr [ecx + 0xc]
+0x004DDC  885007                 mov byte ptr [eax + 7], dl
+0x004DDF  0fb65114               movzx edx, byte ptr [ecx + 0x14]
+0x004DE3  885008                 mov byte ptr [eax + 8], dl
+0x004DE6  0fb65115               movzx edx, byte ptr [ecx + 0x15]
+0x004DEA  885009                 mov byte ptr [eax + 9], dl
+0x004DED  0fb6510d               movzx edx, byte ptr [ecx + 0xd]
+0x004DF1  88500a                 mov byte ptr [eax + 0xa], dl
+0x004DF4  0fb6510e               movzx edx, byte ptr [ecx + 0xe]
+0x004DF8  88500b                 mov byte ptr [eax + 0xb], dl
+0x004DFB  0fb6510f               movzx edx, byte ptr [ecx + 0xf]
+0x004DFF  88500c                 mov byte ptr [eax + 0xc], dl
+0x004E02  0fb6510a               movzx edx, byte ptr [ecx + 0xa]
+0x004E06  88500d                 mov byte ptr [eax + 0xd], dl
+0x004E09  0fb6510b               movzx edx, byte ptr [ecx + 0xb]
+0x004E0D  88500e                 mov byte ptr [eax + 0xe], dl
+0x004E10  0fb6516e               movzx edx, byte ptr [ecx + 0x6e]
+0x004E14  88500f                 mov byte ptr [eax + 0xf], dl
+0x004E17  0fb6516f               movzx edx, byte ptr [ecx + 0x6f]
+0x004E1B  885010                 mov byte ptr [eax + 0x10], dl
+0x004E1E  0fb65170               movzx edx, byte ptr [ecx + 0x70]
+0x004E22  885011                 mov byte ptr [eax + 0x11], dl
+0x004E25  0fb65171               movzx edx, byte ptr [ecx + 0x71]
+0x004E29  885012                 mov byte ptr [eax + 0x12], dl
+0x004E2C  0fb65172               movzx edx, byte ptr [ecx + 0x72]
+0x004E30  885013                 mov byte ptr [eax + 0x13], dl
+0x004E33  0fb65173               movzx edx, byte ptr [ecx + 0x73]
+0x004E37  885014                 mov byte ptr [eax + 0x14], dl
+0x004E3A  0fb65174               movzx edx, byte ptr [ecx + 0x74]
+0x004E3E  885015                 mov byte ptr [eax + 0x15], dl
+0x004E41  0fb65175               movzx edx, byte ptr [ecx + 0x75]
+0x004E45  885016                 mov byte ptr [eax + 0x16], dl
+0x004E48  0fb65176               movzx edx, byte ptr [ecx + 0x76]
+0x004E4C  885017                 mov byte ptr [eax + 0x17], dl
+0x004E4F  0fb65177               movzx edx, byte ptr [ecx + 0x77]
+0x004E53  885018                 mov byte ptr [eax + 0x18], dl
+0x004E56  0fb65178               movzx edx, byte ptr [ecx + 0x78]
+0x004E5A  885019                 mov byte ptr [eax + 0x19], dl
+0x004E5D  0fb65179               movzx edx, byte ptr [ecx + 0x79]
+0x004E61  88501a                 mov byte ptr [eax + 0x1a], dl
+0x004E64  0fb6517a               movzx edx, byte ptr [ecx + 0x7a]
+0x004E68  88501b                 mov byte ptr [eax + 0x1b], dl
+0x004E6B  0fb6517b               movzx edx, byte ptr [ecx + 0x7b]
+0x004E6F  88501c                 mov byte ptr [eax + 0x1c], dl
+0x004E72  0fb6517c               movzx edx, byte ptr [ecx + 0x7c]
+0x004E76  88501d                 mov byte ptr [eax + 0x1d], dl
+0x004E79  0fb6517d               movzx edx, byte ptr [ecx + 0x7d]
+0x004E7D  88501e                 mov byte ptr [eax + 0x1e], dl
+0x004E80  0fb6517e               movzx edx, byte ptr [ecx + 0x7e]
+0x004E84  88501f                 mov byte ptr [eax + 0x1f], dl
+0x004E87  0fb6517f               movzx edx, byte ptr [ecx + 0x7f]
+0x004E8B  885020                 mov byte ptr [eax + 0x20], dl
+0x004E8E  0fb69180000000         movzx edx, byte ptr [ecx + 0x80]
+0x004E95  885021                 mov byte ptr [eax + 0x21], dl
+0x004E98  0fb69181000000         movzx edx, byte ptr [ecx + 0x81]
+0x004E9F  885022                 mov byte ptr [eax + 0x22], dl
+0x004EA2  0fb65116               movzx edx, byte ptr [ecx + 0x16]
+0x004EA6  885023                 mov byte ptr [eax + 0x23], dl
+0x004EA9  0fb65118               movzx edx, byte ptr [ecx + 0x18]
+0x004EAD  885024                 mov byte ptr [eax + 0x24], dl
+0x004EB0  0fb65119               movzx edx, byte ptr [ecx + 0x19]
+0x004EB4  885025                 mov byte ptr [eax + 0x25], dl
+0x004EB7  0fb6511a               movzx edx, byte ptr [ecx + 0x1a]
+0x004EBB  885026                 mov byte ptr [eax + 0x26], dl
+0x004EBE  0fb6511b               movzx edx, byte ptr [ecx + 0x1b]
+0x004EC2  885027                 mov byte ptr [eax + 0x27], dl
+0x004EC5  0fb6511c               movzx edx, byte ptr [ecx + 0x1c]
+0x004EC9  885028                 mov byte ptr [eax + 0x28], dl
+0x004ECC  0fb6511e               movzx edx, byte ptr [ecx + 0x1e]
+0x004ED0  885029                 mov byte ptr [eax + 0x29], dl
+0x004ED3  0fb6511f               movzx edx, byte ptr [ecx + 0x1f]
+0x004ED7  88502a                 mov byte ptr [eax + 0x2a], dl
+0x004EDA  0fb65120               movzx edx, byte ptr [ecx + 0x20]
+0x004EDE  88                     .byte 0x88
+0x004EDF  50                     push eax

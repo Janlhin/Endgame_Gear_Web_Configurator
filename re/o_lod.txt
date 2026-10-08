@@ -1,0 +1,93 @@
+0x010980  0000                   add byte ptr [eax], al
+0x010982  6a00                   push 0
+0x010984  6a0a                   push 0xa
+0x010986  684e010000             push 0x14e
+0x01098B  50                     push eax
+0x01098C  eb10                   jmp 0x1099e
+0x01098E  6a00                   push 0
+0x010990  6a03                   push 3
+0x010992  8b8ee4060000           mov ecx, dword ptr [esi + 0x6e4]
+0x010998  684e010000             push 0x14e
+0x01099D  51                     push ecx
+0x01099E  ffd7                   call edi
+0x0109A0  803dbd66580001         cmp byte ptr [0x5866bd], 1
+0x0109A7  6a00                   push 0
+0x0109A9  7510                   jne 0x109bb
+0x0109AB  8b96200f0000           mov edx, dword ptr [esi + 0xf20]
+0x0109B1  6a01                   push 1
+0x0109B3  68f1000000             push 0xf1
+0x0109B8  52                     push edx
+0x0109B9  eb0e                   jmp 0x109c9
+0x0109BB  8b86200f0000           mov eax, dword ptr [esi + 0xf20]
+0x0109C1  6a00                   push 0
+0x0109C3  68f1000000             push 0xf1
+0x0109C8  50                     push eax
+0x0109C9  ffd7                   call edi
+0x0109CB  803dbe66580001         cmp byte ptr [0x5866be], 1
+0x0109D2  6a00                   push 0
+0x0109D4  7510                   jne 0x109e6
+0x0109D6  8b8e940f0000           mov ecx, dword ptr [esi + 0xf94]
+0x0109DC  6a01                   push 1
+0x0109DE  68f1000000             push 0xf1
+0x0109E3  51                     push ecx
+0x0109E4  eb0e                   jmp 0x109f4
+0x0109E6  8b96940f0000           mov edx, dword ptr [esi + 0xf94]
+0x0109EC  6a00                   push 0
+0x0109EE  68f1000000             push 0xf1
+0x0109F3  52                     push edx
+0x0109F4  ffd7                   call edi
+0x0109F6  a0bb665800             mov al, byte ptr [0x5866bb]
+0x0109FB  6a00                   push 0
+0x0109FD  3c01                   cmp al, 1
+0x0109FF  7510                   jne 0x10a11
+0x010A01  6a00                   push 0
+0x010A03  8b86f0000000           mov eax, dword ptr [esi + 0xf0]
+0x010A09  684e010000             push 0x14e
+0x010A0E  50                     push eax
+0x010A0F  eb2e                   jmp 0x10a3f
+0x010A11  3c02                   cmp al, 2
+0x010A13  7504                   jne 0x10a19
+0x010A15  6a01                   push 1
+0x010A17  eb1a                   jmp 0x10a33
+0x010A19  3c03                   cmp al, 3
+0x010A1B  7510                   jne 0x10a2d
+0x010A1D  8b96f0000000           mov edx, dword ptr [esi + 0xf0]
+0x010A23  6a02                   push 2
+0x010A25  684e010000             push 0x14e
+0x010A2A  52                     push edx
+0x010A2B  eb12                   jmp 0x10a3f
+0x010A2D  6a03                   push 3
+0x010A2F  3c04                   cmp al, 4
+0x010A31  74d0                   je 0x10a03
+0x010A33  8b8ef0000000           mov ecx, dword ptr [esi + 0xf0]
+0x010A39  684e010000             push 0x14e
+0x010A3E  51                     push ecx
+0x010A3F  ffd7                   call edi
+0x010A41  33d2                   xor edx, edx
+0x010A43  3815c6665800           cmp byte ptr [0x5866c6], dl
+0x010A49  0f95c2                 setne dl
+0x010A4C  8996fc0e0000           mov dword ptr [esi + 0xefc], edx
+0x010A52  0fb705c8665800         movzx eax, word ptr [0x5866c8]
+0x010A59  8986e4040000           mov dword ptr [esi + 0x4e4], eax
+0x010A5F  0fb70dca665800         movzx ecx, word ptr [0x5866ca]
+0x010A66  898e780e0000           mov dword ptr [esi + 0xe78], ecx
+0x010A6C  8bc8                   mov ecx, eax
+0x010A6E  e8edf1ffff             call 0xfc60
+0x010A73  8b8e780e0000           mov ecx, dword ptr [esi + 0xe78]
+0x010A79  0fbfd8                 movsx ebx, ax
+0x010A7C  899ee4040000           mov dword ptr [esi + 0x4e4], ebx
+0x010A82  e8d9f1ffff             call 0xfc60
+0x010A87  0fbfd0                 movsx edx, ax
+0x010A8A  8996780e0000           mov dword ptr [esi + 0xe78], edx
+0x010A90  b8cdcccccc             mov eax, 0xcccccccd
+0x010A95  f7e3                   mul ebx
+0x010A97  8b8664010000           mov eax, dword ptr [esi + 0x164]
+0x010A9D  c1ea03                 shr edx, 3
+0x010AA0  52                     push edx
+0x010AA1  6a01                   push 1
+0x010AA3  6805040000             push 0x405
+0x010AA8  50                     push eax
+0x010AA9  ffd7                   call edi
+0x010AAB  8b                     .byte 0x8b
+0x010AAC  8e5807                 mov ds, word ptr [eax + 7]
+0x010AAF  00                     .byte 0x00

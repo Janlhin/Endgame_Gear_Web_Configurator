@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Endgame Gear Web Configurator</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --line: #e2e5ea; --text: #1c2330;
+    --sub: #6b7484; --acc: #2563eb; --acc-soft: #eaf0fe; --ok: #16a34a;
+    --warn: #d97706; --err: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--card); border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .spacer { flex: 1; }
+  main { max-width: 980px; margin: 20px auto; padding: 0 16px; display: grid; gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+  .card h2 { font-size: 15px; margin: 0 0 14px; color: var(--acc); }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
+  .row label { min-width: 140px; color: var(--sub); font-size: 13px; }
+  .row .val { font-weight: 600; }
+  select, input[type=number] { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; background: #fff; }
+  button { padding: 8px 16px; border: none; border-radius: 7px; background: var(--acc); color: #fff; font-size: 13px; cursor: pointer; }
+  button:hover { filter: brightness(1.08); }
+  button.ghost { background: var(--acc-soft); color: var(--acc); }
+  button.danger { background: var(--err); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; }
+  th { background: #f0f2f6; color: var(--sub); font-weight: 600; }
+  td input { width: 90px; }
+  .status-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; background: var(--acc-soft); color: var(--acc); }
+  .status-pill.off { background: #f1f2f4; color: var(--sub); }
+  .banner { padding: 10px 14px; border-radius: 8px; font-size: 13px; display: none; margin-bottom: 12px; }
+  .banner.warn { display: block; background: #fef3c7; color: #92400e; }
+  .banner.err { display: block; background: #fee2e2; color: #991b1b; }
+  .banner.ok { display: block; background: #dcfce7; color: #166534; }
+  #log { font-family: Consolas, monospace; font-size: 11.5px; background: #10141c; color: #9fd0a0; border-radius: 8px; padding: 12px; max-height: 240px; overflow-y: auto; white-space: pre-wrap; display: none; }
+  .muted { color: var(--sub); font-size: 12px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  a { color: var(--acc); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🖱️ <span data-i18n="appTitle">Endgame Gear 网页版驱动</span></h1>
+  <span id="connState" class="status-pill off" data-i18n="notConnected">未连接</span>
+  <div class="spacer"></div>
+  <select id="langSel" style="width:auto">
+    <option value="zh-CN">简体中文</option>
+    <option value="en">English</option>
+  </select>
+  <button id="btnConnect" data-i18n="connect">连接设备</button>
+  <button id="btnRefresh" class="ghost" disabled data-i18n="refresh">重新读取</button>
+</header>
+<main>
+  <div id="banner" class="banner"></div>
+
+  <section class="card" id="cardInfo" style="display:none">
+    <h2 data-i18n="secInfo">设备信息</h2>
+    <div class="grid2">
+      <div>
+        <div class="row"><label data-i18n="model">型号</label><span class="val" id="iModel">—</span></div>
+        <div class="row"><label data-i18n="mouseFw">鼠标固件</label><span class="val" id="iMouseFw">—</span></div>
+        <div class="row"><label data-i18n="dongleFw">接收器固件</label><span class="val" id="iDongleFw">—</span></div>
+      </div>
+      <div>
+        <div class="row"><label data-i18n="battery">电量</label><span class="val" id="iBattery">—</span></div>
+        <div class="row"><label data-i18n="connMode">连接方式</label><span class="val" id="iConn">—</span></div>
+        <div class="row"><label data-i18n="gen">协议代数</label><span class="val" id="iGen">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="cardSensor" style="display:none">
+    <h2 data-i18n="secSensor">传感器 / CPI</h2>
+    <table>
+      <thead><tr>
+        <th data-i18n="stage">档位</th><th data-i18n="ledColor">LED 颜色</th><th data-i18n="xySplit">XY 独立</th>
+        <th>CPI X</th><th>CPI Y</th>
+      </tr></thead>
+      <tbody id="cpiRows"></tbody>
+    </table>
+    <div class="row" style="margin-top:12px">
+      <label data-i18n="cpiLevels">启用档位数</label>
+      <select id="cpiLevels"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+      <label style="min-width:auto" data-i18n="activeStage">当前档位</label>
+      <select id="cpiActive" style="width:90px"></select>
+      <span class="muted" id="cpiActiveNote"></span>
+    </div>
+    <div class="row">
+      <label data-i18n="lod">抬离距离 (LOD)</label>
+      <select id="lod" style="width:110px"></select>
+      <label style="min-width:auto" data-i18n="glassMode">玻璃面模式</label>
+      <select id="glass" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+      <span class="muted" data-i18n="glassNote">v2 专属；切换时 LOD 编码会随之换算</span>
+    </div>
+    <div class="row">
+      <label data-i18n="angleSnap">角度捕捉</label><select id="angleSnap" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+      <label style="min-width:auto" data-i18n="ripple">波纹控制</label><select id="ripple" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+      <label style="min-width:auto" data-i18n="ledLiftoff">抬离时 LED</label><select id="ledLiftoff" style="width:80px"><option value="1" data-i18n="on">开</option><option value="0" data-i18n="off">关</option></select>
+    </div>
+    <div class="row">
+      <label data-i18n="angleTune">角度调校 (°)</label><input type="number" id="angleTune" min="-30" max="30" step="1" style="width:80px">
+      <span class="muted" data-i18n="angleTuneNote">v2 专属</span>
+    </div>
+    <div class="row"><button id="btnApplySensor" data-i18n="applySensor">应用传感器设置</button></div>
+  </section>
+
+  <section class="card" id="cardPerf" style="display:none">
+    <h2 data-i18n="secPerf">性能 / 电源</h2>
+    <div class="row"><label data-i18n="polling">回报率</label><select id="polling"></select><span class="muted" id="pollNote"></span></div>
+    <div class="row"><label>Motion Sync</label><select id="motionSync" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+    <div class="row"><label data-i18n="slamclick">Slamclick 过滤</label><select id="slamclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+    <div class="row" id="rowV1Jitter"><label data-i18n="jitter">抖动过滤 (v1)</label><select id="jitter" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+    <div class="row" id="rowV2Max"><label data-i18n="maxFps">强制最高传感器 FPS (v2)</label><select id="maxFps" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+    <div class="row" id="rowV2Multi"><label data-i18n="multiclick">多击确认过滤 (v2)</label><select id="multiclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+    <div class="row"><label data-i18n="powerSaving">省电超时 (分钟)</label><select id="powerSaving"></select>
+      <label style="min-width:auto" data-i18n="deepSleep">深度休眠 (分钟)</label><select id="deepSleep"></select></div>
+    <div class="row"><button id="btnApplyPerf" data-i18n="applyPerf">应用性能/电源</button></div>
+  </section>
+
+  <section class="card" id="cardBtns" style="display:none">
+    <h2 data-i18n="secButtons">按键映射与点击过滤</h2>
+    <table>
+      <thead><tr><th data-i18n="button">按键</th><th data-i18n="mapping">映射</th><th data-i18n="clickFilter">点击过滤</th></tr></thead>
+      <tbody id="btnRows"></tbody>
+    </table>
+    <p class="muted" data-i18n="btnReadonly">按键重映射（0x16 双块写）已在协议层实现，暂未开放编辑；点击过滤可单独调整后随“应用性能/电源”下发。</p>
+    <table>
+      <thead><tr><th data-i18n="button">按键</th><th data-i18n="clickFilter">点击过滤</th></tr></thead>
+      <tbody id="filterRows"></tbody>
+    </table>
+  </section>
+
+  <section class="card" id="cardTools" style="display:none">
+    <h2 data-i18n="secTools">配置备份 / 恢复 / 工具</h2>
+    <div class="row">
+      <button id="btnSave" class="ghost" data-i18n="exportCfg">导出配置 (.json)</button>
+      <button id="btnLoad" class="ghost" data-i18n="importCfg">导入配置并写入</button>
+      <input type="file" id="fileLoad" accept=".json" style="display:none">
+      <button id="btnBlob" class="ghost" data-i18n="exportBlob">导出原始 1024B blob (.bin)</button>
+    </div>
+    <div class="row">
+      <button id="btnPair" class="ghost" data-i18n="pair">重新配对接收器</button>
+      <button id="btnReset" class="danger" data-i18n="factoryReset">恢复出厂设置</button>
+    </div>
+    <div class="row"><button id="btnLog" class="ghost" style="background:#eef0f3;color:var(--sub)" data-i18n="toggleLog">显示/隐藏通讯日志</button></div>
+    <div id="log"></div>
+    <p class="muted" data-i18n="persistNote">写入立即持久化（无需保存操作）；0x13 是恢复出厂而非保存，慎用。</p>
+  </section>
+
+  <section class="card" id="cardCredits">
+    <h2 data-i18n="secCredits">致谢与参考</h2>
+    <ul class="muted" style="line-height:1.9; padding-left:18px; margin:0">
+      <li><a href="https://github.com/johanneszab/vole" target="_blank">johanneszab/vole</a> — <span data-i18n="crVole">完整的 USB 配置协议逆向（Ghidra 反汇编 + 44 次抓包 + 真机验证），本工具的协议实现全部基于其 re/PROTOCOL.md。</span></li>
+      <li><a href="https://github.com/stuffz/mouse-battery-monitor" target="_blank">stuffz/mouse-battery-monitor</a> — <span data-i18n="crBattery">电池状态 HID 协议文档。</span></li>
+      <li><a href="https://github.com/gentoocat/XM2we-Unleashed" target="_blank">gentoocat/XM2we-Unleashed</a> — <span data-i18n="crUnleashed">XM2we 直接通信探索。</span></li>
+      <li><a href="https://www.jzab.de/content/linux-configuration-tool-for-endgame-gear-wireless-mice" target="_blank">jzab.de</a> — <span data-i18n="crJzab">Linux 配置工具的先行实践与协议验证。</span></li>
+      <li><a href="https://www.endgamegear.com/" target="_blank">Endgame Gear (Pro Gamersware GmbH)</a> — <span data-i18n="crVendor">硬件本身，以及未混淆、可分析的官方工具。</span></li>
+      <li><span data-i18n="crDisclaimer">本项目为独立开源工具，与 Endgame Gear / Pro Gamersware GmbH 无隶属关系；不修改固件，仅读写用户配置。</span></li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="secNotes">说明与已知限制</h2>
+    <ul class="muted" style="line-height:1.9; padding-left:18px; margin:0">
+      <li data-i18n="noteWebhid">需要 Chrome / Edge 89+（WebHID）。本页通过 HID 特征报告直连设备，不装任何驱动。</li>
+      <li data-i18n="noteModels">支持全部四个无线型号：XM2w 4k / XM2w 4k v2 / OP1w 4k / OP1w 4k v2，有线（USB-C）与无线（4k 接收器）均可。型号由 cmd 0x0E 返回的鼠标 PID 自动识别。</li>
+      <li data-i18n="noteWiredOnly">有线专用型号（XM2we、XM1 系列等）使用另一套未公开协议，暂不支持。</li>
+      <li data-i18n="noteSleep">鼠标深度休眠后读不到配置：动一下鼠标再点“重新读取”。软件会自动发探测命令恢复通道。</li>
+      <li data-i18n="noteWired">有线连接时 0x0D（接收器固件）会返回“不适用”；有线回报率硬件上限 1000 Hz。</li>
+      <li data-i18n="noteV1Stage">v1 的“当前档位”只能用鼠标底部的 CPI 键切换，软件改了也无效（硬件忽略）。</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+/*__BUNDLE__*/
+</script>
+</body>
+</html>
