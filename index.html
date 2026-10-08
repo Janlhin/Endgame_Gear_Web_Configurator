@@ -5,43 +5,189 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Endgame Gear Web Configurator</title>
 <style>
-  :root {
-    --bg: #f5f6f8; --card: #ffffff; --line: #e2e5ea; --text: #1c2330;
-    --sub: #6b7484; --acc: #2563eb; --acc-soft: #eaf0fe; --ok: #16a34a;
-    --warn: #d97706; --err: #dc2626;
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: #f5f6f8;
+  color: #1c2330;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e5ea;
+}
+header h1 {
+  margin: 0;
+  font-size: 18px;
+}
+header .spacer {
+  flex: 1;
+}
+
+main {
+  max-width: 980px;
+  margin: 20px auto;
+  padding: 0 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.card {
+  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 10px;
+}
+.card h2 {
+  margin: 0 0 16px;
+  font-size: 15px;
+  color: #2563eb;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0;
+}
+.row label {
+  min-width: 140px;
+  font-size: 13px;
+  color: #6b7484;
+}
+.row .val {
+  font-weight: 600;
+}
+
+select, input[type=number] {
+  padding: 6px 8px;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid #e2e5ea;
+  border-radius: 6px;
+}
+
+button {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: #fff;
+  cursor: pointer;
+  background: #2563eb;
+  border: none;
+  border-radius: 7px;
+}
+button:hover {
+  filter: brightness(1.08);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button.ghost {
+  color: #2563eb;
+  background: #eaf0fe;
+}
+button.danger {
+  background: #dc2626;
+}
+
+table {
+  width: 100%;
+  font-size: 13px;
+  border-collapse: collapse;
+}
+table th, table td {
+  padding: 7px 9px;
+  text-align: left;
+  border: 1px solid #e2e5ea;
+}
+table th {
+  font-weight: 600;
+  color: #6b7484;
+  background: #f0f2f6;
+}
+table td input {
+  width: 90px;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: #2563eb;
+  background: #eaf0fe;
+  border-radius: 99px;
+}
+.status-pill.off {
+  color: #6b7484;
+  background: #f0f2f6;
+}
+
+.banner {
+  display: none;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  border-radius: 7px;
+}
+.banner.warn {
+  display: block;
+  background-color: #fef3c7;
+  color: #92400e;
+}
+.banner.err {
+  display: block;
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+.banner.ok {
+  display: block;
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+#log {
+  display: none;
+  max-height: 240px;
+  padding: 12px;
+  overflow-y: auto;
+  font-family: Consolas, monospace;
+  font-size: 11.5px;
+  color: #9fd0a0;
+  white-space: pre-wrap;
+  background: #10141c;
+  border-radius: 7px;
+}
+
+.muted {
+  font-size: 12px;
+  color: #6b7484;
+}
+
+a {
+  color: #2563eb;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 760px) {
+  .grid2 {
+    grid-template-columns: 1fr;
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
-  header { background: var(--card); border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  header h1 { font-size: 18px; margin: 0; }
-  header .spacer { flex: 1; }
-  main { max-width: 980px; margin: 20px auto; padding: 0 16px; display: grid; gap: 16px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
-  .card h2 { font-size: 15px; margin: 0 0 14px; color: var(--acc); }
-  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0; }
-  .row label { min-width: 140px; color: var(--sub); font-size: 13px; }
-  .row .val { font-weight: 600; }
-  select, input[type=number] { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; background: #fff; }
-  button { padding: 8px 16px; border: none; border-radius: 7px; background: var(--acc); color: #fff; font-size: 13px; cursor: pointer; }
-  button:hover { filter: brightness(1.08); }
-  button.ghost { background: var(--acc-soft); color: var(--acc); }
-  button.danger { background: var(--err); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; }
-  th { background: #f0f2f6; color: var(--sub); font-weight: 600; }
-  td input { width: 90px; }
-  .status-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; background: var(--acc-soft); color: var(--acc); }
-  .status-pill.off { background: #f1f2f4; color: var(--sub); }
-  .banner { padding: 10px 14px; border-radius: 8px; font-size: 13px; display: none; margin-bottom: 12px; }
-  .banner.warn { display: block; background: #fef3c7; color: #92400e; }
-  .banner.err { display: block; background: #fee2e2; color: #991b1b; }
-  .banner.ok { display: block; background: #dcfce7; color: #166534; }
-  #log { font-family: Consolas, monospace; font-size: 11.5px; background: #10141c; color: #9fd0a0; border-radius: 8px; padding: 12px; max-height: 240px; overflow-y: auto; white-space: pre-wrap; display: none; }
-  .muted { color: var(--sub); font-size: 12px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
-  a { color: var(--acc); }
+}
 </style>
 </head>
 <body>

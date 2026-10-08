@@ -1,0 +1,207 @@
+// ============================================================
+// Endgame Gear 网页版驱动 — 样式源文件（SCSS）
+//
+// 约定（项目强制）：样式一律在本目录维护，构建时由 sass 编译后内联进
+// index.html。**不要在 index.template.html 里直接写 <style>** ——
+// 模板只保留一个占位符 /*__STYLES__*/。
+//
+// 目录：
+//   _tokens.scss   设计令牌（颜色/间距/圆角/断点）
+//   _mixins.scss   混入与工具函数
+//   main.scss      组件与元素样式，@use 上面两者
+// ============================================================
+
+@use "sass:map";
+@use "tokens" as *;
+@use "mixins" as *;
+
+// ---------- 基础 ----------
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: $font-stack;
+  background: $bg;
+  color: $text;
+}
+
+// ---------- 页头 ----------
+header {
+  display: flex;
+  align-items: center;
+  gap: $gap-md;
+  flex-wrap: wrap;
+  padding: $gap-sm $gap-lg;
+  background: $card;
+  border-bottom: 1px solid $line;
+
+  h1 {
+    margin: 0;
+    font-size: $fs-lg;
+  }
+
+  .spacer { flex: 1; }
+}
+
+// ---------- 主体栅格 ----------
+main {
+  max-width: $max-width;
+  margin: $gap-lg auto;
+  padding: 0 $gap-md;
+  display: grid;
+  gap: $gap-md;
+}
+
+// ---------- 卡片 ----------
+.card {
+  padding: $gap-md $gap-lg;
+  background: $card;
+  border: 1px solid $line;
+  border-radius: $radius-lg;
+
+  h2 {
+    margin: 0 0 $gap-md;
+    font-size: $fs-md;
+    color: $acc;
+  }
+}
+
+// ---------- 行与表单 ----------
+.row {
+  display: flex;
+  align-items: center;
+  gap: $gap-sm;
+  flex-wrap: wrap;
+  margin: $gap-xs 0;
+
+  label {
+    min-width: $label-min;
+    font-size: $fs-sm;
+    color: $sub;
+  }
+
+  .val { font-weight: 600; }
+}
+
+select, input[type="number"] {
+  padding: 6px 8px;
+  font-size: $fs-sm;
+  background: #fff;
+  border: 1px solid $line;
+  border-radius: $radius-sm;
+}
+
+// ---------- 按钮 ----------
+button {
+  padding: 8px 16px;
+  font-size: $fs-sm;
+  color: #fff;
+  cursor: pointer;
+  background: $acc;
+  border: none;
+  border-radius: $radius-md;
+
+  &:hover { filter: brightness(1.08); }
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  &.ghost {
+    color: $acc;
+    background: $acc-soft;
+  }
+
+  &.danger { background: $err; }
+}
+
+// ---------- 表格 ----------
+table {
+  width: 100%;
+  font-size: $fs-sm;
+  border-collapse: collapse;
+
+  th, td {
+    padding: 7px 9px;
+    text-align: left;
+    border: 1px solid $line;
+  }
+
+  th {
+    font-weight: 600;
+    color: $sub;
+    background: $surface-2;
+  }
+
+  td input { width: 90px; }
+}
+
+// ---------- 状态胶囊 ----------
+.status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: $fs-xs;
+  color: $acc;
+  background: $acc-soft;
+  border-radius: $radius-pill;
+
+  &.off {
+    color: $sub;
+    background: $surface-2;
+  }
+}
+
+// ---------- 横幅提示 ----------
+.banner {
+  display: none;
+  margin-bottom: $gap-sm;
+  padding: 10px 14px;
+  font-size: $fs-sm;
+  border-radius: $radius-md;
+
+  // 三种语义色：各自给出背景与前景。
+  // 用 map 而非逗号元组 —— @each 里的 (a, b, c) 逗号列表会被 Dart Sass
+  // 当成一个整体值解构不掉，编译出 `background: c1, c2` 这种非法 CSS。
+  $variants: (
+    "warn": (bg: #fef3c7, fg: #92400e),
+    "err":  (bg: #fee2e2, fg: #991b1b),
+    "ok":   (bg: #dcfce7, fg: #166534),
+  );
+  @each $cls, $c in $variants {
+    &.#{$cls} {
+      display: block;
+      background-color: map.get($c, bg);
+      color: map.get($c, fg);
+    }
+  }
+}
+
+// ---------- 通讯日志 ----------
+#log {
+  display: none;
+  max-height: 240px;
+  padding: 12px;
+  overflow-y: auto;
+  font-family: $font-mono;
+  font-size: 11.5px;
+  color: #9fd0a0;
+  white-space: pre-wrap;
+  background: #10141c;
+  border-radius: $radius-md;
+}
+
+// ---------- 杂项 ----------
+.muted {
+  font-size: $fs-xs;
+  color: $sub;
+}
+
+a { color: $acc; }
+
+// 两列网格：窄屏折叠为一列
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $gap-md;
+
+  @include below($bp-md) {
+    grid-template-columns: 1fr;
+  }
+}

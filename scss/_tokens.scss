@@ -1,0 +1,48 @@
+// 设计令牌：所有颜色/间距/字号集中在此，改主题只改这里。
+// 注意：颜色目前是浅色主题（跟随系统）。若后续引入深色主题，
+// 在此处加一组 [data-theme="dark"] 覆盖即可，组件样式无需改动。
+
+// ---------- 颜色 ----------
+$bg:        #f5f6f8;
+$card:      #ffffff;
+$surface-2: #f0f2f6;   // 表头 / 次级面
+$surface-3: #eef0f3;   // 中性按钮
+$line:      #e2e5ea;
+
+$text:      #1c2330;
+$sub:       #6b7484;   // 次要文字
+
+$acc:       #2563eb;
+$acc-soft:  #eaf0fe;
+
+$ok:        #16a34a;
+$warn:      #d97706;
+$err:       #dc2626;
+
+// ---------- 间距 ----------
+$gap-xs: 4px;
+$gap-sm: 8px;
+$gap-md: 16px;
+$gap-lg: 20px;
+
+$max-width: 980px;
+$label-min: 140px;   // .row label 的最小宽度
+
+// ---------- 字号 ----------
+$fs-xs: 12px;
+$fs-sm: 13px;
+$fs-md: 15px;
+$fs-lg: 18px;
+
+// ---------- 圆角 ----------
+$radius-sm:  6px;
+$radius-md:  7px;
+$radius-lg:  10px;
+$radius-pill: 99px;
+
+// ---------- 字体 ----------
+$font-stack: "Segoe UI", "Microsoft YaHei", sans-serif;
+$font-mono:  Consolas, monospace;
+
+// ---------- 断点 ----------
+$bp-md: 760px;

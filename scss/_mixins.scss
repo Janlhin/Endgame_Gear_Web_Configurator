@@ -1,0 +1,26 @@
+// 混入与工具函数
+
+/// 媒体查询：小于某断点时应用（移动优先，取 max-width）
+@mixin below($breakpoint) {
+  @media (max-width: $breakpoint) {
+    @content;
+  }
+}
+
+/// 向上取整的像素值（避免子像素抖动，背景图/边框用）
+@function snap($value) {
+  @return round($value);
+}
+
+/// 去除最后一个分隔符（拼接类名时用）
+@function join($list, $sep: ", ") {
+  $out: "";
+  @for $i from 1 through length($list) {
+    @if $i == 1 {
+      $out: nth($list, $i);
+    } @else {
+      $out: $out + $sep + nth($list, $i);
+    }
+  }
+  @return $out;
+}

@@ -1,0 +1,1023 @@
+000079AD  jjjj
+000154FA  jjjh
+0001898B  jjjj
+00019269  jjjj
+000193A1  jjjj
+0001A842  jjjj
+0001C70C  jjjjjjj
+0001DA51  jjjj
+0001FAD6  jjjjjjj
+00076049  Tjjh
+0011FB15  jjjjj
+001469B2  PStatic
+001469C4  Button
+00146AB0  AfxWnd100su
+00146AC8  AfxControlBar100su
+00146AF0  AfxMDIFrame100su
+00146B14  AfxFrameOrView100su
+00146B3C  AfxOleControl100su
+00146B64  AfxOldWndProc423
+00146BAC  accParent
+00146BC0  accChildCount
+00146BDC  accChild
+00146BF0  accName
+00146C00  accValue
+00146C14  accDescription
+00146C34  accRole
+00146C44  accState
+00146C58  accHelp
+00146C68  accHelpTopic
+00146C84  accKeyboardShortcut
+00146CAC  accFocus
+00146CC0  accSelection
+00146CDC  accDefaultAction
+00146D00  accSelect
+00146D14  accLocation
+00146D2C  accNavigate
+00146D44  accHitTest
+00146D5C  accDoDefaultAction
+00146FDE  wuser32.dll
+001470CC  hhctrl.ocx
+001471E4  #32768
+001471F8  f:\dd\vctools\vc7libs\ship\atlmfc\include\afxwin2.inl
+00147588  Afx:%p:%x:%p:%p:%p
+001475B0  Afx:%p:%x
+001475C4  commctrl_DragListMsg
+001475F8  %I64d
+001477B2  PEdit
+00147EBA  Bcomctl32.dll
+00147EDE  Bcomdlg32.dll
+00147F02  Bshell32.dll
+001483C4  kernel32.dll
+00148456  Bf:\dd\vctools\vc7libs\ship\atlmfc\src\mfc\filecore.cpp
+001484E6  Bf:\dd\vctools\vc7libs\ship\atlmfc\src\mfc\array_s.cpp
+001485F0  commdlg_SetRGBColor
+00148618  commdlg_help
+00148634  commdlg_ColorOK
+00148654  commdlg_FileNameOK
+0014867C  commdlg_ShareViolation
+001486AC  commdlg_LBSelChangedNotify
+00148786  C*.*
+001487EA  pSettings
+00148800  PreviewPages
+001488A0  Software\Microsoft\Windows\CurrentVersion\Policies\Explorer
+00148918  NoRun
+00148924  NoDrives
+00148938  RestrictRun
+00148950  NoNetConnectDisconnect
+00148980  NoRecentDocsHistory
+001489A8  NoClose
+001489B8  Software\Microsoft\Windows\CurrentVersion\Policies\Network
+00148A30  NoEntireNetwork
+00148A50  Software\Microsoft\Windows\CurrentVersion\Policies\Comdlg32
+00148AC8  NoPlacesBar
+00148AE0  NoBackButton
+00148AFC  NoFileMru
+00148B50  KERNEL32.DLL
+00148BD0  %s%s.dll
+00148D00  f:\dd\vctools\vc7libs\ship\atlmfc\src\mfc\appcore.cpp
+00148D78  RestartByRestartManager
+00148DA8  %08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X
+00148E7A  AAFX_WM_ON_AFTER_SHELL_COMMAND
+00148ED0  Advapi32.dll
+00148F02  Wsoftware
+00148FD6  WSoftware\Classes\
+00148FFC  Software\
+00149082  RUNLINK
+00149094  DELETE
+001490A4  LINK
+001490B8  HEAD
+001490CC  POST
+001492BE  Ctooltips_class32
+00149458  STATIC
+001495D2  GBUTTON
+00149752  GLISTBOX
+001498E6  CCOMBOBOX
+00149A76  GEDIT
+00149BEA  KSCROLLBAR
+00149DB8  mfcm100u.dll
+00149DD8  f:\dd\vctools\vc7libs\ship\atlmfc\src\mfc\auxdata.cpp
+00149EA8  dwmapi.dll
+00149F14  UxTheme.dll
+00149F46  eShell32.dll
+00149F60  %s:%x:%x:%x:%x
+0014A03C  Tahoma
+0014A04C  Segoe UI
+0014A060  MS Sans Serif
+0014A07C  Marlett
+0014A142  Ccombobox
+0014A1AA  AMFCVSListBox
+0014A1C8  MFCShellTree
+0014A1E4  SysTreeView32
+0014A200  MFCShellList
+0014A21C  SysListView32
+0014A238  MFCPropertyGrid
+0014A258  MFCMenuButton
+0014A274  MFCMaskedEdit
+0014A290  MFCLink
+0014A2A0  MFCFontComboBox
+0014A2C0  ComboBox
+0014A2D4  MFCEditBrowse
+0014A2F0  MFCColorButton
+0014A310  MFCButton
+0014A324  TRUE
+0014A330  System
+0014A3A4  .INI
+0014A3B0  .HLP
+0014A3BC  .CHM
+0014A66C  SHELL32.DLL
+0014A688  %08lX%04X%04x%02X%02X%02X%02X%02X%02X%02X%02X
+0014ADA2  EOriginalItems
+0014ADC0  OrigResetItems
+0014AE0E  EAfx:ToolBar
+0014AE28  Buttons
+0014AE38  %sMFCToolBar-%d%x
+0014AE5C  %sMFCToolBar-%d
+0014AE7C  LargeIcons
+0014AE94  %sMFCToolBarParameters
+0014B700  MFCToolBars
+0014B718  TOOLBAR_POPUPMENU
+0014B73C  TOOLBAR_CUSTOMIZE
+0014B760  TOOLBAR_CREATE
+0014B780  TOOLBAR_DELETE
+0014B7A0  TOOLBAR_CUSTOMIZEHELP
+0014B7CC  TOOLBAR_RESETTOOLBAR
+0014B7F8  TOOLBAR_RESETMENU
+0014B81C  TOOLBAR_SHOWREGULARMENU
+0014B84C  TOOLBAR_RESETCONTEXTMENU
+0014B880  TOOLBAR_RESETKEYBAORD
+0014B8AC  TOOLBAR_RESETRPROMPT
+0014BCA0  &%d %s
+0014BCB0  Recent File
+0014C39E  KMenuShowDelay
+0014C3BC  Control Panel\Desktop
+0014C528  UserToolsManager
+0014C54C  Tools
+0014C564  %2\CLSID
+0014C57C  %2\Insertable
+0014C5A0  %2\protocol\StdFileEditing\verb\0
+0014C5E4  &Edit
+0014C5F0  %2\protocol\StdFileEditing\server
+0014C63C  CLSID\%1
+0014C654  CLSID\%1\ProgID
+0014C680  CLSID\%1\InprocHandler32
+0014C6B2  ole32.dll
+0014C6C8  CLSID\%1\LocalServer32
+0014C6FC  CLSID\%1\Verb\0
+0014C71C  &Edit,0,2
+0014C730  CLSID\%1\Verb\1
+0014C750  &Open,0,2
+0014C764  CLSID\%1\Insertable
+0014C790  CLSID\%1\AuxUserType\2
+0014C7C4  CLSID\%1\AuxUserType\3
+0014C7F8  CLSID\%1\DefaultIcon
+0014C822  %3,%7
+0014C830  CLSID\%1\MiscStatus
+0014C860  CLSID\%1\InProcServer32
+0014C898  CLSID\%1\DocObject
+0014C8C4  %2\DocObject
+0014C8E4  CLSID\%1\Printable
+0014C910  CLSID\%1\DefaultExtension
+0014C944  %9, %8
+0014CB10  ToolbarWindow32
+0014CF5C  DWMAPI
+0014D2C8  AFX_SUPERBAR_TAB
+0014DAA0  USER32.DLL
+0014E610  PROGRESS
+0014E624  STATUS
+0014E634  CONTEXT
+0014E64C  BOTTOM
+0014E664  PANEL
+0014E670  CATEGORY
+0014E684  HEADER
+0014E694  GROUP
+0014E6A0  IMAGE
+0014E6AC  TOOLBAR
+0014E6BC  MENU
+0014E6C8  BORDER
+0014E6D8  TOOLTIP
+0014E6E8  VERSION
+0014E6F8  STYLE
+0014E782  FTRACKBAR
+0014E798  SPIN
+0014E7A4  TASKBAR
+0014E7B4  TASKBAND
+0014E7C8  STARTPANEL
+0014E7E0  TREEVIEW
+0014E7F4  EXPLORERBAR
+0014E80C  REBAR
+0014E818  WINDOW
+0014EB68  %d%%
+0014EB78  royale
+0014EB88  metallic
+0014EB9C  homestead
+0014EBB0  normalcolor
+0014EBC8  Aero
+0014EBD4  Luna
+0014EBE0  AFX_WM_CHANGEVISUALMANAGER
+0014EC18  KeyboardManager
+0014EC3E  FToolBars
+0014EC76  FAFX
+0014EEEE  FAfx:MiniFrame
+0014EF0C  DUMMY
+0014F298  MSG_CHECKEMPTYMINIFRAME
+0014F39A  GDockingPaneAndPaneDividers
+0014F3D4  %sDockingManager-%d
+0014F3FC  DockingManagers
+0014F636  GModified
+0014F64C  Type
+0014F658  Size
+0014F668  MFCShellListCtrl_EnableShellContextMenu
+0014F788  AFX_WM_CHANGE_CURRENT_FOLDER
+0014F7C4  GRADIENT_ANGLE
+0014F7E4  COLOR_BORDER
+0014F800  COLOR_TEXT
+0014F818  COLOR_FILLGRADIENT
+0014F840  COLOR_FILL
+0014F858  BOLD_LABEL
+0014F870  ROUNDED_CORNERS
+0014F890  MAX_DESC_WIDTH
+0014F8B0  DRAW_SEPARATOR
+0014F8D0  DRAW_DESCRIPTION
+0014F8F4  DRAW_ICON
+0014F908  BALLON
+0014F918  PREMLTCHECK
+0014F930  TRANSPARENT
+0014F948  INTERIOR
+0014F95C  SIDES
+0014F968  CORNERS
+0014F978  WEIGHT
+0014F988  QUALITY
+0014F998  CHARSET
+0014F9A8  FACENAME
+0014F9BC  FALSE
+0014F9C8  RIGHTBOTTOM
+0014F9E0  RIGHTTOP
+0014F9F4  LEFTBOTTOM
+0014FA0C  LEFTTOP
+0014FA1C  RIGHT
+0014FA28  LEFT
+0014FA34  HEIGHT
+0014FA44  WIDTH
+0014FA50  OFFSET
+0014FA60  RECT
+0014FA6C  SIZE
+0014FA78  POINT
+0014FDA6  G...
+00150358  MFCVSListbox_DownButton
+00150388  MFCVSListbox_UpButton
+001503B4  MFCVSListbox_RemoveButton
+001503E8  MFCVSListbox_NewButton
+00150418  MFCVSListbox_BrowseButton
+00150818  MFCShellTreeCtrl_EnableShellContextMenu
+00150C0E  EValue
+00150C1C  Property
+00150C30  Afx:PropList
+00150C4C  MFCPropertyGrid_VSDotNetLook
+00150C88  MFCPropertyGrid_ModifiedProperties
+00150CD0  MFCPropertyGrid_AlphabeticMode
+00150D10  MFCPropertyGrid_HeaderCtrl
+00150D48  MFCPropertyGrid_DescriptionRows
+00150D88  MFCPropertyGrid_DescriptionArea
+00150F82  GFalse
+00150F90  True
+00151350  PropertyList
+0015137C  AFX_WM_PROPERTYCHANGED
+00151572  GMFCMenuButton_Autosize
+001515A4  MFCMenuButton_DefaultClick
+001515DC  MFCMenuButton_StayPressed
+00151610  MFCMenuButton_RightArrow
+00151644  MFCMenuButton_OSMenu
+001518CE  GMFCMaskedEdit_ValidChars
+00151904  MFCMaskedEdit_DefaultChar
+00151938  MFCMaskedEdit_InputTemplate
+00151970  MFCMaskedEdit_Mask
+00151998  MFCMaskedEdit_SelectByGroup
+00151CDA  HMFCLink_Tooltip
+00151CFC  MFCLink_FullTextTooltip
+00151D2C  MFCLink_UrlPrefix
+00151D50  MFCLink_Url
+00151F3E  AMFCComboBox_ShowDeviceTypeFonts
+00151F80  MFCComboBox_ShowRasterTypeFonts
+00151FC0  MFCComboBox_ShowTrueTypeFonts
+00151FFC  MFCComboBox_DrawUsingFont
+00152250  MFCEditBrowse_Mode
+001523B8  *?<>|
+0015259E  AMFCColorButton_ColumnsCount
+001525D8  Automatic
+001525F0  MFCColorButton_EnableAutomaticButton
+0015263C  Other
+00152648  MFCColorButton_EnableOtherButton
+001528FE  HMFCButton_ImageOnRight
+00152930  MFCButton_ImageOnTop
+0015295C  MFCButton_ImageID
+00152980  MFCButton_ImageType
+001529A8  MFCButton_CursorType
+001529D4  MFCButton_FullTextTool
+00152A04  MFCButton_Tooltip
+00152A28  MFCButton_Autosize
+00152A50  MFCButton_Style
+00152D00  COMCTL32.DLL
+00152DFA  HRichEdit Text and Objects
+00152E30  Rich Text Format
+00152E54  FileNameW
+00152E68  FileName
+00152E7C  Link Source Descriptor
+00152EAC  Object Descriptor
+00152ED0  Link Source
+00152EE8  Embed Source
+00152F04  Embedded Object
+00152F24  ObjectLink
+00152F3C  OwnerLink
+00152F50  Native
+001533FA  APNG
+001534E2  KToolbarButton%p
+0015350C  Press
+00153998  PinState
+001539AC  MRUWidth
+001539C0  IsFloating
+001539D8  RecentRowIndex
+001539F8  RecentFrameAlignment
+00153A24  RectRecentDocked
+00153A48  RectRecentFloat
+00153A70  %sPane-%d%x
+00153A88  %sPane-%d
+00153A9C  Afx:ControlBar
+00153ABC  Panes
+00153AC8  AFX_WM_UPDATETOOLTIPS
+00153E92  IOpen
+00153EA0  Execute
+00153EB0  CMFCToolBarMenuButton
+00154AC8  ControlPane
+00154AE0  IsVisible
+00154AF4  %sBasePane-%d%x
+00154B14  %sBasePane-%d
+00154B30  BasePanes
+00154B5A  IControlBars-TearOff
+00154B84  AFX_WM_POSTSETPREVIEWFRAME
+00154FF8  Afx:DockPane
+001554DA  JAfx:TabWnd
+001556C8  AFX_WM_ON_HSCROLL
+001556EC  AFX_WM_GETDRAGBOUNDS
+00155718  AFX_WM_ON_DRAGCOMPLETE
+00155748  AFX_WM_ON_TABGROUPMOUSEMOVE
+00155780  AFX_WM_ON_CANCELTABMOVE
+001557B0  AFX_WM_ON_MOVETABCOMPLETE
+00155A38  f:\dd\vctools\vc7libs\ship\atlmfc\src\mfc\winfrm.cpp
+00155AA4  ReBarWindow32
+0015652E  AAFX_WM_ON_RENAME_TAB
+0015655C  AFX_WM_ONCHANGE_ACTIVE_TAB
+00156594  AFX_WM_ON_MOVE_TAB
+001565BC  AFX_WM_ON_CHANGING_ACTIVE_TAB
+001565F8  AFX_WM_ON_GET_TAB_TOOLTIP
+00156A0A  KDragDelay
+00156A20  windows
+00156A30  DragMinDist
+00156BB2  KMenuCommand
+00156BCC  MenuPopup
+00156D20  \ControlBars
+00156D3C  WindowPlacement
+00156D5C  MainWindowRect
+00156D7C  Flags
+00156D88  ShowCmd
+00156D98  \SizingBars
+00156DB0  ControlBarVersion
+00156DD4  Major
+00156DE0  Minor
+00156E72  KSOFTWARE\
+001574A0  MenuBar
+00158084  Alt, 
+0015850C  Can't create context menu!
+0015879E  K%c%d%c%s
+001587EA  AContextMenuManager
+00158DB2  Lmdiclient
+00159234  MDITabsState
+00159250  %sMDIClientArea-%d
+001593D0  MDIClientArea
+001593EC  AFX_WM_ON_MOVETOTABGROUP
+001595C0  f:\dd\vctools\vc7libs\ship\atlmfc\src\mfc\viewcore.cpp
+0015A528  f:\dd\vctools\vc7libs\ship\atlmfc\src\mfc\oleipfrm.cpp
+0015AA56  LAFX_WM_POSTRECALCLAYOUT
+0015AA88  AFX_WM_ON_CHANGE_RIBBON_CATEGORY
+0015AACC  AFX_WM_ON_RIBBON_CUSTOMIZE
+0015AB08  AFX_WM_ON_HIGHLIGHT_RIBBON_LIST_ITEM
+0015AB58  AFX_WM_ON_BEFORE_SHOW_RIBBON_ITEM_MENU
+0015ABA8  MFCRibbons
+0015AFF8  Afx:Slider
+0015B618  AFX_WM_ON_PRESS_CLOSE_BUTTON
+0015B654  WINDOW_HELP
+0015D3FA  KHex={%02X,%02X,%02X}
+0015D686  FBack
+0015D694  Forward
+0015D6A4  Other Tasks Pane
+0015D718  %c%c
+0015DB7A  MSwitch
+0015E762  M   
+0015E76C  DoubleClick
+0015EA7E  Ngroup
+0015EDF4  Caption Bar
+0015FDAE  APause
+001616CE  G%sMFCOutlookBar-%d%x
+001616FC  %sMFCOutlookBar-%d
+00161724  MFCOutlookBars
+00161744  MFCOutlookCustomPages
+00161A46  l + 
+00161AF8  msctls_updown32
+00161C82  OSysHeader32
+00161ED0  f:\dd\vctools\vc7libs\ship\atlmfc\src\mfc\winctrl2.cpp
+001631A0  BarName
+001631B0  %sDockablePaneAdapter-%d%x
+001631E8  %sDockablePaneAdapter-%d
+001633D6  P    
+0016461E  PDragScrollInterval
+00164648  DragScrollDelay
+00164668  DragScrollInset
+001646F6  Pf:\dd\vctools\vc7libs\ship\atlmfc\src\mfc\oledrop2.cpp
+00164788  AfxClosePending
+0016536E  P????
+0016572E  PMouse
+0016573C  MouseManager
+00165E20  f:\dd\vctools\vc7libs\ship\atlmfc\src\mfc\olestrm.cpp
+00165F12  PRebar-%ld
+001669FC  RibbonBar
+00166A10  Category_Main
+00166A2C  Context
+00166A3C  Category
+00166A50  Panel
+00166A5C  Group
+00166A68  Separator
+00166A7C  Progress
+00166A90  Slider
+00166AA0  ComboBox_Font
+00166ABC  Label
+00166AC8  Button_Launch
+00166AE4  Button_Main_Panel
+00166B08  Button_Main
+00166B20  Button_LinkCtrl
+00166B40  Button_Gallery
+00166B60  Button_Undo
+00166B78  Button_Color
+00166B94  Button_Check
+00166BB0  IMAGE_LARGE
+00166BC8  IMAGE_SMALL
+00166BE0  CATEGORY_MAIN
+00166BFC  BUTTON_LAUNCH
+00166C18  TAB_ELEMENTS
+00166C34  QAT_ELEMENTS
+00166C50  BUTTON_MAIN
+00166C68  GROUPS
+00166C78  CONTEXTS
+00166C8C  CATEGORIES
+00166CA4  PANELS
+00166CB4  ITEMS
+00166CC0  ITEM
+00166CCC  ELEMENTS_EXTENDED
+00166CF0  ELEMENTS
+00166D04  ELEMENT
+00166D14  ELEMENT_NAME
+00166D30  RECENT_FILE_LIST
+00166D54  INFINITE
+00166D68  VISIBLE
+00166D78  LABEL
+00166D84  ENABLE_DRAWUSINGFONT
+00166DB0  ENABLE_PRINTPREVIEW
+00166DD8  ENABLE_KEYS
+00166DF0  ENABLE_TOOLTIPS_DESCRIPTION
+00166E28  ENABLE_TOOLTIPS
+00166E48  ENABLE
+00166E58  CENTER_COLUMN_VERT
+00166E80  JUSTIFY_COLUMNS
+00166EA0  QAT_TOP
+00166EB0  ALMOST_LARGE_TEXT
+00166ED4  HORIZ
+00166EE0  ZOOM_BUTTONS
+00166F04  OTHER_BTN
+00166F18  AUTOMATIC_BTN
+00166F34  SIMPLE_LOOK
+00166F4C  COLOR
+00166F58  SIZE_ICON
+00166F6C  ICONS_IN_ROW
+00166F88  MENU_RESIZE_VERTICAL
+00166FB4  MENU_RESIZE
+00166FCC  BUTTON_MODE
+00166FE4  PITCH_AND_FAMILY
+00167008  CHAR_SET
+0016701C  FONT_TYPE
+00167030  DROPDOWN_LIST_RESIZE
+0016705C  DROPDOWN_LIST
+00167078  EDIT_BOX
+0016709C  SPIN_BUTTONS
+001670B8  WIDTH_FLOATY
+001670D4  DEFAULT_COMMAND
+001670F4  INDEX_LARGE
+0016710C  INDEX_SMALL
+00167124  INDEX
+00167130  ALWAYS_DESCRIPTION
+00167158  ALWAYS_LARGE
+00167174  PALETTE_TOP
+0016718C  ID_HDPI
+0016719C  KEYS_MENU
+001671B0  KEYS
+001671BC  DESCRIPTION
+001671D4  TEXT
+001671E0  VALUE
+001671EC  NAME
+00167200  RIBBON_BAR
+00167218  SIZES
+00167224  AFX_RIBBON
+00167242  PRICHED20.DLL
+00167260  RichEdit20W
+00168648  RGB(%d, %d, %d)
+00168AF2  QTOOLBAR__GETDOCUMENTCOLORS
+00169768  Settings
+0016977C  %sMFCTasksPane-%d%x
+001697A4  %sMFCTasksPane-%d
+00169BCA  QTasks Pane
+00169EA8  MFCTasksPanes
+0016AB2A  QMS UI Gothic
+0016B0AA  Qcommdlg_FindReplace
+0016BB88  mscoree.dll
+0016BC60  runtime error 
+0016BC80  TLOSS error
+0016BC9C  SING error
+0016BCB8  DOMAIN error
+0016BCD8  R6033
+0016BCE6  - Attempt to use MSIL code from this assembly during native code initialization
+0016BD86  This indicates a bug in your application. It is most likely the result of calling an MSIL-compiled (/clr) function from a native constructor or from DllMain.
+0016BEC8  R6032
+0016BED6  - not enough space for locale information
+0016BF30  R6031
+0016BF3E  - Attempt to initialize the CRT more than once.
+0016BF9E  This indicates a bug in your application.
+0016BFF8  R6030
+0016C006  - CRT not initialized
+0016C038  R6028
+0016C046  - unable to initialize heap
+0016C088  R6027
+0016C096  - not enough space for lowio initialization
+0016C0F8  R6026
+0016C106  - not enough space for stdio initialization
+0016C168  R6025
+0016C176  - pure virtual function call
+0016C1B8  R6024
+0016C1C6  - not enough space for _onexit/atexit table
+0016C228  R6019
+0016C236  - unable to open console device
+0016C280  R6018
+0016C28E  - unexpected heap error
+0016C2C8  R6017
+0016C2D6  - unexpected multithread lock error
+0016C328  R6016
+0016C336  - not enough space for thread data
+0016C380  R6010
+0016C38E  - abort() has been called
+0016C3C8  R6009
+0016C3D6  - not enough space for environment
+0016C420  R6008
+0016C42E  - not enough space for arguments
+0016C478  R6002
+0016C486  - floating point support not loaded
+0016C586  VMicrosoft Visual C++ Runtime Library
+0016C5DC  <program name unknown>
+0016C60C  Runtime Error!
+0016C62C  Program: 
+0016C712  ZHH:mm:ss
+0016C728  dddd, MMMM dd, yyyy
+0016C750  MM/dd/yy
+0016C774  December
+0016C788  November
+0016C79C  October
+0016C7AC  September
+0016C7C0  August
+0016C7D0  July
+0016C7DC  June
+0016C7E8  April
+0016C7F4  March
+0016C800  February
+0016C814  January
+0016C884  Saturday
+0016C898  Friday
+0016C8A8  Thursday
+0016C8BC  Wednesday
+0016C8D0  Tuesday
+0016C8E0  Monday
+0016C8F0  Sunday
+0016EB4E  WhWHW(W
+0016EBDA  V(null)
+0016EDB8           (((((                  H
+0016EFBA           h((((                  H
+0016F0B8                                   H
+0016F500  CONOUT$
+001701AE  W2mm [default]
+001701D4  minimize to the task bar
+00170208  Close
+00170218  Select number of CPI steps, range from 1 to 3
+00170278  Apply settings and store it onboard mouse memory
+001702DC  Cancel and close this page
+00170318  Restore default setting on this profile
+00170368  The ANGLE SNAPPING needs to be turned on in the right in order to set ANGLE SNAPPING.
+00170418  The LIFT OFF DISTANCE needs to be turned on in the right in order to set the lift off distance.
+001704D8  Turn on or off the ANGLE SNAPPING adjustment feature.
+00170548  Turn on or off the ANGLE TUNING adjustment feature.
+001705B0  Turn on or off the LIFT OFF DISTANCE adjustment feature.
+00170628  This value determins how often the mouse reports the data over USB.
+00170926  WLeft click
+00170940  Right click
+00170958  Middle click
+00170974  IE Forward
+0017098C  IE Backward
+001709A4  Scroll Up
+001709B8  Scroll Down
+001709D0  Keyboard key
+001709EC  Disable button
+00170A0C  Shift+
+00170A1C  Ctrl+
+00170A28  Alt+
+00170A34  Win+
+00170A44  Apply Failed
+00170A60  Bind button to a custom hotkey
+00170AA0  Bind CPI up button
+00170AC8  Bind CPI down button
+00170AF4  Bind to CPI settings
+00170B20  Bind button to a key
+00170B4C  Record a macro
+00170B6C  Bind left button
+00170B90  Bind right button
+00170BB4  Bind wheel button
+00170BD8  Bind IE forward button
+00170C08  Bind IE backward button
+00170C38  Bind to standard mouse functions
+00170C80  Bind to multimedia functionality
+00170CC4  Bind to profile
+00170CE8  Bind button to any file, folder or url adress
+00170D48  Bind button to basic skype setting
+00170D90  Bind button to a textblock message
+00170DD8  Bind button to a Windows hotkey
+0017149E  Wset hook failed.
+001714C4  CTRL+
+0017165A  P\Resources
+00171674  \Main_BK.bmp
+00171690  \Main_Normal.bmp
+001716B4  \Main_Over.bmp
+001716D4  \Main_Down.bmp
+001716F4  \Main_Off.bmp
+00171710  \MSensor_Normal.png
+00171738  \MSensor_Over.bmp
+0017175C  \MSensor_Down.bmp
+00171780  \MSensor_Off.bmp
+001717A4  \Nodev_Normal.bmp
+001717C8  \Buttons_Normal.bmp
+001717F0  \Buttons_Over.bmp
+00171814  \Buttons_Down.bmp
+00171838  \Update_Normal.bmp
+00171860  \Update_Over.bmp
+00171884  \Update_Down.bmp
+001718A8  \Update_Off.bmp
+001718C8  \SystemMsg_Normal.bmp
+001718F4  \SystemMsg_Over.bmp
+0017191C  \SystemMsg_Down.bmp
+00171944  \Color_Normal.bmp
+00171968  \Color_Over.bmp
+00171988  \Color_Down.bmp
+001719A8  \Support_Normal.bmp
+001719D0  \Support_Over.bmp
+001719F4  \Support_Down.bmp
+00171A18  \Error_Normal.bmp
+00171A3C  \Error_Over.bmp
+00171A5C  \Error_Down.bmp
+00171A7C  \NoDevice_Normal.bmp
+00171AA8  \Key_Normal.bmp
+00171AC8  \Key_Over.bmp
+00171AE4  \Key_Down.bmp
+00171B00  UI load failed!
+00171B20  profile
+00171B40  C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\atlmfc\include\afxwin1.inl
+00171BE4  Exception thrown in destructor
+00171C24  %s (%s:%d)
+00171C40  %s (%s:%d)
+00171D2E  Whttp://endgamegear.com/faq
+0017237E  A\language.ini
+001723A4  open
+001723B0  Arial
+001723BC  Left Button
+001723D4  Right Button
+001723F0  Middle Button
+0017240C  BACK
+00172420  CLEAR
+0017242C  ENTER
+00172438  Left ALT
+0017244C  Right ALT
+00172460  PAUSE
+0017246C  CAPS LOCK
+00172488  PAGE UP
+00172498  SPACE
+001724A4  PAGE DOWN
+001724C0  HOME
+001724CC  LEFT ARROW
+001724E4  UP ARROW 
+001724F8  RIGHT ARROW
+00172510  DOWN ARROW
+00172528  SELECT
+00172538  PRINT
+00172544  EXECUTE
+00172554  PRINT SCREEN
+00172580  HELP
+001726C0  NUM LOCK
+001726D4  SCROLL LOCK
+001726EC  Left SHIFT
+00172704  Right SHIFT
+0017271C  Left CONTROL
+00172738  Right CONTROL
+00172754  Browser Forward
+00172774  Browser Refresh
+00172794  Volume Down
+001727AC  Volume Up 
+001727CC  Left Window
+001727E4  Right Window
+00172800  NUM 0
+0017280C  NUM 1
+00172818  NUM 2
+00172824  NUM 3
+00172830  NUM 4
+0017283C  NUM 5
+00172848  NUM 6
+00172854  NUM 7
+00172860  NUM 8
+0017286C  NUM 9
+0017289C  Application
+001728B4  \*.*
+001728EA  AZTitleTip
+00172ADE  UXM1 Configuration Software
+00172B18  ENDGAME GEAR XM1 GAMING MOUSE CONFIG
+00172C7A  C\Resources\Config.ini
+00172CA8  Default Profile
+00172CC8  \Profiles\pfList.dat
+00172F26  WRegisterDeviceNotification Failed!
+00172F70  \Endgame Gear\XM1
+00172F94  V%.2f
+00172FA0  -.--
+00172FAC  AutoStartAP
+00172FC4  ConfigData
+00172FDC  DataPath
+00172FF0  22D4
+00172FFC  22d4
+00173008  1803
+00173014  Config Mouse
+00173030  Exit Software
+0017304C  \Profiles
+00173060  .profile
+00173074  \pfList.dat
+0017308C  Name
+00173098  System settings
+001730B8  Support information
+001730E0  minimize to system tray
+00173110  Bind your mouse buttons
+00173140  Mouse Senor settings
+0017316C  Light settings
+0017318C  Update and Reset
+001731B0  Register your product
+001731E0  Choose your profile. You can save max. 5 profiles
+00173244  Name your profile
+00173268  Save profile
+00173284  Delete profile
+001732A4  Open saved profile
+001732D0  Sets active profile to default settings
+001734AA  PDelete
+001734BC  NoRemove
+001734D0  ForceRemove
+001734F0  Invalid DateTime
+00173646  WV1.09
+00173658  http://endgamegear.com/downloads
+0017369C  \XM1 Firmware Update Tool
+001736D0  \XM1 Firmware Update Tool.exe
+00173ED2  Pmenu
+0019342C  Apartment
+00193440  Both
+0019344C  Free
+00198FD2  AFX_DIALOG_LAYOUT
+001B3A16  XM1 Configuration Software
+001B3A52  MS Shell Dlg
+001B3A88  Help
+001B3AD8  Close
+001B3B04  Button Setting
+001B3B40  Advanced
+001B3B70  Macro
+001B3B9C  Lights
+001B3BC8  Support
+001B3BF8  Profile
+001B3C28  Apply
+001B3C54  Delete
+001B3C80  Import
+001B3CAC  Reset To Default 
+001B3D10  LINK
+001B3D38  Save
+001B3D60  TITAN X MOUSE
+001B3D9C  Model Name
+001B3DD0  TITAN V MOUSE
+001B3E0C  TITAN M MOUSE
+001B3E52  MS Shell Dlg
+001B3E88  Button 1
+001B3EB8  Button 2
+001B3EE8  Button 3
+001B3F18  Button 4
+001B3F48  Button 5
+001B3F78  Button 6
+001B3FA8  Button 7
+001B3FD8  Apply
+001B4004  Text button 1
+001B4040  Text button 2
+001B407C  Text button 3
+001B40B8  Text button 4
+001B40F4  Text button 5
+001B4130  Text button 6
+001B416C  Text button 7
+001B41B2  MS Shell Dlg
+001B41E8  Steps
+001B42F8  Down
+001B4344  Down
+001B4390  Down
+001B43DC  Down
+001B4428  Down
+001B4474  Down
+001B4498  msctls_trackbar32
+001B44D8  msctls_trackbar32
+001B4518  msctls_trackbar32
+001B455C  Angle Snap
+001B4590  Angle Tune
+001B45EC  Polling Rate
+001B4624  Smoothing
+001B4658  Surface Calibrate
+001B469C  Calibrate
+001B46D0  Apply
+001B46FC  CPI1 LED2
+001B4730  CPI1 LED3
+001B4764  LOD Bar
+001B4794  Snap Bar
+001B47C4  Tune Bar
+001B47F4  Enable XY
+001B4828  Check DPI1
+001B485C  Check DPI2
+001B4890  Check DPI3
+001B48C0  msctls_trackbar32
+001B4900  msctls_trackbar32
+001B4944  CPI1 LED1
+001B4978  CPI2 LED2
+001B49AC  CPI3 LED1
+001B49E0  XY1 TEXT
+001B4A10  XY2 TEXT
+001B4A40  XY3 TEXT
+001B4A70  CPI1 LED4
+001B4AA4  CPI2 LED1
+001B4AD8  CPI2 LED3
+001B4B0C  CPI2 LED4
+001B4B40  CPI3 LED2
+001B4B74  CPI3 LED3
+001B4BA8  CPI3 LED4
+001B4BDC  CPI4 LED1
+001B4C10  CPI4 LED2
+001B4C44  CPI4 LED3
+001B4C78  CPI4 LED4
+001B4CAC  CPI1
+001B4CD4  Check CPI4
+001B4D08  CPI2
+001B4D30  CPI3
+001B4D58  CPI4
+001B4D8A  MS Shell Dlg
+001B4DC0  Event list
+001B4E14  Delete
+001B4E40  Import
+001B4E6C  Repeat X
+001B4E9C  Repeat Press
+001B4ED4  Repeat until nkey
+001B4F5C  Down
+001B4F84  Start Record
+001B4FBC  Stop Record
+001B4FF4  Sel Delay sek
+001B5030  No Delay
+001B50A4  Down
+001B50CC  Select All
+001B5100  Select None
+001B5138  Delete
+001B5164  Copy
+001B518C  Edit Key
+001B51BC  Insert
+001B51E8  Apply
+001B5214  UpPage
+001B5240  DownPage
+001B5270  Count
+001B529C  Macro list
+001B52D0  New Macro
+001B5304  Actually Delay
+001B534A  MS Shell Dlg
+001B5380  Mode
+001B53A8  Speed
+001B53D4  Strength
+001B5404  Apply
+001B5430  WHEEL LED
+001B5464  LOGO LED
+001B5494  BOTTOM LED
+001B54C8  WHEEL COLOR
+001B5500  LOGO COLOR
+001B5534  BOTTOM COLOR
+001B556C  LED ON
+001B5598  LED ON
+001B56E4  WHEEL LED
+001B5718  LOGO LED
+001B5748  BOTTOM LED
+001B5786  MS Shell Dlg
+001B57BC  Software Version
+001B57FC  Firmware Version
+001B583C  Update
+001B5868  Update
+001B5894  Default
+001B58C4  Email
+001B58F0  support url
+001B5928  START
+001B595E  MS Shell Dlg
+001B5994  Close
+001B5A0C  Version
+001B5A46  MS Shell Dlg
+001B5A7C  Cancel
+001B5AA8  Save
+001B5AD0  Ctrl
+001B5AF8  Shift
+001B5B74  Static
+001B5BAA  MS Shell Dlg
+001B5BE0  Mouse FWVersion
+001B5C20  File FWVersion
+001B5C5C  Close
+001B5CAC  Cancel
+001B5CD8  Progress
+001B5D12  MS Shell Dlg
+001B5D48  Close
+001B5D74  Save
+001B5D9C  Cancel
+001B6012  MS Shell Dlg
+001B6038  M"?l
+001B6048  Static 
+001B60A0  E-MAIL
+001B60D6  MS Shell Dlg
+001B610C  Close
+001B615C  Cancel
+001B61A4  msctls_trackbar32
+001B6204  msctls_trackbar32
+001B6252  MS Shell Dlg
+001B628A  MS Shell Dlg
+001B62BE  (&N) 
+001B6342  (&H)
+001B636A  MS Shell Dlg
+001B639C  (*.*)
+001B63DC  (&H)
+001B64C0   %1 
+001B656C  INI 
+001B65A6   INI 
+001B65FE   %s(
+001B660C   %s 
+001B662A   %s 
+001B6678   %1 
+001B6682   %2 
+001B66A2   %1 
+001B66AC   %2 
+001B66D6   %1 
+001B6708   255 
+001B6768   GUID
+001B6862   %1 
+001B687E   %1 
+001B68AA  %1: %2
+001B68D4  : %1
+001B695E   DLL 
+001B69B8   %1 
+001B6A38   %1 
+001B6A9A   %1 
+001B6AB6   %1 
+001B6ACA   I/O 
+001B6AE0   %1 
+001B6B00   %1 
+001B6B20   %1 
+001B6B3A   %1 
+001B6B6C   %1 
+001B6B92   %1 
+001B6BB6   %1 
+001B6BDC   %1 
+001B6E04  ] %s
+001B6FCE  VS_VERSION_INFO
+001B702A  StringFileInfo
+001B704E  080404b0
+001B7066  CompanyName
+001B7080  Pro Gamersware GmbH
+001B70AE  FileDescription
+001B70D0  XM1 Configuration Software
+001B710E  FileVersion
+001B7128  1.0.9.0
+001B713E  InternalName
+001B7158  XM1 Configuration Software.exe
+001B719E  LegalCopyright
+001B71BC  Pro Gamersware GmbH
+001B71EA  OriginalFilename
+001B720C  XM1 Configuration Software.exe
+001B7252  ProductName
+001B726C  XM1 Configuration Software
+001B72AA  ProductVersion
+001B72C8  1.0.9.0
+001B72DE  VarFileInfo
+001B72FE  Translation

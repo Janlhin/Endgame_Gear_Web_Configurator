@@ -9,3 +9,11 @@ re/upstream/*.exe
 re/upstream/*.json
 re/upstream/eggweb_app.js
 re/.test_xm2we.mjs
+re/style_check.png
+re/upstream/xm1_extracted/
+re/upstream/xm1_payload/
+re/upstream/unpacker_tool/
+re/upstream/*.zip
+re/upstream/*.html
+re/upstream/is_repos.json
+re/upstream/*.log
