@@ -182,600 +182,921 @@
 </main>
 
 <script>
-"use strict";
-/* ================= i18n ================= */
-const I18N = {
-  "zh-CN": {
-    appTitle: "Endgame Gear 网页版驱动", notConnected: "未连接", connectedWired: "已连接（有线）", connectedWireless: "已连接（无线）",
-    connect: "连接设备", refresh: "重新读取",
-    secInfo: "设备信息", model: "型号", mouseFw: "鼠标固件", dongleFw: "接收器固件", battery: "电量", connMode: "连接方式", gen: "协议代数",
-    secSensor: "传感器 / CPI", stage: "档位", ledColor: "LED 颜色", xySplit: "XY 独立", cpiLevels: "启用档位数", activeStage: "当前档位",
-    lod: "抬离距离 (LOD)", glassMode: "玻璃面模式", off: "关", on: "开", glassNote: "v2 专属；切换时 LOD 编码会随之换算",
-    angleSnap: "角度捕捉", ripple: "波纹控制", ledLiftoff: "抬离时 LED", angleTune: "角度调校 (°)", angleTuneNote: "v2 专属",
-    applySensor: "应用传感器设置", secPerf: "性能 / 电源", polling: "回报率", slamclick: "Slamclick 过滤",
-    jitter: "抖动过滤 (v1)", maxFps: "强制最高传感器 FPS (v2)", multiclick: "多击确认过滤 (v2)",
-    powerSaving: "省电超时 (分钟)", deepSleep: "深度休眠 (分钟)", applyPerf: "应用性能/电源",
-    secButtons: "按键映射与点击过滤", button: "按键", mapping: "映射", clickFilter: "点击过滤",
-    btnReadonly: "按键重映射（0x16 双块写）已在协议层实现，暂未开放编辑；点击过滤可单独调整后随“应用性能/电源”下发。",
-    secTools: "配置备份 / 恢复 / 工具", exportCfg: "导出配置 (.json)", importCfg: "导入配置并写入", exportBlob: "导出原始 1024B blob (.bin)",
-    pair: "重新配对接收器", factoryReset: "恢复出厂设置", toggleLog: "显示/隐藏通讯日志",
-    pairDefault: "恢复默认配对", getPairData: "读取配对数据",
-    cfPairDefault: "恢复默认配对会把鼠标与接收器的配对关系重置为出厂默认，需要重新配对吗？",
-    bPairDefaultOk: "默认配对命令已发送。", bPairDataOk: "配对数据：",
-    persistNote: "写入立即持久化（无需保存操作）；0x13 是恢复出厂而非保存，慎用。",
-    secCredits: "致谢与参考", secNotes: "说明与已知限制",
-    minutes: "分钟", charging: "充电中（约 {0}%）", wiredMode: "有线 (USB-C)", wirelessMode: "无线 (4k 接收器)",
-    noDongleWired: "—（有线连接无接收器）", current: "（当前）",
-    bRead: "读取失败：", bWritten: "已写入并持久化。", bSensor: "传感器设置已写入并持久化。", bPerf: "性能/电源设置已写入并持久化。",
-    bSleep: "鼠标处于休眠或未上电：动一下鼠标，再点「重新读取」。", bReadOk: "已读取当前配置。", bPairSent: "配对命令已发送，等待鼠标重连…",
-    bResetOk: "已恢复出厂设置。", bImportFail: "导入失败：", bConnectFail: "连接失败：", bNoWebhid: "此浏览器不支持 WebHID，请使用 Chrome / Edge 89+。",
-    bImportOk: "配置已恢复。",
-    cfPair: "重新配对会让鼠标与接收器重建无线链路（设置不受影响），继续？",
-    cfReset1: "⚠️ 恢复出厂设置将清空全部自定义配置（CPI、回报率、按键映射等），确定继续？",
-    cfReset2: "再次确认：真的要恢复出厂设置吗？",
-    errWrite: "写入失败：", cfgNoRead: "尚未读取配置",
-    v1StageNote: "（v1 硬件忽略软件切换，请用鼠标底部按键）", pollWiredNote: "（有线连接硬件上限 1000 Hz，写入的存储值不变）",
-    gxSafe: "GX Safe", gxSpeed: "GX Speed", disabled: "禁用", fixedCpi: "固定 CPI", cpiCycle: "CPI 循环切换",
-    minutesFmt: "{0} 分钟", keyboardMap: "键盘 (修饰 0x{0}, 键 0x{1})", mouseBtn: "鼠标键 0x{0}", specialFn: "特殊功能 0x{0}", mediaKey: "多媒体键 0x{0}", typeRaw: "类型 0x{0}",
-    langName: "简体中文",
-    crVole: "完整的 USB 配置协议逆向（Ghidra 反汇编 + 44 次抓包 + 真机验证），本工具的协议实现全部基于其 re/PROTOCOL.md。",
-    crBattery: "电池状态 HID 协议文档。",
-    crUnleashed: "XM2we 直接通信探索。",
-    crJzab: "Linux 配置工具的先行实践与协议验证。",
-    crVendor: "硬件本身，以及未混淆、可分析的官方工具。",
-    crDisclaimer: "本项目为独立开源工具，与 Endgame Gear / Pro Gamersware GmbH 无隶属关系；不修改固件，仅读写用户配置。",
-    noteWebhid: "需要 Chrome / Edge 89+（WebHID）。本页通过 HID 特征报告直连设备，不装任何驱动。",
-    noteModels: "支持全部四个无线型号：XM2w 4k / XM2w 4k v2 / OP1w 4k / OP1w 4k v2，有线（USB-C）与无线（4k 接收器）均可。型号由 cmd 0x0E 返回的鼠标 PID 自动识别。",
-    noteWiredOnly: "有线专用型号（XM2we、XM1 系列等）使用另一套未公开协议，暂不支持。",
-    noteSleep: "鼠标深度休眠后读不到配置：动一下鼠标再点“重新读取”。软件会自动发探测命令恢复通道。",
-    noteWired: "有线连接时 0x0D（接收器固件）会返回“不适用”；有线回报率硬件上限 1000 Hz。",
-    noteV1Stage: "v1 的“当前档位”只能用鼠标底部的 CPI 键切换，软件改了也无效（硬件忽略）。",
-    noteRe: "协议已对照官方 v1.02 配置工具二进制逐字节验证：命令表、负载长度、blob 布局、双块写入与重试时序全部一致；0x71/0x72（默认配对/配对数据）为官方工具新增命令，本页已同步实现。"
-  },
-  "en": {
-    appTitle: "Endgame Gear Web Configurator", notConnected: "Not connected", connectedWired: "Connected (wired)", connectedWireless: "Connected (wireless)",
-    connect: "Connect device", refresh: "Reload",
-    secInfo: "Device Info", model: "Model", mouseFw: "Mouse firmware", dongleFw: "Dongle firmware", battery: "Battery", connMode: "Connection", gen: "Protocol gen",
-    secSensor: "Sensor / CPI", stage: "Stage", ledColor: "LED color", xySplit: "XY split", cpiLevels: "Active stages", activeStage: "Current stage",
-    lod: "Lift-off distance (LOD)", glassMode: "Glass mode", off: "Off", on: "On", glassNote: "v2 only; LOD encoding switches with it",
-    angleSnap: "Angle snapping", ripple: "Ripple control", ledLiftoff: "LED on lift-off", angleTune: "Angle tuning (°)", angleTuneNote: "v2 only",
-    applySensor: "Apply sensor settings", secPerf: "Performance / Power", polling: "Polling rate", slamclick: "Slamclick filter",
-    jitter: "Motion jitter filter (v1)", maxFps: "Force max sensor FPS (v2)", multiclick: "Multiclick filter (v2)",
-    powerSaving: "Power saving (min)", deepSleep: "Deep sleep (min)", applyPerf: "Apply performance/power",
-    secButtons: "Button mapping & click filters", button: "Button", mapping: "Mapping", clickFilter: "Click filter",
-    btnReadonly: "Button remapping (0x16 two-chunk write) is implemented at protocol level but not editable yet; click filters below are applied with 'Apply performance/power'.",
-    secTools: "Backup / Restore / Tools", exportCfg: "Export config (.json)", importCfg: "Import config & write", exportBlob: "Export raw 1024B blob (.bin)",
-    pair: "Re-pair dongle", factoryReset: "Factory reset", toggleLog: "Toggle communication log",
-    pairDefault: "Pair default", getPairData: "Get pair data",
-    cfPairDefault: "Pair-default resets the mouse↔dongle link to the factory default pairing. Continue?",
-    bPairDefaultOk: "Pair-default command sent.", bPairDataOk: "Pair data: ",
-    persistNote: "Writes persist immediately (no commit step); 0x13 is factory reset, not save — use with care.",
-    secCredits: "Credits & References", secNotes: "Notes & Known Limitations",
-    minutes: "min", charging: "Charging (≈ {0}%)", wiredMode: "Wired (USB-C)", wirelessMode: "Wireless (4k dongle)",
-    noDongleWired: "— (no dongle on cable)", current: " (current)",
-    bRead: "Read failed: ", bWritten: "Written and persisted.", bSensor: "Sensor settings written and persisted.", bPerf: "Performance/power written and persisted.",
-    bSleep: "Mouse is asleep or powered off: move it, then click 'Reload'.", bReadOk: "Configuration loaded.", bPairSent: "Pair command sent, waiting for mouse…",
-    bResetOk: "Factory reset done.", bImportFail: "Import failed: ", bConnectFail: "Connection failed: ", bNoWebhid: "WebHID not supported — use Chrome / Edge 89+.",
-    bImportOk: "Configuration restored.",
-    cfPair: "Re-pairing rebuilds the radio link (settings are unaffected). Continue?",
-    cfReset1: "⚠️ Factory reset wipes ALL custom settings (CPI, polling, button mapping…). Continue?",
-    cfReset2: "Confirm again: really factory reset?",
-    errWrite: "Write failed: ", cfgNoRead: "No configuration read yet",
-    v1StageNote: " (v1 hardware ignores software stage switch — use the CPI button under the mouse)", pollWiredNote: " (capped at 1000 Hz on cable; the stored value is unchanged)",
-    gxSafe: "GX Safe", gxSpeed: "GX Speed", disabled: "Disabled", fixedCpi: "Fixed CPI", cpiCycle: "CPI cycle",
-    minutesFmt: "{0} min", keyboardMap: "Keyboard (mods 0x{0}, key 0x{1})", mouseBtn: "Mouse button 0x{0}", specialFn: "Special 0x{0}", mediaKey: "Consumer 0x{0}", typeRaw: "Type 0x{0}",
-    langName: "English",
-    crVole: "Complete USB configuration-protocol reverse engineering (Ghidra disassembly + 44 USB captures + on-device verification); this tool's protocol implementation is entirely based on their re/PROTOCOL.md.",
-    crBattery: "Battery-status HID protocol documentation.",
-    crUnleashed: "Direct-communication exploration for XM2we.",
-    crJzab: "Prior art: Linux configuration tool and protocol verification.",
-    crVendor: "The hardware itself, plus official tools shipped unobfuscated and analyzable.",
-    crDisclaimer: "Independent open-source project, not affiliated with Endgame Gear / Pro Gamersware GmbH; firmware is never modified — user configuration only.",
-    noteWebhid: "Requires Chrome / Edge 89+ (WebHID). This page talks to the device directly via HID feature reports — no drivers installed.",
-    noteModels: "All four wireless models supported: XM2w 4k / XM2w 4k v2 / OP1w 4k / OP1w 4k v2, wired (USB-C) or wireless (4k dongle). The model is auto-detected from the mouse PID returned by cmd 0x0E.",
-    noteWiredOnly: "Wired-only models (XM2we, XM1 series) use a different undocumented protocol and are not supported yet.",
-    noteSleep: "Deep-sleeping mice can't be read: move the mouse, then click 'Reload'. The app sends probe commands to reopen the channel automatically.",
-    noteWired: "On cable, 0x0D (dongle firmware) reports 'not applicable'; wired polling rate is hardware-capped at 1000 Hz.",
-    noteV1Stage: "On v1 the active stage can only be switched with the CPI button under the mouse — software changes are ignored by hardware.",
-    noteRe: "The protocol was byte-verified against the official v1.02 configuration tool binary: command table, payload lengths, blob layout, two-chunk writes and retry timing all match; 0x71/0x72 (pair default / pair data) are new official commands, implemented here as well."
-  }
-};
-/* ===== 基础工具（必须最先定义，供下方 i18n 段使用） ===== */
-const $ = id => document.getElementById(id);
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const hex = (arr, n) => Array.from(arr.slice(0, n)).map(b => b.toString(16).padStart(2, "0")).join(" ");
-
-let LANG = localStorage.getItem("xm2w-lang") || "zh-CN";
-function t(key, ...args) {
-  let s = (I18N[LANG] && I18N[LANG][key]) || I18N["zh-CN"][key] || key;
-  args.forEach((a, i) => s = s.replace(`{${i}}`, a));
-  return s;
-}
-function applyI18n() {
-  document.querySelectorAll("[data-i18n]").forEach(el => {
-    const k = el.dataset.i18n;
-    const v = (I18N[LANG] && I18N[LANG][k]) || I18N["zh-CN"][k];
-    if (v != null) el.textContent = v;  // 查不到就保留 HTML 原文，绝不显示键名
-  });
-  document.documentElement.lang = LANG;
-  $("langSel").value = LANG;
-}
-$("langSel").onchange = e => { LANG = e.target.value; localStorage.setItem("xm2w-lang", LANG); applyI18n(); render(); };
-
-/* ================= 协议常量（依据 vole re/PROTOCOL.md） ================= */
-const VID = 0x3367;
-const DONGLE_PID = 0x1970;
-/* PID 表已对照官方 v1.02 工具二进制（0x17200 处的设备表：0x1982/0x1981 鼠标、0x1970/0x1969 接收器族） */
-const MOUSE_PIDS = { 0x1968: ["XM2w 4k", 1], 0x1972: ["OP1w 4k", 1], 0x1969: ["XM2w 4k (变体)", 1],
-                     0x1982: ["XM2w 4k v2", 2], 0x1984: ["OP1w 4k v2", 2], 0x1981: ["XM2w 4k v2 (变体)", 2] };
-const RPT_CMD = 0xA1, RPT_BULK = 0xA0;
-const POLLING_LABELS = { 0x02: "4000 Hz", 0x04: "2000 Hz", 0x08: "1000 Hz", 0x40: "125 Hz", 0x80: "1000 Hz" };
-const STAGE_COLORS = { "zh-CN": ["蓝", "绿", "黄", "红"], "en": ["Blue", "Green", "Yellow", "Red"] };
-const BTN_NAMES = { "zh-CN": ["左键", "右键", "中键", "后退", "前进", "特殊(CPI)", "滚轮上", "滚轮下"],
-                    "en": ["Left", "Right", "Middle", "Back", "Forward", "Special (CPI)", "Wheel up", "Wheel down"] };
-const FILTER_OPTS = [["off","off"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"],["9","9"],["10","10"],["11","11"],["12","12"],["13","13"],["14","14"],["15","15"]];
-
-/* 全局错误捕获：任何初始化异常都直接显示，避免“点了没反应” */
-window.addEventListener("error", e => {
-  try {
-    const b = $("banner");
-    if (b) { b.className = "banner err"; b.textContent = "脚本错误: " + e.message + " @" + e.lineno; }
-  } catch (_) {}
-});
-window.addEventListener("unhandledrejection", e => {
-  try { log("✗ promise: " + (e.reason && e.reason.message || e.reason)); } catch (_) {}
-});
-
-let dev = null, queue = Promise.resolve(), lastFail = false;
-let gen = null, mouseName = "—";
-let blob = null;
-let dongleFw = "—", mouseFw = "—", battery = null, wired = false;
-let stage = newS();
-
-function newS() {
-  return { cpi: [[0,400,400],[0,800,800],[0,1600,1600],[0,3200,3200]], levels: 4, active: 1,
-           lod: 3, lodMM: 1.0, glass: 0, angleSnap: 0, ripple: 0, angleTune: 0, ledLiftoff: 1,
-           motionSync: 0, polling: 0x08, flags: 0, powerSaving: 1, deepSleep: 3,
-           filters: [8,8,8,8,8], buttons: [] };
-}
-function log(msg) {
-  const el = $("log");
-  el.textContent += new Date().toLocaleTimeString() + "  " + msg + "\n";
-  el.scrollTop = el.scrollHeight;
-}
-function banner(cls, text) { const b = $("banner"); b.className = "banner " + cls; b.textContent = text || ""; }
-function setConn(on, text) { const p = $("connState"); p.className = "status-pill" + (on ? "" : " off"); p.textContent = text; }
-
-/* ================= 传输层 ================= */
-async function rawReceive(reportId) {
-  const d = await dev.receiveFeatureReport(reportId);
-  const u8 = new Uint8Array(d.buffer);
-  if (u8[0] === reportId) return u8;                 // 规范：返回缓冲区以 reportId 开头
-  const out = new Uint8Array(u8.length + 1); out[0] = reportId; out.set(u8, 1); return out;
-}
-async function transact(cmd, target = 0x00, payload = null, opt = {}) {
-  const run = async () => {
-    const buf = new Uint8Array(63);                  // sendFeatureReport 的 data 不含 reportId
-    buf[0] = cmd; buf[1] = target;
-    buf[2] = opt.lenByte !== undefined ? opt.lenByte : (payload ? payload.length : 0);
-    if (opt.chunk) buf[6] = opt.chunk;
-    if (payload) buf.set(payload, 15);               // 报告内偏移 16 = 去掉 ID 后的 15
-    for (let attempt = 0; attempt < 4; attempt++) {
-      try { await dev.sendFeatureReport(RPT_CMD, buf); }
-      catch (e) { log(`✗ SET fail (cmd 0x${cmd.toString(16)}): ${e.message}`); if (attempt === 3) throw e; await sleep(60); continue; }
-      await sleep(opt.pace || 170);
-      let u8;
-      try { u8 = await rawReceive(RPT_CMD); }
-      catch (e) { log(`✗ GET fail: ${e.message}`); if (attempt === 3) throw e; await sleep(60); continue; }
-      const status = u8[1];
-      if (status === 0x01) { lastFail = false; return u8; }
-      if (status === 0x03) { log(`⋯ busy, retry #${attempt + 1}`); await sleep(200 * (attempt + 1)); continue; }
-      lastFail = true;
-      const map = { 0x07: "N/A on this connection", 0x08: "mouse asleep/unreachable", 0x11: "mouse asleep/unreachable" };
-      log(`✗ cmd 0x${cmd.toString(16)} status=0x${status.toString(16)} (${map[status] || "unknown"})`);
-      throw new StatusError(status, map[status] || "device error 0x" + status.toString(16));
-    }
-    throw new StatusError(0x03, "device stays busy");
-  };
-  const p = queue.then(run, run);
-  queue = p.catch(() => {});
-  return p;
-}
-class StatusError extends Error { constructor(code, msg) { super(msg); this.code = code; } }
-async function probe() {
-  try { await transact(0x0F, 0x01, null, { pace: 120 }); return; } catch (e) { if (e.code === 0x07) throw e; }
-  try { await transact(0x0F, 0x0F, null, { pace: 120 }); return; } catch (e) { if (e.code === 0x07) throw e; }
-  await transact(0x0E, 0x00, null, { pace: 120 });
-}
-async function guarded(cmd, target, payload, opt) {
-  if (lastFail) { try { await probe(); } catch (e) { throw new StatusError(0x08, "mouse unreachable — move it and retry"); } }
-  return transact(cmd, target, payload, opt);
-}
-/* 读 1024B 配置 blob。0xA0 大报告时序较慢：读到旧缓存（status 字节不是已知状态码）
-   时重发 0x12 再读，最多 4 轮；每轮内 busy 重试 3 次。 */
-async function readBlob() {
-  let lastDump = "";
-  for (let round = 1; round <= 4; round++) {
-    await guarded(0x12, 0x00, null, { pace: 250 });
-    for (let i = 0; i < 3; i++) {
-      const u8 = await rawReceive(RPT_BULK);
-      const status = u8[1];
-      if (status === 0x01 && u8.length >= 1041) {
-        blob = u8.slice(16, 16 + 1024);
-        const levels = blob[0x0E];
-        log(`✓ blob read OK (${blob.length} B, round ${round})  head: ${hex(blob, 16)}`);
-        if (!(levels >= 1 && levels <= 4))
-          log(`⚠ blob[0x0E]=0x${levels.toString(16)} 不在 1..4，布局可能异常；请把日志发给开发者`);
-        return;
+(() => {
+  // src/util.ts
+  var $ = (id) => document.getElementById(id);
+  var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  var hex = (arr, n) => Array.from(arr.slice(0, n), (b) => b.toString(16).padStart(2, "0")).join(" ");
+  window.addEventListener("error", (e) => {
+    try {
+      const b = $("banner");
+      if (b) {
+        b.className = "banner err";
+        b.textContent = "\u811A\u672C\u9519\u8BEF: " + e.message + " @" + e.lineno;
       }
-      if (status === 0x03) { log(`⋯ blob busy, retry #${i + 1}`); await sleep(280); continue; }
-      // 其它值（典型 0xA1）= 读到了上一条命令的缓存，说明设备还没把 blob 备好
-      lastDump = hex(u8, 32);
-      log(`⋯ 0xA0 not ready (status=0x${status.toString(16)}), round ${round}, head: ${lastDump}`);
-      break;
+    } catch (_) {
     }
-    await sleep(300);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    try {
+      log("\u2717 promise: " + (e.reason && e.reason.message || e.reason));
+    } catch (_) {
+    }
+  });
+  function log(msg) {
+    const el = $("log");
+    el.textContent += (/* @__PURE__ */ new Date()).toLocaleTimeString() + "  " + msg + "\n";
+    el.scrollTop = el.scrollHeight;
   }
-  throw new Error(`blob read failed after 4 rounds; last head: ${lastDump}`);
-}
+  function banner(cls, text) {
+    const b = $("banner");
+    b.className = "banner " + cls;
+    b.textContent = text || "";
+  }
 
-/* ================= blob 解析 / 编码 ================= */
-function parseBlob() {
-  const b = blob; const s = newS();
-  s.angleTune = (b[0x01] << 24) >> 24;
-  s.deepSleep = b[0x03] & 0x7F; if (b[0x03] & 0x80) s.deepSleep = "off";
-  s.powerSaving = b[0x04] & 0x7F; if (b[0x04] & 0x80) s.powerSaving = "off";
-  s.polling = b[0x05];
-  s.flags = b[0x06];
-  s.ledLiftoff = b[0x08] ? 1 : 0;
-  s.lod = b[0x09];
-  s.angleSnap = b[0x0A] ? 1 : 0;
-  s.ripple = b[0x0B] ? 1 : 0;
-  s.motionSync = b[0x0C] ? 1 : 0;
-  s.active = b[0x0D] & 3;
-  s.levels = Math.min(4, Math.max(1, b[0x0E]));
-  for (let n = 0; n < 4; n++) {
-    const o = 0x23 + 5 * n;
-    s.cpi[n] = [b[o], b[o+1] | (b[o+2] << 8), b[o+3] | (b[o+4] << 8)];
+  // src/i18n.ts
+  var I18N = {
+    "zh-CN": {
+      appTitle: "Endgame Gear \u7F51\u9875\u7248\u9A71\u52A8",
+      notConnected: "\u672A\u8FDE\u63A5",
+      connectedWired: "\u5DF2\u8FDE\u63A5\uFF08\u6709\u7EBF\uFF09",
+      connectedWireless: "\u5DF2\u8FDE\u63A5\uFF08\u65E0\u7EBF\uFF09",
+      connect: "\u8FDE\u63A5\u8BBE\u5907",
+      refresh: "\u91CD\u65B0\u8BFB\u53D6",
+      secInfo: "\u8BBE\u5907\u4FE1\u606F",
+      model: "\u578B\u53F7",
+      mouseFw: "\u9F20\u6807\u56FA\u4EF6",
+      dongleFw: "\u63A5\u6536\u5668\u56FA\u4EF6",
+      battery: "\u7535\u91CF",
+      connMode: "\u8FDE\u63A5\u65B9\u5F0F",
+      gen: "\u534F\u8BAE\u4EE3\u6570",
+      secSensor: "\u4F20\u611F\u5668 / CPI",
+      stage: "\u6863\u4F4D",
+      ledColor: "LED \u989C\u8272",
+      xySplit: "XY \u72EC\u7ACB",
+      cpiLevels: "\u542F\u7528\u6863\u4F4D\u6570",
+      activeStage: "\u5F53\u524D\u6863\u4F4D",
+      lod: "\u62AC\u79BB\u8DDD\u79BB (LOD)",
+      glassMode: "\u73BB\u7483\u9762\u6A21\u5F0F",
+      off: "\u5173",
+      on: "\u5F00",
+      glassNote: "v2 \u4E13\u5C5E\uFF1B\u5207\u6362\u65F6 LOD \u7F16\u7801\u4F1A\u968F\u4E4B\u6362\u7B97",
+      angleSnap: "\u89D2\u5EA6\u6355\u6349",
+      ripple: "\u6CE2\u7EB9\u63A7\u5236",
+      ledLiftoff: "\u62AC\u79BB\u65F6 LED",
+      angleTune: "\u89D2\u5EA6\u8C03\u6821 (\xB0)",
+      angleTuneNote: "v2 \u4E13\u5C5E",
+      applySensor: "\u5E94\u7528\u4F20\u611F\u5668\u8BBE\u7F6E",
+      secPerf: "\u6027\u80FD / \u7535\u6E90",
+      polling: "\u56DE\u62A5\u7387",
+      slamclick: "Slamclick \u8FC7\u6EE4",
+      jitter: "\u6296\u52A8\u8FC7\u6EE4 (v1)",
+      maxFps: "\u5F3A\u5236\u6700\u9AD8\u4F20\u611F\u5668 FPS (v2)",
+      multiclick: "\u591A\u51FB\u786E\u8BA4\u8FC7\u6EE4 (v2)",
+      powerSaving: "\u7701\u7535\u8D85\u65F6 (\u5206\u949F)",
+      deepSleep: "\u6DF1\u5EA6\u4F11\u7720 (\u5206\u949F)",
+      applyPerf: "\u5E94\u7528\u6027\u80FD/\u7535\u6E90",
+      secButtons: "\u6309\u952E\u6620\u5C04\u4E0E\u70B9\u51FB\u8FC7\u6EE4",
+      button: "\u6309\u952E",
+      mapping: "\u6620\u5C04",
+      clickFilter: "\u70B9\u51FB\u8FC7\u6EE4",
+      btnReadonly: "\u6309\u952E\u91CD\u6620\u5C04\uFF080x16 \u53CC\u5757\u5199\uFF09\u5DF2\u5728\u534F\u8BAE\u5C42\u5B9E\u73B0\uFF0C\u6682\u672A\u5F00\u653E\u7F16\u8F91\uFF1B\u70B9\u51FB\u8FC7\u6EE4\u53EF\u5355\u72EC\u8C03\u6574\u540E\u968F\u201C\u5E94\u7528\u6027\u80FD/\u7535\u6E90\u201D\u4E0B\u53D1\u3002",
+      secTools: "\u914D\u7F6E\u5907\u4EFD / \u6062\u590D / \u5DE5\u5177",
+      exportCfg: "\u5BFC\u51FA\u914D\u7F6E (.json)",
+      importCfg: "\u5BFC\u5165\u914D\u7F6E\u5E76\u5199\u5165",
+      exportBlob: "\u5BFC\u51FA\u539F\u59CB 1024B blob (.bin)",
+      pair: "\u91CD\u65B0\u914D\u5BF9\u63A5\u6536\u5668",
+      factoryReset: "\u6062\u590D\u51FA\u5382\u8BBE\u7F6E",
+      toggleLog: "\u663E\u793A/\u9690\u85CF\u901A\u8BAF\u65E5\u5FD7",
+      pairDefault: "\u6062\u590D\u9ED8\u8BA4\u914D\u5BF9",
+      getPairData: "\u8BFB\u53D6\u914D\u5BF9\u6570\u636E",
+      cfPairDefault: "\u6062\u590D\u9ED8\u8BA4\u914D\u5BF9\u4F1A\u628A\u9F20\u6807\u4E0E\u63A5\u6536\u5668\u7684\u914D\u5BF9\u5173\u7CFB\u91CD\u7F6E\u4E3A\u51FA\u5382\u9ED8\u8BA4\uFF0C\u9700\u8981\u91CD\u65B0\u914D\u5BF9\u5417\uFF1F",
+      bPairDefaultOk: "\u9ED8\u8BA4\u914D\u5BF9\u547D\u4EE4\u5DF2\u53D1\u9001\u3002",
+      bPairDataOk: "\u914D\u5BF9\u6570\u636E\uFF1A",
+      persistNote: "\u5199\u5165\u7ACB\u5373\u6301\u4E45\u5316\uFF08\u65E0\u9700\u4FDD\u5B58\u64CD\u4F5C\uFF09\uFF1B0x13 \u662F\u6062\u590D\u51FA\u5382\u800C\u975E\u4FDD\u5B58\uFF0C\u614E\u7528\u3002",
+      secCredits: "\u81F4\u8C22\u4E0E\u53C2\u8003",
+      secNotes: "\u8BF4\u660E\u4E0E\u5DF2\u77E5\u9650\u5236",
+      minutes: "\u5206\u949F",
+      charging: "\u5145\u7535\u4E2D\uFF08\u7EA6 {0}%\uFF09",
+      wiredMode: "\u6709\u7EBF (USB-C)",
+      wirelessMode: "\u65E0\u7EBF (4k \u63A5\u6536\u5668)",
+      noDongleWired: "\u2014\uFF08\u6709\u7EBF\u8FDE\u63A5\u65E0\u63A5\u6536\u5668\uFF09",
+      current: "\uFF08\u5F53\u524D\uFF09",
+      bRead: "\u8BFB\u53D6\u5931\u8D25\uFF1A",
+      bWritten: "\u5DF2\u5199\u5165\u5E76\u6301\u4E45\u5316\u3002",
+      bSensor: "\u4F20\u611F\u5668\u8BBE\u7F6E\u5DF2\u5199\u5165\u5E76\u6301\u4E45\u5316\u3002",
+      bPerf: "\u6027\u80FD/\u7535\u6E90\u8BBE\u7F6E\u5DF2\u5199\u5165\u5E76\u6301\u4E45\u5316\u3002",
+      bSleep: "\u9F20\u6807\u5904\u4E8E\u4F11\u7720\u6216\u672A\u4E0A\u7535\uFF1A\u52A8\u4E00\u4E0B\u9F20\u6807\uFF0C\u518D\u70B9\u300C\u91CD\u65B0\u8BFB\u53D6\u300D\u3002",
+      bReadOk: "\u5DF2\u8BFB\u53D6\u5F53\u524D\u914D\u7F6E\u3002",
+      bPairSent: "\u914D\u5BF9\u547D\u4EE4\u5DF2\u53D1\u9001\uFF0C\u7B49\u5F85\u9F20\u6807\u91CD\u8FDE\u2026",
+      bResetOk: "\u5DF2\u6062\u590D\u51FA\u5382\u8BBE\u7F6E\u3002",
+      bImportFail: "\u5BFC\u5165\u5931\u8D25\uFF1A",
+      bConnectFail: "\u8FDE\u63A5\u5931\u8D25\uFF1A",
+      bNoWebhid: "\u6B64\u6D4F\u89C8\u5668\u4E0D\u652F\u6301 WebHID\uFF0C\u8BF7\u4F7F\u7528 Chrome / Edge 89+\u3002",
+      bImportOk: "\u914D\u7F6E\u5DF2\u6062\u590D\u3002",
+      cfPair: "\u91CD\u65B0\u914D\u5BF9\u4F1A\u8BA9\u9F20\u6807\u4E0E\u63A5\u6536\u5668\u91CD\u5EFA\u65E0\u7EBF\u94FE\u8DEF\uFF08\u8BBE\u7F6E\u4E0D\u53D7\u5F71\u54CD\uFF09\uFF0C\u7EE7\u7EED\uFF1F",
+      cfReset1: "\u26A0\uFE0F \u6062\u590D\u51FA\u5382\u8BBE\u7F6E\u5C06\u6E05\u7A7A\u5168\u90E8\u81EA\u5B9A\u4E49\u914D\u7F6E\uFF08CPI\u3001\u56DE\u62A5\u7387\u3001\u6309\u952E\u6620\u5C04\u7B49\uFF09\uFF0C\u786E\u5B9A\u7EE7\u7EED\uFF1F",
+      cfReset2: "\u518D\u6B21\u786E\u8BA4\uFF1A\u771F\u7684\u8981\u6062\u590D\u51FA\u5382\u8BBE\u7F6E\u5417\uFF1F",
+      errWrite: "\u5199\u5165\u5931\u8D25\uFF1A",
+      cfgNoRead: "\u5C1A\u672A\u8BFB\u53D6\u914D\u7F6E",
+      v1StageNote: "\uFF08v1 \u786C\u4EF6\u5FFD\u7565\u8F6F\u4EF6\u5207\u6362\uFF0C\u8BF7\u7528\u9F20\u6807\u5E95\u90E8\u6309\u952E\uFF09",
+      pollWiredNote: "\uFF08\u6709\u7EBF\u8FDE\u63A5\u786C\u4EF6\u4E0A\u9650 1000 Hz\uFF0C\u5199\u5165\u7684\u5B58\u50A8\u503C\u4E0D\u53D8\uFF09",
+      gxSafe: "GX Safe",
+      gxSpeed: "GX Speed",
+      disabled: "\u7981\u7528",
+      fixedCpi: "\u56FA\u5B9A CPI",
+      cpiCycle: "CPI \u5FAA\u73AF\u5207\u6362",
+      minutesFmt: "{0} \u5206\u949F",
+      keyboardMap: "\u952E\u76D8 (\u4FEE\u9970 0x{0}, \u952E 0x{1})",
+      mouseBtn: "\u9F20\u6807\u952E 0x{0}",
+      specialFn: "\u7279\u6B8A\u529F\u80FD 0x{0}",
+      mediaKey: "\u591A\u5A92\u4F53\u952E 0x{0}",
+      typeRaw: "\u7C7B\u578B 0x{0}",
+      langName: "\u7B80\u4F53\u4E2D\u6587",
+      crVole: "\u5B8C\u6574\u7684 USB \u914D\u7F6E\u534F\u8BAE\u9006\u5411\uFF08Ghidra \u53CD\u6C47\u7F16 + 44 \u6B21\u6293\u5305 + \u771F\u673A\u9A8C\u8BC1\uFF09\uFF0C\u672C\u5DE5\u5177\u7684\u534F\u8BAE\u5B9E\u73B0\u5168\u90E8\u57FA\u4E8E\u5176 re/PROTOCOL.md\u3002",
+      crBattery: "\u7535\u6C60\u72B6\u6001 HID \u534F\u8BAE\u6587\u6863\u3002",
+      crUnleashed: "XM2we \u76F4\u63A5\u901A\u4FE1\u63A2\u7D22\u3002",
+      crJzab: "Linux \u914D\u7F6E\u5DE5\u5177\u7684\u5148\u884C\u5B9E\u8DF5\u4E0E\u534F\u8BAE\u9A8C\u8BC1\u3002",
+      crVendor: "\u786C\u4EF6\u672C\u8EAB\uFF0C\u4EE5\u53CA\u672A\u6DF7\u6DC6\u3001\u53EF\u5206\u6790\u7684\u5B98\u65B9\u5DE5\u5177\u3002",
+      crDisclaimer: "\u672C\u9879\u76EE\u4E3A\u72EC\u7ACB\u5F00\u6E90\u5DE5\u5177\uFF0C\u4E0E Endgame Gear / Pro Gamersware GmbH \u65E0\u96B6\u5C5E\u5173\u7CFB\uFF1B\u4E0D\u4FEE\u6539\u56FA\u4EF6\uFF0C\u4EC5\u8BFB\u5199\u7528\u6237\u914D\u7F6E\u3002",
+      noteWebhid: "\u9700\u8981 Chrome / Edge 89+\uFF08WebHID\uFF09\u3002\u672C\u9875\u901A\u8FC7 HID \u7279\u5F81\u62A5\u544A\u76F4\u8FDE\u8BBE\u5907\uFF0C\u4E0D\u88C5\u4EFB\u4F55\u9A71\u52A8\u3002",
+      noteModels: "\u652F\u6301\u5168\u90E8\u56DB\u4E2A\u65E0\u7EBF\u578B\u53F7\uFF1AXM2w 4k / XM2w 4k v2 / OP1w 4k / OP1w 4k v2\uFF0C\u6709\u7EBF\uFF08USB-C\uFF09\u4E0E\u65E0\u7EBF\uFF084k \u63A5\u6536\u5668\uFF09\u5747\u53EF\u3002\u578B\u53F7\u7531 cmd 0x0E \u8FD4\u56DE\u7684\u9F20\u6807 PID \u81EA\u52A8\u8BC6\u522B\u3002",
+      noteWiredOnly: "\u6709\u7EBF\u4E13\u7528\u578B\u53F7\uFF08XM2we\u3001XM1 \u7CFB\u5217\u7B49\uFF09\u4F7F\u7528\u53E6\u4E00\u5957\u672A\u516C\u5F00\u534F\u8BAE\uFF0C\u6682\u4E0D\u652F\u6301\u3002",
+      noteSleep: "\u9F20\u6807\u6DF1\u5EA6\u4F11\u7720\u540E\u8BFB\u4E0D\u5230\u914D\u7F6E\uFF1A\u52A8\u4E00\u4E0B\u9F20\u6807\u518D\u70B9\u201C\u91CD\u65B0\u8BFB\u53D6\u201D\u3002\u8F6F\u4EF6\u4F1A\u81EA\u52A8\u53D1\u63A2\u6D4B\u547D\u4EE4\u6062\u590D\u901A\u9053\u3002",
+      noteWired: "\u6709\u7EBF\u8FDE\u63A5\u65F6 0x0D\uFF08\u63A5\u6536\u5668\u56FA\u4EF6\uFF09\u4F1A\u8FD4\u56DE\u201C\u4E0D\u9002\u7528\u201D\uFF1B\u6709\u7EBF\u56DE\u62A5\u7387\u786C\u4EF6\u4E0A\u9650 1000 Hz\u3002",
+      noteV1Stage: "v1 \u7684\u201C\u5F53\u524D\u6863\u4F4D\u201D\u53EA\u80FD\u7528\u9F20\u6807\u5E95\u90E8\u7684 CPI \u952E\u5207\u6362\uFF0C\u8F6F\u4EF6\u6539\u4E86\u4E5F\u65E0\u6548\uFF08\u786C\u4EF6\u5FFD\u7565\uFF09\u3002",
+      noteRe: "\u534F\u8BAE\u5DF2\u5BF9\u7167\u5B98\u65B9 v1.02 \u914D\u7F6E\u5DE5\u5177\u4E8C\u8FDB\u5236\u9010\u5B57\u8282\u9A8C\u8BC1\uFF1A\u547D\u4EE4\u8868\u3001\u8D1F\u8F7D\u957F\u5EA6\u3001blob \u5E03\u5C40\u3001\u53CC\u5757\u5199\u5165\u4E0E\u91CD\u8BD5\u65F6\u5E8F\u5168\u90E8\u4E00\u81F4\uFF1B0x71/0x72\uFF08\u9ED8\u8BA4\u914D\u5BF9/\u914D\u5BF9\u6570\u636E\uFF09\u4E3A\u5B98\u65B9\u5DE5\u5177\u65B0\u589E\u547D\u4EE4\uFF0C\u672C\u9875\u5DF2\u540C\u6B65\u5B9E\u73B0\u3002"
+    },
+    "en": {
+      appTitle: "Endgame Gear Web Configurator",
+      notConnected: "Not connected",
+      connectedWired: "Connected (wired)",
+      connectedWireless: "Connected (wireless)",
+      connect: "Connect device",
+      refresh: "Reload",
+      secInfo: "Device Info",
+      model: "Model",
+      mouseFw: "Mouse firmware",
+      dongleFw: "Dongle firmware",
+      battery: "Battery",
+      connMode: "Connection",
+      gen: "Protocol gen",
+      secSensor: "Sensor / CPI",
+      stage: "Stage",
+      ledColor: "LED color",
+      xySplit: "XY split",
+      cpiLevels: "Active stages",
+      activeStage: "Current stage",
+      lod: "Lift-off distance (LOD)",
+      glassMode: "Glass mode",
+      off: "Off",
+      on: "On",
+      glassNote: "v2 only; LOD encoding switches with it",
+      angleSnap: "Angle snapping",
+      ripple: "Ripple control",
+      ledLiftoff: "LED on lift-off",
+      angleTune: "Angle tuning (\xB0)",
+      angleTuneNote: "v2 only",
+      applySensor: "Apply sensor settings",
+      secPerf: "Performance / Power",
+      polling: "Polling rate",
+      slamclick: "Slamclick filter",
+      jitter: "Motion jitter filter (v1)",
+      maxFps: "Force max sensor FPS (v2)",
+      multiclick: "Multiclick filter (v2)",
+      powerSaving: "Power saving (min)",
+      deepSleep: "Deep sleep (min)",
+      applyPerf: "Apply performance/power",
+      secButtons: "Button mapping & click filters",
+      button: "Button",
+      mapping: "Mapping",
+      clickFilter: "Click filter",
+      btnReadonly: "Button remapping (0x16 two-chunk write) is implemented at protocol level but not editable yet; click filters below are applied with 'Apply performance/power'.",
+      secTools: "Backup / Restore / Tools",
+      exportCfg: "Export config (.json)",
+      importCfg: "Import config & write",
+      exportBlob: "Export raw 1024B blob (.bin)",
+      pair: "Re-pair dongle",
+      factoryReset: "Factory reset",
+      toggleLog: "Toggle communication log",
+      pairDefault: "Pair default",
+      getPairData: "Get pair data",
+      cfPairDefault: "Pair-default resets the mouse\u2194dongle link to the factory default pairing. Continue?",
+      bPairDefaultOk: "Pair-default command sent.",
+      bPairDataOk: "Pair data: ",
+      persistNote: "Writes persist immediately (no commit step); 0x13 is factory reset, not save \u2014 use with care.",
+      secCredits: "Credits & References",
+      secNotes: "Notes & Known Limitations",
+      minutes: "min",
+      charging: "Charging (\u2248 {0}%)",
+      wiredMode: "Wired (USB-C)",
+      wirelessMode: "Wireless (4k dongle)",
+      noDongleWired: "\u2014 (no dongle on cable)",
+      current: " (current)",
+      bRead: "Read failed: ",
+      bWritten: "Written and persisted.",
+      bSensor: "Sensor settings written and persisted.",
+      bPerf: "Performance/power written and persisted.",
+      bSleep: "Mouse is asleep or powered off: move it, then click 'Reload'.",
+      bReadOk: "Configuration loaded.",
+      bPairSent: "Pair command sent, waiting for mouse\u2026",
+      bResetOk: "Factory reset done.",
+      bImportFail: "Import failed: ",
+      bConnectFail: "Connection failed: ",
+      bNoWebhid: "WebHID not supported \u2014 use Chrome / Edge 89+.",
+      bImportOk: "Configuration restored.",
+      cfPair: "Re-pairing rebuilds the radio link (settings are unaffected). Continue?",
+      cfReset1: "\u26A0\uFE0F Factory reset wipes ALL custom settings (CPI, polling, button mapping\u2026). Continue?",
+      cfReset2: "Confirm again: really factory reset?",
+      errWrite: "Write failed: ",
+      cfgNoRead: "No configuration read yet",
+      v1StageNote: " (v1 hardware ignores software stage switch \u2014 use the CPI button under the mouse)",
+      pollWiredNote: " (capped at 1000 Hz on cable; the stored value is unchanged)",
+      gxSafe: "GX Safe",
+      gxSpeed: "GX Speed",
+      disabled: "Disabled",
+      fixedCpi: "Fixed CPI",
+      cpiCycle: "CPI cycle",
+      minutesFmt: "{0} min",
+      keyboardMap: "Keyboard (mods 0x{0}, key 0x{1})",
+      mouseBtn: "Mouse button 0x{0}",
+      specialFn: "Special 0x{0}",
+      mediaKey: "Consumer 0x{0}",
+      typeRaw: "Type 0x{0}",
+      langName: "English",
+      crVole: "Complete USB configuration-protocol reverse engineering (Ghidra disassembly + 44 USB captures + on-device verification); this tool's protocol implementation is entirely based on their re/PROTOCOL.md.",
+      crBattery: "Battery-status HID protocol documentation.",
+      crUnleashed: "Direct-communication exploration for XM2we.",
+      crJzab: "Prior art: Linux configuration tool and protocol verification.",
+      crVendor: "The hardware itself, plus official tools shipped unobfuscated and analyzable.",
+      crDisclaimer: "Independent open-source project, not affiliated with Endgame Gear / Pro Gamersware GmbH; firmware is never modified \u2014 user configuration only.",
+      noteWebhid: "Requires Chrome / Edge 89+ (WebHID). This page talks to the device directly via HID feature reports \u2014 no drivers installed.",
+      noteModels: "All four wireless models supported: XM2w 4k / XM2w 4k v2 / OP1w 4k / OP1w 4k v2, wired (USB-C) or wireless (4k dongle). The model is auto-detected from the mouse PID returned by cmd 0x0E.",
+      noteWiredOnly: "Wired-only models (XM2we, XM1 series) use a different undocumented protocol and are not supported yet.",
+      noteSleep: "Deep-sleeping mice can't be read: move the mouse, then click 'Reload'. The app sends probe commands to reopen the channel automatically.",
+      noteWired: "On cable, 0x0D (dongle firmware) reports 'not applicable'; wired polling rate is hardware-capped at 1000 Hz.",
+      noteV1Stage: "On v1 the active stage can only be switched with the CPI button under the mouse \u2014 software changes are ignored by hardware.",
+      noteRe: "The protocol was byte-verified against the official v1.02 configuration tool binary: command table, payload lengths, blob layout, two-chunk writes and retry timing all match; 0x71/0x72 (pair default / pair data) are new official commands, implemented here as well."
+    }
+  };
+  var LANG = localStorage.getItem("xm2w-lang") || "zh-CN";
+  function t(key, ...args) {
+    let s = I18N[LANG] && I18N[LANG][key] || I18N["zh-CN"][key] || key;
+    args.forEach((a, i) => s = s.replace(`{${i}}`, a));
+    return s;
   }
-  s.buttons = [];
-  for (let n = 0; n < 8; n++) {
-    const o = 0x37 + 7 * n;
-    s.buttons.push({ type: b[o], code: b[o+1], key: b[o+2], filter: b[o+6] });
+  function applyI18n() {
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const k = el.dataset.i18n;
+      const v = I18N[LANG] && I18N[LANG][k] || I18N["zh-CN"][k];
+      if (v != null) el.textContent = v;
+    });
+    document.documentElement.lang = LANG;
+    $("langSel").value = LANG;
   }
-  s.glass = (gen === 2 && b[0x6F]) ? 1 : 0;
-  s.lodMM = lodByteToMm(s.lod, s.glass);
-  stage = s;
-}
-function lodByteToMm(v, glass) {
-  if (gen === 1) return v === 1 ? 1.0 : 2.0;
-  if (glass) return v === 1 ? 1.0 : 2.0;
-  return (v + 7) / 10;
-}
-function mmToLodByte(mm, glass) {
-  if (gen === 1 || glass) return Math.round(mm);
-  return Math.round(mm * 10) - 7;
-}
-function buildSensorPayload() {
-  const p = new Uint8Array(28);
-  p[1] = stage.ledLiftoff;
-  p[2] = mmToLodByte(stage.lodMM, stage.glass);
-  p[3] = stage.angleSnap; p[4] = stage.ripple;
-  p[5] = gen === 2 ? (stage.angleTune & 0xFF) : 0;
-  p[6] = stage.levels;
-  p[7] = stage.active;
-  for (let n = 0; n < 4; n++) {
-    const o = 8 + 5 * n;
-    p[o] = stage.cpi[n][0];
-    p[o+1] = stage.cpi[n][1] & 0xFF; p[o+2] = stage.cpi[n][1] >> 8;
-    p[o+3] = stage.cpi[n][2] & 0xFF; p[o+4] = stage.cpi[n][2] >> 8;
-  }
-  return p;
-}
-function buildPowerPayload() {
-  const p = new Uint8Array(11);
-  p[0] = stage.motionSync;
-  p[1] = stage.polling;
-  let f = 0;
-  if (stage.slamclick) f |= 1;
-  if (gen === 1 && stage.jitter) f |= 0x10;
-  if (gen === 2 && stage.multiclick) f |= 0x20;
-  if (gen === 2 && stage.maxFps) f |= 0x40;
-  p[2] = f;
-  p[3] = stage.powerSaving === "off" ? 0x80 : stage.powerSaving;
-  for (let i = 0; i < 5; i++) p[4 + i] = stage.filters[i];
-  p[9] = stage.deepSleep === "off" ? 0x80 : stage.deepSleep;
-  p[10] = gen === 2 ? stage.glass : 0;
-  return p;
-}
+  $("langSel").onchange = (e) => {
+    LANG = e.target.value;
+    localStorage.setItem("xm2w-lang", LANG);
+    applyI18n();
+    document.dispatchEvent(new CustomEvent("langchange"));
+  };
 
-/* ================= UI 渲染 ================= */
-function fillSelect(sel, opts, val) {
-  sel.innerHTML = "";
-  for (const [v, tt] of opts) {
-    const o = document.createElement("option"); o.value = v; o.textContent = tt; sel.appendChild(o);
-  }
-  sel.value = String(val);
-}
-function render() {
-  $("iModel").textContent = mouseName;
-  $("iMouseFw").textContent = mouseFw;
-  $("iDongleFw").textContent = wired ? t("noDongleWired") : dongleFw;
-  $("iBattery").textContent = battery === null ? "—"
-    : (wired && battery < 100 ? t("charging", battery) : battery + " %");
-  $("iConn").textContent = wired ? t("wiredMode") : t("wirelessMode");
-  $("iGen").textContent = gen ? `v${gen}` : "—";
+  // src/protocol.ts
+  var VID = 13159;
+  var DONGLE_PID = 6512;
+  var MOUSE_PIDS = {
+    6504: ["XM2w 4k", 1],
+    6514: ["OP1w 4k", 1],
+    6505: ["XM2w 4k (\u53D8\u4F53)", 1],
+    6530: ["XM2w 4k v2", 2],
+    6532: ["OP1w 4k v2", 2],
+    6529: ["XM2w 4k v2 (\u53D8\u4F53)", 2]
+  };
+  var RPT_CMD = 161;
+  var RPT_BULK = 160;
 
-  const tb = $("cpiRows"); tb.innerHTML = "";
-  for (let n = 0; n < 4; n++) {
-    const tr = document.createElement("tr");
-    const dis = n >= stage.levels ? "disabled" : "";
-    tr.innerHTML = `<td>CPI ${n + 1}${n === stage.active ? t("current") : ""}</td><td>${STAGE_COLORS[LANG][n]}</td>
+  // src/main.ts
+  document.addEventListener("langchange", () => render());
+  var STAGE_COLORS = { "zh-CN": ["\u84DD", "\u7EFF", "\u9EC4", "\u7EA2"], "en": ["Blue", "Green", "Yellow", "Red"] };
+  var BTN_NAMES = {
+    "zh-CN": ["\u5DE6\u952E", "\u53F3\u952E", "\u4E2D\u952E", "\u540E\u9000", "\u524D\u8FDB", "\u7279\u6B8A(CPI)", "\u6EDA\u8F6E\u4E0A", "\u6EDA\u8F6E\u4E0B"],
+    "en": ["Left", "Right", "Middle", "Back", "Forward", "Special (CPI)", "Wheel up", "Wheel down"]
+  };
+  var FILTER_OPTS = [["off", "off"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"], ["10", "10"], ["11", "11"], ["12", "12"], ["13", "13"], ["14", "14"], ["15", "15"]];
+  var dev = null;
+  var queue = Promise.resolve();
+  var lastFail = false;
+  var gen = null;
+  var mouseName = "\u2014";
+  var blob = null;
+  var dongleFw = "\u2014";
+  var mouseFw = "\u2014";
+  var battery = null;
+  var wired = false;
+  var stage = newS();
+  function newS() {
+    return {
+      cpi: [[0, 400, 400], [0, 800, 800], [0, 1600, 1600], [0, 3200, 3200]],
+      levels: 4,
+      active: 1,
+      lod: 3,
+      lodMM: 1,
+      glass: 0,
+      angleSnap: 0,
+      ripple: 0,
+      angleTune: 0,
+      ledLiftoff: 1,
+      motionSync: 0,
+      polling: 8,
+      flags: 0,
+      powerSaving: 1,
+      deepSleep: 3,
+      filters: [8, 8, 8, 8, 8],
+      buttons: []
+    };
+  }
+  function setConn(on, text) {
+    const p = $("connState");
+    p.className = "status-pill" + (on ? "" : " off");
+    p.textContent = text;
+  }
+  async function rawReceive(reportId) {
+    const d = await dev.receiveFeatureReport(reportId);
+    const u8 = new Uint8Array(d.buffer);
+    if (u8[0] === reportId) return u8;
+    const out = new Uint8Array(u8.length + 1);
+    out[0] = reportId;
+    out.set(u8, 1);
+    return out;
+  }
+  async function transact(cmd, target = 0, payload = null, opt = {}) {
+    const run = async () => {
+      const buf = new Uint8Array(63);
+      buf[0] = cmd;
+      buf[1] = target;
+      buf[2] = opt.lenByte !== void 0 ? opt.lenByte : payload ? payload.length : 0;
+      if (opt.chunk) buf[6] = opt.chunk;
+      if (payload) buf.set(payload, 15);
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          await dev.sendFeatureReport(RPT_CMD, buf);
+        } catch (e) {
+          log(`\u2717 SET fail (cmd 0x${cmd.toString(16)}): ${e.message}`);
+          if (attempt === 3) throw e;
+          await sleep(60);
+          continue;
+        }
+        await sleep(opt.pace || 170);
+        let u8;
+        try {
+          u8 = await rawReceive(RPT_CMD);
+        } catch (e) {
+          log(`\u2717 GET fail: ${e.message}`);
+          if (attempt === 3) throw e;
+          await sleep(60);
+          continue;
+        }
+        const status = u8[1];
+        if (status === 1) {
+          lastFail = false;
+          return u8;
+        }
+        if (status === 3) {
+          log(`\u22EF busy, retry #${attempt + 1}`);
+          await sleep(200 * (attempt + 1));
+          continue;
+        }
+        lastFail = true;
+        const map = { 7: "N/A on this connection", 8: "mouse asleep/unreachable", 17: "mouse asleep/unreachable" };
+        log(`\u2717 cmd 0x${cmd.toString(16)} status=0x${status.toString(16)} (${map[status] || "unknown"})`);
+        throw new StatusError(status, map[status] || "device error 0x" + status.toString(16));
+      }
+      throw new StatusError(3, "device stays busy");
+    };
+    const p = queue.then(run, run);
+    queue = p.catch(() => {
+    });
+    return p;
+  }
+  var StatusError = class extends Error {
+    constructor(code, msg) {
+      super(msg);
+      this.code = code;
+    }
+  };
+  async function probe() {
+    try {
+      await transact(15, 1, null, { pace: 120 });
+      return;
+    } catch (e) {
+      if (e.code === 7) throw e;
+    }
+    try {
+      await transact(15, 15, null, { pace: 120 });
+      return;
+    } catch (e) {
+      if (e.code === 7) throw e;
+    }
+    await transact(14, 0, null, { pace: 120 });
+  }
+  async function guarded(cmd, target, payload = null, opt = {}) {
+    if (lastFail) {
+      try {
+        await probe();
+      } catch (e) {
+        throw new StatusError(8, "mouse unreachable \u2014 move it and retry");
+      }
+    }
+    return transact(cmd, target, payload, opt);
+  }
+  function looksLikeBlob(b) {
+    return b[14] >= 1 && b[14] <= 4 && [2, 4, 8, 64, 128].includes(b[5]);
+  }
+  async function readBlob() {
+    let lastDump = "";
+    for (let round = 1; round <= 4; round++) {
+      await guarded(18, 0, null, { pace: 250 });
+      for (let i = 0; i < 3; i++) {
+        const u8 = await rawReceive(RPT_BULK);
+        let status = u8[1], off = 16;
+        if (u8[1] === 161 && u8[2] === 1) {
+          status = 1;
+          off = 17;
+        }
+        if (status === 1 && u8.length >= off + 1024) {
+          const cand = u8.slice(off, off + 1024);
+          if (looksLikeBlob(cand)) {
+            blob = cand;
+            log(`\u2713 blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 16)}`);
+            return;
+          }
+          lastDump = hex(cand, 32);
+          log(`\u22EF blob \u6821\u9A8C\u672A\u8FC7 (levels=0x${cand[14].toString(16)} polling=0x${cand[5].toString(16)}), round ${round}, head: ${lastDump}`);
+          break;
+        }
+        if (status === 3) {
+          log(`\u22EF blob busy, retry #${i + 1}`);
+          await sleep(280);
+          continue;
+        }
+        lastDump = hex(u8, 32);
+        log(`\u22EF 0xA0 not ready (status=0x${u8[1].toString(16)}), round ${round}, head: ${lastDump}`);
+        break;
+      }
+      await sleep(300);
+    }
+    throw new Error(`blob read failed after 4 rounds; last head: ${lastDump}`);
+  }
+  function parseBlob() {
+    const b = blob;
+    const s = newS();
+    s.angleTune = b[1] << 24 >> 24;
+    s.deepSleep = b[3] & 127;
+    if (b[3] & 128) s.deepSleep = "off";
+    s.powerSaving = b[4] & 127;
+    if (b[4] & 128) s.powerSaving = "off";
+    s.polling = b[5];
+    s.flags = b[6];
+    s.ledLiftoff = b[8] ? 1 : 0;
+    s.lod = b[9];
+    s.angleSnap = b[10] ? 1 : 0;
+    s.ripple = b[11] ? 1 : 0;
+    s.motionSync = b[12] ? 1 : 0;
+    s.active = b[13] & 3;
+    s.levels = Math.min(4, Math.max(1, b[14]));
+    for (let n = 0; n < 4; n++) {
+      const o = 35 + 5 * n;
+      s.cpi[n] = [b[o], b[o + 1] | b[o + 2] << 8, b[o + 3] | b[o + 4] << 8];
+    }
+    s.buttons = [];
+    for (let n = 0; n < 8; n++) {
+      const o = 55 + 7 * n;
+      s.buttons.push({ type: b[o], code: b[o + 1], key: b[o + 2], filter: b[o + 6] });
+    }
+    s.glass = gen === 2 && b[111] ? 1 : 0;
+    s.lodMM = lodByteToMm(s.lod, s.glass);
+    stage = s;
+  }
+  function lodByteToMm(v, glass) {
+    if (gen === 1) return v === 1 ? 1 : 2;
+    if (glass) return v === 1 ? 1 : 2;
+    return (v + 7) / 10;
+  }
+  function mmToLodByte(mm, glass) {
+    if (gen === 1 || glass) return Math.round(mm);
+    return Math.round(mm * 10) - 7;
+  }
+  function buildSensorPayload() {
+    const p = new Uint8Array(28);
+    p[1] = stage.ledLiftoff;
+    p[2] = mmToLodByte(stage.lodMM, stage.glass);
+    p[3] = stage.angleSnap;
+    p[4] = stage.ripple;
+    p[5] = gen === 2 ? stage.angleTune & 255 : 0;
+    p[6] = stage.levels;
+    p[7] = stage.active;
+    for (let n = 0; n < 4; n++) {
+      const o = 8 + 5 * n;
+      p[o] = stage.cpi[n][0];
+      p[o + 1] = stage.cpi[n][1] & 255;
+      p[o + 2] = stage.cpi[n][1] >> 8;
+      p[o + 3] = stage.cpi[n][2] & 255;
+      p[o + 4] = stage.cpi[n][2] >> 8;
+    }
+    return p;
+  }
+  function buildPowerPayload() {
+    const p = new Uint8Array(11);
+    p[0] = stage.motionSync;
+    p[1] = stage.polling;
+    let f = 0;
+    if (stage.slamclick) f |= 1;
+    if (gen === 1 && stage.jitter) f |= 16;
+    if (gen === 2 && stage.multiclick) f |= 32;
+    if (gen === 2 && stage.maxFps) f |= 64;
+    p[2] = f;
+    p[3] = stage.powerSaving === "off" ? 128 : stage.powerSaving;
+    for (let i = 0; i < 5; i++) p[4 + i] = stage.filters[i];
+    p[9] = stage.deepSleep === "off" ? 128 : stage.deepSleep;
+    p[10] = gen === 2 ? stage.glass : 0;
+    return p;
+  }
+  function fillSelect(sel, opts, val) {
+    sel.innerHTML = "";
+    for (const [v, tt] of opts) {
+      const o = document.createElement("option");
+      o.value = v;
+      o.textContent = tt;
+      sel.appendChild(o);
+    }
+    sel.value = String(val);
+  }
+  function render() {
+    $("iModel").textContent = mouseName;
+    $("iMouseFw").textContent = mouseFw;
+    $("iDongleFw").textContent = wired ? t("noDongleWired") : dongleFw;
+    $("iBattery").textContent = battery === null ? "\u2014" : wired && battery < 100 ? t("charging", battery) : battery + " %";
+    $("iConn").textContent = wired ? t("wiredMode") : t("wirelessMode");
+    $("iGen").textContent = gen ? `v${gen}` : "\u2014";
+    const tb = $("cpiRows");
+    tb.innerHTML = "";
+    for (let n = 0; n < 4; n++) {
+      const tr = document.createElement("tr");
+      const dis = n >= stage.levels ? "disabled" : "";
+      tr.innerHTML = `<td>CPI ${n + 1}${n === stage.active ? t("current") : ""}</td><td>${STAGE_COLORS[LANG][n]}</td>
       <td><input type="checkbox" data-xy="${n}" ${stage.cpi[n][0] ? "checked" : ""} ${dis}></td>
       <td><input type="number" data-x="${n}" min="50" max="30000" step="50" value="${stage.cpi[n][1]}" ${dis}></td>
       <td><input type="number" data-y="${n}" min="50" max="30000" step="50" value="${stage.cpi[n][2]}" ${stage.cpi[n][0] && !dis ? "" : "disabled"}></td>`;
-    tb.appendChild(tr);
-  }
-  tb.querySelectorAll("input[data-xy]").forEach(el => el.onchange = () => {
-    const n = +el.dataset.xy; stage.cpi[n][0] = el.checked ? 1 : 0;
-    tb.querySelector(`input[data-y="${n}"]`).disabled = !el.checked;
-  });
-  tb.querySelectorAll("input[data-x],input[data-y]").forEach(el => el.onchange = () => {
-    const n = +(el.dataset.x ?? el.dataset.y); const ax = el.dataset.x ? 1 : 2;
-    stage.cpi[n][ax] = Math.max(10, Math.min(30000, +el.value || 400));
-  });
-  $("cpiLevels").value = String(stage.levels);
-  $("cpiLevels").onchange = e => stage.levels = +e.target.value;
-  const actSel = $("cpiActive");
-  fillSelect(actSel, [[0,"CPI 1"],[1,"CPI 2"],[2,"CPI 3"],[3,"CPI 4"]], stage.active);
-  actSel.disabled = gen === 1;
-  $("cpiActiveNote").textContent = gen === 1 ? t("v1StageNote") : "";
-  actSel.onchange = e => stage.active = +e.target.value;
-
-  const lodSel = $("lod");
-  if (gen === 1 || stage.glass) {
-    fillSelect(lodSel, [[1,"1.0 mm"],[2,"2.0 mm"]], Math.round(stage.lodMM));
-  } else {
-    const opts = []; for (let i = 7; i <= 17; i++) opts.push([i / 10, (i / 10).toFixed(1) + " mm"]);
-    fillSelect(lodSel, opts, +stage.lodMM.toFixed(1));
-  }
-  lodSel.onchange = e => stage.lodMM = +e.target.value;
-  $("glass").value = String(stage.glass);
-  $("glass").disabled = gen !== 2;
-  $("glass").onchange = e => {
-    const g = +e.target.value; const old = stage.glass;
-    stage.glass = g;
-    if (g !== old) {
-      if (g === 1) stage.lodMM = stage.lodMM <= 0.8 ? 1 : 2;
-      else stage.lodMM = stage.lodMM === 1 ? 1.0 : 1.7;
+      tb.appendChild(tr);
     }
-    render();
-  };
-  $("angleSnap").value = String(stage.angleSnap); $("angleSnap").onchange = e => stage.angleSnap = +e.target.value;
-  $("ripple").value = String(stage.ripple); $("ripple").onchange = e => stage.ripple = +e.target.value;
-  $("ledLiftoff").value = String(stage.ledLiftoff); $("ledLiftoff").onchange = e => stage.ledLiftoff = +e.target.value;
-  $("angleTune").value = stage.angleTune;
-  $("angleTune").disabled = gen !== 2;
-  $("angleTune").onchange = e => stage.angleTune = Math.max(-30, Math.min(30, +e.target.value || 0));
-
-  const pollSel = $("polling");
-  const isEn = LANG === "en";
-  const ps = isEn ? "power saving" : "省电", of = isEn ? "office" : "办公";
-  const pollOpts = gen === 1
-    ? [[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"]]
-    : [[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"],[0x80,`1000 Hz (${ps})`],[0x40,`125 Hz (${of})`]];
-  fillSelect(pollSel, pollOpts, stage.polling);
-  if (!(gen === 1 && ![0x02,0x04,0x08].includes(stage.polling))) pollSel.value = String(stage.polling);
-  $("pollNote").textContent = wired ? t("pollWiredNote") : "";
-  pollSel.onchange = e => stage.polling = +e.target.value;
-  $("motionSync").value = String(stage.motionSync); $("motionSync").onchange = e => stage.motionSync = +e.target.value;
-  stage.slamclick = !!(stage.flags & 1);
-  $("slamclick").value = stage.slamclick ? "1" : "0"; $("slamclick").onchange = e => stage.slamclick = +e.target.value;
-  $("rowV1Jitter").style.display = gen === 1 ? "" : "none";
-  stage.jitter = !!(stage.flags & 0x10);
-  $("jitter").value = stage.jitter ? "1" : "0"; $("jitter").onchange = e => stage.jitter = +e.target.value;
-  $("rowV2Max").style.display = gen === 2 ? "" : "none";
-  stage.maxFps = !!(stage.flags & 0x40);
-  $("maxFps").value = stage.maxFps ? "1" : "0"; $("maxFps").onchange = e => stage.maxFps = +e.target.value;
-  $("rowV2Multi").style.display = gen === 2 ? "" : "none";
-  stage.multiclick = !!(stage.flags & 0x20);
-  $("multiclick").value = stage.multiclick ? "1" : "0"; $("multiclick").onchange = e => stage.multiclick = +e.target.value;
-  const toOpts = [["off", t("minutes") === "min" ? "Off" : "关闭"]].concat(Array.from({length:120},(_,i)=>[i+1, t("minutesFmt", i+1)]));
-  fillSelect($("powerSaving"), toOpts(), stage.powerSaving); $("powerSaving").value = String(stage.powerSaving);
-  $("powerSaving").onchange = e => stage.powerSaving = e.target.value === "off" ? "off" : +e.target.value;
-  fillSelect($("deepSleep"), toOpts(), stage.deepSleep); $("deepSleep").value = String(stage.deepSleep);
-  $("deepSleep").onchange = e => stage.deepSleep = e.target.value === "off" ? "off" : +e.target.value;
-
-  const br = $("btnRows"); br.innerHTML = "";
-  stage.buttons.forEach((btn, i) => {
-    br.insertAdjacentHTML("beforeend", `<tr><td>${BTN_NAMES[LANG][i]}</td><td>${describeMap(btn)}</td><td>${btn.filter === 0xF0 ? t("gxSafe") : btn.filter === 0xF1 ? t("gxSpeed") : (btn.filter & 0x7F)}</td></tr>`);
-  });
-  const fr = $("filterRows"); fr.innerHTML = "";
-  BTN_NAMES[LANG].slice(0, 5).forEach((name, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${name}</td><td><select data-f="${i}"></select></td>`;
-    fr.appendChild(tr);
-    const sel = tr.querySelector("select");
-    const opts = FILTER_OPTS.slice();
-    if (i <= 1) opts.push(["0xF0", t("gxSafe")],["0xF1", t("gxSpeed")]);
-    fillSelect(sel, opts, stage.filters[i]);
-    sel.value = String(stage.filters[i]);
-    sel.onchange = e => stage.filters[i] = +e.target.value;
-  });
-}
-function describeMap(b) {
-  switch (b.type) {
-    case 0x00: return { 1:"←",2:"→",4:"⌘",8:"↓",0x10:"↑" }[b.code] || t("mouseBtn", b.code.toString(16));
-    case 0x01: return b.code === 1 ? "↑" : "↓";
-    case 0x02: return t("keyboardMap", b.code.toString(16), b.key.toString(16));
-    case 0x09: return b.code === 0xF1 ? t("cpiCycle") : t("specialFn", b.code.toString(16));
-    case 0x0C: return t("fixedCpi");
-    case 0x20: return t("mediaKey", b.code.toString(16));
-    case 0xFF: return t("disabled");
-    default: return t("typeRaw", b.type.toString(16));
-  }
-}
-
-/* ================= 应用流程 ================= */
-async function applySensor() {
-  const glassChanged = gen === 2 && (blob[0x6F] ? 1 : 0) !== stage.glass;
-  await guarded(0x14, 0x0F, buildSensorPayload(), { pace: 200 });
-  log("✓ cmd 0x14 written");
-  if (glassChanged) {
-    await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: 200 });
-    log("✓ glass-mode linked cmd 0x15 written");
-  }
-  await refreshAll();
-  banner("ok", t("bSensor"));
-}
-async function applyPerf() {
-  const glassChanged = gen === 2 && (blob[0x6F] ? 1 : 0) !== stage.glass;
-  await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: 200 });
-  log("✓ cmd 0x15 written");
-  if (glassChanged) {
-    await guarded(0x14, 0x0F, buildSensorPayload(), { pace: 200 });
-    log("✓ glass-mode linked cmd 0x14 written");
-  }
-  await refreshAll();
-  banner("ok", t("bPerf"));
-}
-async function refreshAll() {
-  banner("warn", "");
-  try {
-    await probe();
-    try { const r = await guarded(0x0D, 0x00, null, { pace: 150 }); dongleFw = fwStr(r[16] | (r[17] << 8)); }
-    catch (e) { if (e.code !== 0x07) throw e; dongleFw = "—"; }
-    let mouseOk = false;
-    try {
-      const r = await guarded(0x0E, 0x00, null, { pace: 150 });
-      const pid = r[18] | (r[19] << 8);
-      if (MOUSE_PIDS[pid]) { mouseName = MOUSE_PIDS[pid][0]; gen = MOUSE_PIDS[pid][1]; }
-      else { mouseName = `Unknown (PID 0x${pid.toString(16)})`; gen = null; }
-      mouseFw = fwStr(r[22] | (r[23] << 8));
-      mouseOk = true;
-    } catch (e) { if (![0x08, 0x11].includes(e.code)) throw e; }
-    try { const r = await guarded(0xB4, 0x00, null, { pace: 150 }); battery = r[16]; } catch (e) { battery = null; }
-    showCards();
-    if (mouseOk) { await readBlob(); parseBlob(); render(); banner("ok", t("bReadOk")); }
-    else { render(); banner("warn", t("bSleep")); }
-  } catch (e) { banner("err", t("bRead") + e.message); log("✗ " + e.message); }
-}
-function fwStr(v) { const h = v.toString(16).padStart(4, "0"); return `${parseInt(h.slice(0, 2), 16)}.${parseInt(h.slice(2), 16)}`; }
-function showCards() { for (const id of ["cardInfo","cardSensor","cardPerf","cardBtns","cardTools"]) $(id).style.display = ""; }
-
-/* ================= 连接 ================= */
-async function openDevice(d) {
-  dev = d; wired = d.productId !== DONGLE_PID;
-  await dev.open();
-  dev.addEventListener("inputreport", e => {
-    if (e.data.byteLength < 2) return;
-    const code = e.data.getUint8(0), v = e.data.getUint8(1);
-    if (code === 0xB4) { battery = e.data.getUint8(2); render(); log(`⚡ battery event: ${battery}%`); }
-    else if (code === 0xB1) { log(v === 1 ? "⚡ radio link: up" : "⚡ radio link: down (mouse asleep)"); }
-  });
-  setConn(true, wired ? t("connectedWired") : t("connectedWireless"));
-  $("btnRefresh").disabled = false;
-  log(`✓ opened ${d.productName} VID=0x${d.vendorId.toString(16)} PID=0x${d.productId.toString(16)}`);
-  await refreshAll();
-}
-$("btnConnect").onclick = async () => {
-  log("→ 连接点击: WebHID 可用=" + ("hid" in navigator) + " 安全上下文=" + window.isSecureContext);
-  if (!("hid" in navigator)) {
-    const why = !window.isSecureContext && location.protocol !== "file:"
-      ? (LANG === "zh" ? "当前页面不是安全上下文（须 https:// 或 file://），WebHID 被禁用。" : "Page is not a secure context (https:// or file:// required); WebHID disabled.")
-      : t("bNoWebhid");
-    banner("err", why); return;
-  }
-  try {
-    let devs = await navigator.hid.requestDevice({ filters: [{ vendorId: VID }] });
-    if (!devs.length)
-      devs = await navigator.hid.requestDevice({ filters: [] }); // 全量列表，用户手选
-    if (!devs.length) return;
-    for (const d of devs)
-      log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} collections=` +
-          (d.collections || []).map(c => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
-    // 优先挑 vendor 用法页（0xFF00+）的接口；没有就退而求其次
-    const pick = devs.find(d => (d.collections || []).some(c => c.usagePage >= 0xFF00)) || devs[0];
-    await openDevice(pick);
-  } catch (e) { banner("err", t("bConnectFail") + e.message); log("✗ " + e.message); }
-};
-$("btnRefresh").onclick = () => refreshAll();
-$("btnApplySensor").onclick = () => applySensor().catch(e => banner("err", t("errWrite") + e.message));
-$("btnApplyPerf").onclick = () => applyPerf().catch(e => banner("err", t("errWrite") + e.message));
-$("btnPair").onclick = async () => {
-  if (!confirm(t("cfPair"))) return;
-  try { await guarded(0x70, 0x00, null, { pace: 300 }); log("✓ pair cmd sent"); banner("ok", t("bPairSent")); await sleep(2000); await refreshAll(); }
-  catch (e) { banner("err", e.message); }
-};
-/* 0x71 = Pair Default（恢复默认配对，零负载，官方发后等 300ms）
-   0x72 = Get Pair Data（读取配对数据，官方等 350ms 后收，负载偏移 16 起 16 字节） */
-$("btnPairDefault").onclick = async () => {
-  if (!confirm(t("cfPairDefault"))) return;
-  try { await guarded(0x71, 0x00, null, { pace: 300 }); log("✓ pair-default cmd sent"); banner("ok", t("bPairDefaultOk")); await sleep(2000); await refreshAll(); }
-  catch (e) { banner("err", e.message); }
-};
-$("btnPairData").onclick = async () => {
-  try {
-    const r = await guarded(0x72, 0x00, null, { pace: 350 });
-    const d = r.slice(16, 32);
-    log("✓ pair data: " + hex(d, 16));
-    banner("ok", t("bPairDataOk") + " " + hex(d, 16));
-  } catch (e) { banner("err", e.message); }
-};
-$("btnReset").onclick = async () => {
-  if (!confirm(t("cfReset1"))) return;
-  if (!confirm(t("cfReset2"))) return;
-  try { await guarded(0x13, 0x00, null, { pace: 300 }); log("✓ factory reset done"); await refreshAll(); banner("ok", t("bResetOk")); }
-  catch (e) { banner("err", e.message); }
-};
-$("btnSave").onclick = () => {
-  if (!blob) return banner("err", t("cfgNoRead"));
-  const out = { app: "endgame-gear-web-configurator", savedAt: new Date().toISOString(), device: mouseName, gen, lang: LANG, blobB64: btoa(String.fromCharCode(...blob)) };
-  download(JSON.stringify(out, null, 2), `egg-mouse-config-${Date.now()}.json`, "application/json");
-};
-$("btnBlob").onclick = () => { if (blob) download(new Blob([blob]), `egg-mouse-blob-${Date.now()}.bin`); };
-$("btnLoad").onclick = () => $("fileLoad").click();
-$("fileLoad").onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
-  try {
-    const j = JSON.parse(await f.text());
-    const b = Uint8Array.from(atob(j.blobB64), c => c.charCodeAt(0));
-    if (b.length !== 1024) throw new Error("blob length != 1024");
-    blob = b; parseBlob();
-    stage.slamclick = !!(stage.flags & 1);
-    stage.jitter = !!(stage.flags & 0x10);
-    stage.multiclick = !!(stage.flags & 0x20);
-    stage.maxFps = !!(stage.flags & 0x40);
-    await guarded(0x14, 0x0F, buildSensorPayload(), { pace: 220 });
-    await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: 220 });
-    for (let chunk = 1; chunk <= 2; chunk++) {
-      const p = new Uint8Array(28);
-      for (let i = 0; i < 4; i++) {
-        const btn = stage.buttons[(chunk - 1) * 4 + i];
-        p[i*7] = btn.type; p[i*7+1] = btn.code; p[i*7+2] = btn.key; p[i*7+6] = btn.filter;
+    tb.querySelectorAll("input[data-xy]").forEach((el) => el.onchange = () => {
+      const n = +el.dataset.xy;
+      stage.cpi[n][0] = el.checked ? 1 : 0;
+      tb.querySelector(`input[data-y="${n}"]`).disabled = !el.checked;
+    });
+    tb.querySelectorAll("input[data-x],input[data-y]").forEach((el) => el.onchange = () => {
+      const n = +(el.dataset.x ?? el.dataset.y);
+      const ax = el.dataset.x ? 1 : 2;
+      stage.cpi[n][ax] = Math.max(10, Math.min(3e4, +el.value || 400));
+    });
+    $("cpiLevels").value = String(stage.levels);
+    $("cpiLevels").onchange = (e) => stage.levels = +e.target.value;
+    const actSel = $("cpiActive");
+    fillSelect(actSel, [[0, "CPI 1"], [1, "CPI 2"], [2, "CPI 3"], [3, "CPI 4"]], stage.active);
+    actSel.disabled = gen === 1;
+    $("cpiActiveNote").textContent = gen === 1 ? t("v1StageNote") : "";
+    actSel.onchange = (e) => stage.active = +e.target.value;
+    const lodSel = $("lod");
+    if (gen === 1 || stage.glass) {
+      fillSelect(lodSel, [[1, "1.0 mm"], [2, "2.0 mm"]], Math.round(stage.lodMM));
+    } else {
+      const opts = [];
+      for (let i = 7; i <= 17; i++) opts.push([i / 10, (i / 10).toFixed(1) + " mm"]);
+      fillSelect(lodSel, opts, +stage.lodMM.toFixed(1));
+    }
+    lodSel.onchange = (e) => stage.lodMM = +e.target.value;
+    $("glass").value = String(stage.glass);
+    $("glass").disabled = gen !== 2;
+    $("glass").onchange = (e) => {
+      const g = +e.target.value;
+      const old = stage.glass;
+      stage.glass = g;
+      if (g !== old) {
+        if (g === 1) stage.lodMM = stage.lodMM <= 0.8 ? 1 : 2;
+        else stage.lodMM = stage.lodMM === 1 ? 1 : 1.7;
       }
-      await guarded(0x16, 0x0F, p, { chunk, pace: 220 });
+      render();
+    };
+    $("angleSnap").value = String(stage.angleSnap);
+    $("angleSnap").onchange = (e) => stage.angleSnap = +e.target.value;
+    $("ripple").value = String(stage.ripple);
+    $("ripple").onchange = (e) => stage.ripple = +e.target.value;
+    $("ledLiftoff").value = String(stage.ledLiftoff);
+    $("ledLiftoff").onchange = (e) => stage.ledLiftoff = +e.target.value;
+    $("angleTune").value = stage.angleTune;
+    $("angleTune").disabled = gen !== 2;
+    $("angleTune").onchange = (e) => stage.angleTune = Math.max(-30, Math.min(30, +e.target.value || 0));
+    const pollSel = $("polling");
+    const isEn = LANG === "en";
+    const ps = isEn ? "power saving" : "\u7701\u7535", of = isEn ? "office" : "\u529E\u516C";
+    const pollOpts = gen === 1 ? [[2, "4000 Hz"], [4, "2000 Hz"], [8, "1000 Hz"]] : [[2, "4000 Hz"], [4, "2000 Hz"], [8, "1000 Hz"], [128, `1000 Hz (${ps})`], [64, `125 Hz (${of})`]];
+    fillSelect(pollSel, pollOpts, stage.polling);
+    if (!(gen === 1 && ![2, 4, 8].includes(stage.polling))) pollSel.value = String(stage.polling);
+    $("pollNote").textContent = wired ? t("pollWiredNote") : "";
+    pollSel.onchange = (e) => stage.polling = +e.target.value;
+    $("motionSync").value = String(stage.motionSync);
+    $("motionSync").onchange = (e) => stage.motionSync = +e.target.value;
+    stage.slamclick = !!(stage.flags & 1);
+    $("slamclick").value = stage.slamclick ? "1" : "0";
+    $("slamclick").onchange = (e) => stage.slamclick = +e.target.value;
+    $("rowV1Jitter").style.display = gen === 1 ? "" : "none";
+    stage.jitter = !!(stage.flags & 16);
+    $("jitter").value = stage.jitter ? "1" : "0";
+    $("jitter").onchange = (e) => stage.jitter = +e.target.value;
+    $("rowV2Max").style.display = gen === 2 ? "" : "none";
+    stage.maxFps = !!(stage.flags & 64);
+    $("maxFps").value = stage.maxFps ? "1" : "0";
+    $("maxFps").onchange = (e) => stage.maxFps = +e.target.value;
+    $("rowV2Multi").style.display = gen === 2 ? "" : "none";
+    stage.multiclick = !!(stage.flags & 32);
+    $("multiclick").value = stage.multiclick ? "1" : "0";
+    $("multiclick").onchange = (e) => stage.multiclick = +e.target.value;
+    const toOpts = [["off", t("minutes") === "min" ? "Off" : "\u5173\u95ED"]].concat(Array.from({ length: 120 }, (_, i) => [i + 1, t("minutesFmt", i + 1)]));
+    fillSelect($("powerSaving"), toOpts, stage.powerSaving);
+    $("powerSaving").value = String(stage.powerSaving);
+    $("powerSaving").onchange = (e) => stage.powerSaving = e.target.value === "off" ? "off" : +e.target.value;
+    fillSelect($("deepSleep"), toOpts, stage.deepSleep);
+    $("deepSleep").value = String(stage.deepSleep);
+    $("deepSleep").onchange = (e) => stage.deepSleep = e.target.value === "off" ? "off" : +e.target.value;
+    const br = $("btnRows");
+    br.innerHTML = "";
+    stage.buttons.forEach((btn, i) => {
+      br.insertAdjacentHTML("beforeend", `<tr><td>${BTN_NAMES[LANG][i]}</td><td>${describeMap(btn)}</td><td>${btn.filter === 240 ? t("gxSafe") : btn.filter === 241 ? t("gxSpeed") : btn.filter & 127}</td></tr>`);
+    });
+    const fr = $("filterRows");
+    fr.innerHTML = "";
+    BTN_NAMES[LANG].slice(0, 5).forEach((name, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${name}</td><td><select data-f="${i}"></select></td>`;
+      fr.appendChild(tr);
+      const sel = tr.querySelector("select");
+      const opts = FILTER_OPTS.slice();
+      if (i <= 1) opts.push(["0xF0", t("gxSafe")], ["0xF1", t("gxSpeed")]);
+      fillSelect(sel, opts, stage.filters[i]);
+      sel.value = String(stage.filters[i]);
+      sel.onchange = (e) => stage.filters[i] = +e.target.value;
+    });
+  }
+  function describeMap(b) {
+    switch (b.type) {
+      case 0:
+        return { 1: "\u2190", 2: "\u2192", 4: "\u2318", 8: "\u2193", 16: "\u2191" }[b.code] || t("mouseBtn", b.code.toString(16));
+      case 1:
+        return b.code === 1 ? "\u2191" : "\u2193";
+      case 2:
+        return t("keyboardMap", b.code.toString(16), b.key.toString(16));
+      case 9:
+        return b.code === 241 ? t("cpiCycle") : t("specialFn", b.code.toString(16));
+      case 12:
+        return t("fixedCpi");
+      case 32:
+        return t("mediaKey", b.code.toString(16));
+      case 255:
+        return t("disabled");
+      default:
+        return t("typeRaw", b.type.toString(16));
     }
-    log("✓ config restored (0x14 + 0x15 + 0x16×2)");
+  }
+  async function applySensor() {
+    const glassChanged = gen === 2 && (blob[111] ? 1 : 0) !== stage.glass;
+    await guarded(20, 15, buildSensorPayload(), { pace: 200 });
+    log("\u2713 cmd 0x14 written");
+    if (glassChanged) {
+      await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: 200 });
+      log("\u2713 glass-mode linked cmd 0x15 written");
+    }
     await refreshAll();
-    banner("ok", t("bImportOk"));
-  } catch (err) { banner("err", t("bImportFail") + err.message); }
-  e.target.value = "";
-};
-function download(data, name, type) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type }));
-  a.download = name; a.click(); URL.revokeObjectURL(a.href);
-}
-$("btnLog").onclick = () => { const l = $("log"); l.style.display = l.style.display === "none" ? "block" : "none"; };
-applyI18n();
-log("ℹ ready. Click 'Connect' and pick the Endgame Gear mouse / dongle.");
-if (!("hid" in navigator))
-  banner("warn", LANG === "zh"
-    ? "此环境没有 WebHID：内置预览/iframe/Firefox 都不支持。请把这个 index.html 下载到本地，用 Chrome 或 Edge 直接打开。"
-    : "No WebHID here: embedded previews/iframes/Firefox are not supported. Download index.html and open it directly in Chrome or Edge.");
-else
-  log("✓ WebHID available (" + navigator.userAgent.match(/(Edg|Chrome)\/[\d.]+/)?.[0] + ")");
+    banner("ok", t("bSensor"));
+  }
+  async function applyPerf() {
+    const glassChanged = gen === 2 && (blob[111] ? 1 : 0) !== stage.glass;
+    await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: 200 });
+    log("\u2713 cmd 0x15 written");
+    if (glassChanged) {
+      await guarded(20, 15, buildSensorPayload(), { pace: 200 });
+      log("\u2713 glass-mode linked cmd 0x14 written");
+    }
+    await refreshAll();
+    banner("ok", t("bPerf"));
+  }
+  async function refreshAll() {
+    banner("warn", "");
+    try {
+      await probe();
+      try {
+        const r = await guarded(13, 0, null, { pace: 150 });
+        dongleFw = fwStr(r[16] | r[17] << 8);
+      } catch (e) {
+        if (e.code !== 7) throw e;
+        dongleFw = "\u2014";
+      }
+      let mouseOk = false;
+      try {
+        const r = await guarded(14, 0, null, { pace: 150 });
+        const pid = r[18] | r[19] << 8;
+        if (MOUSE_PIDS[pid]) {
+          mouseName = MOUSE_PIDS[pid][0];
+          gen = MOUSE_PIDS[pid][1];
+        } else {
+          mouseName = `Unknown (PID 0x${pid.toString(16)})`;
+          gen = null;
+        }
+        mouseFw = fwStr(r[22] | r[23] << 8);
+        mouseOk = true;
+      } catch (e) {
+        if (![8, 17].includes(e.code)) throw e;
+      }
+      try {
+        const r = await guarded(180, 0, null, { pace: 150 });
+        battery = r[16];
+      } catch (e) {
+        battery = null;
+      }
+      showCards();
+      if (mouseOk) {
+        await readBlob();
+        parseBlob();
+        render();
+        banner("ok", t("bReadOk"));
+      } else {
+        render();
+        banner("warn", t("bSleep"));
+      }
+    } catch (e) {
+      banner("err", t("bRead") + e.message);
+      log("\u2717 " + e.message);
+    }
+  }
+  function fwStr(v) {
+    const h = v.toString(16).padStart(4, "0");
+    return `${parseInt(h.slice(0, 2), 16)}.${parseInt(h.slice(2), 16)}`;
+  }
+  function showCards() {
+    for (const id of ["cardInfo", "cardSensor", "cardPerf", "cardBtns", "cardTools"]) $(id).style.display = "";
+  }
+  async function openDevice(d) {
+    dev = d;
+    wired = d.productId !== DONGLE_PID;
+    await dev.open();
+    dev.addEventListener("inputreport", (e) => {
+      if (e.data.byteLength < 2) return;
+      const code = e.data.getUint8(0), v = e.data.getUint8(1);
+      if (code === 180) {
+        battery = e.data.getUint8(2);
+        render();
+        log(`\u26A1 battery event: ${battery}%`);
+      } else if (code === 177) {
+        log(v === 1 ? "\u26A1 radio link: up" : "\u26A1 radio link: down (mouse asleep)");
+      }
+    });
+    setConn(true, wired ? t("connectedWired") : t("connectedWireless"));
+    $("btnRefresh").disabled = false;
+    log(`\u2713 opened ${d.productName} VID=0x${d.vendorId.toString(16)} PID=0x${d.productId.toString(16)}`);
+    await refreshAll();
+  }
+  $("btnConnect").onclick = async () => {
+    log("\u2192 \u8FDE\u63A5\u70B9\u51FB: WebHID \u53EF\u7528=" + ("hid" in navigator) + " \u5B89\u5168\u4E0A\u4E0B\u6587=" + window.isSecureContext);
+    if (!("hid" in navigator)) {
+      const why = !window.isSecureContext && location.protocol !== "file:" ? LANG === "zh" ? "\u5F53\u524D\u9875\u9762\u4E0D\u662F\u5B89\u5168\u4E0A\u4E0B\u6587\uFF08\u987B https:// \u6216 file://\uFF09\uFF0CWebHID \u88AB\u7981\u7528\u3002" : "Page is not a secure context (https:// or file:// required); WebHID disabled." : t("bNoWebhid");
+      banner("err", why);
+      return;
+    }
+    try {
+      let devs = await navigator.hid.requestDevice({ filters: [{ vendorId: VID }] });
+      if (!devs.length)
+        devs = await navigator.hid.requestDevice({ filters: [] });
+      if (!devs.length) return;
+      for (const d of devs)
+        log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} collections=` + (d.collections || []).map((c) => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
+      const pick = devs.find((d) => (d.collections || []).some((c) => c.usagePage >= 65280)) || devs[0];
+      await openDevice(pick);
+    } catch (e) {
+      banner("err", t("bConnectFail") + e.message);
+      log("\u2717 " + e.message);
+    }
+  };
+  $("btnRefresh").onclick = () => refreshAll();
+  $("btnApplySensor").onclick = () => applySensor().catch((e) => banner("err", t("errWrite") + e.message));
+  $("btnApplyPerf").onclick = () => applyPerf().catch((e) => banner("err", t("errWrite") + e.message));
+  $("btnPair").onclick = async () => {
+    if (!confirm(t("cfPair"))) return;
+    try {
+      await guarded(112, 0, null, { pace: 300 });
+      log("\u2713 pair cmd sent");
+      banner("ok", t("bPairSent"));
+      await sleep(2e3);
+      await refreshAll();
+    } catch (e) {
+      banner("err", e.message);
+    }
+  };
+  $("btnPairDefault").onclick = async () => {
+    if (!confirm(t("cfPairDefault"))) return;
+    try {
+      await guarded(113, 0, null, { pace: 300 });
+      log("\u2713 pair-default cmd sent");
+      banner("ok", t("bPairDefaultOk"));
+      await sleep(2e3);
+      await refreshAll();
+    } catch (e) {
+      banner("err", e.message);
+    }
+  };
+  $("btnPairData").onclick = async () => {
+    try {
+      const r = await guarded(114, 0, null, { pace: 350 });
+      const d = r.slice(16, 32);
+      log("\u2713 pair data: " + hex(d, 16));
+      banner("ok", t("bPairDataOk") + " " + hex(d, 16));
+    } catch (e) {
+      banner("err", e.message);
+    }
+  };
+  $("btnReset").onclick = async () => {
+    if (!confirm(t("cfReset1"))) return;
+    if (!confirm(t("cfReset2"))) return;
+    try {
+      await guarded(19, 0, null, { pace: 300 });
+      log("\u2713 factory reset done");
+      await refreshAll();
+      banner("ok", t("bResetOk"));
+    } catch (e) {
+      banner("err", e.message);
+    }
+  };
+  $("btnSave").onclick = () => {
+    if (!blob) return banner("err", t("cfgNoRead"));
+    const out = { app: "endgame-gear-web-configurator", savedAt: (/* @__PURE__ */ new Date()).toISOString(), device: mouseName, gen, lang: LANG, blobB64: btoa(String.fromCharCode(...blob)) };
+    download(JSON.stringify(out, null, 2), `egg-mouse-config-${Date.now()}.json`, "application/json");
+  };
+  $("btnBlob").onclick = () => {
+    if (blob) download(new Blob([blob]), `egg-mouse-blob-${Date.now()}.bin`);
+  };
+  $("btnLoad").onclick = () => $("fileLoad").click();
+  $("fileLoad").onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const j = JSON.parse(await f.text());
+      const b = Uint8Array.from(atob(j.blobB64), (c) => c.charCodeAt(0));
+      if (b.length !== 1024) throw new Error("blob length != 1024");
+      blob = b;
+      parseBlob();
+      stage.slamclick = !!(stage.flags & 1);
+      stage.jitter = !!(stage.flags & 16);
+      stage.multiclick = !!(stage.flags & 32);
+      stage.maxFps = !!(stage.flags & 64);
+      await guarded(20, 15, buildSensorPayload(), { pace: 220 });
+      await guarded(21, 15, buildPowerPayload(), { lenByte: 10, pace: 220 });
+      for (let chunk = 1; chunk <= 2; chunk++) {
+        const p = new Uint8Array(28);
+        for (let i = 0; i < 4; i++) {
+          const btn = stage.buttons[(chunk - 1) * 4 + i];
+          p[i * 7] = btn.type;
+          p[i * 7 + 1] = btn.code;
+          p[i * 7 + 2] = btn.key;
+          p[i * 7 + 6] = btn.filter;
+        }
+        await guarded(22, 15, p, { chunk, pace: 220 });
+      }
+      log("\u2713 config restored (0x14 + 0x15 + 0x16\xD72)");
+      await refreshAll();
+      banner("ok", t("bImportOk"));
+    } catch (err) {
+      banner("err", t("bImportFail") + err.message);
+    }
+    e.target.value = "";
+  };
+  function download(data, name, type = "application/octet-stream") {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type }));
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  $("btnLog").onclick = () => {
+    const l = $("log");
+    l.style.display = l.style.display === "none" ? "block" : "none";
+  };
+  applyI18n();
+  log("\u2139 ready. Click 'Connect' and pick the Endgame Gear mouse / dongle.");
+  var _a;
+  if (!("hid" in navigator))
+    banner("warn", LANG === "zh" ? "\u6B64\u73AF\u5883\u6CA1\u6709 WebHID\uFF1A\u5185\u7F6E\u9884\u89C8/iframe/Firefox \u90FD\u4E0D\u652F\u6301\u3002\u8BF7\u628A\u8FD9\u4E2A index.html \u4E0B\u8F7D\u5230\u672C\u5730\uFF0C\u7528 Chrome \u6216 Edge \u76F4\u63A5\u6253\u5F00\u3002" : "No WebHID here: embedded previews/iframes/Firefox are not supported. Download index.html and open it directly in Chrome or Edge.");
+  else
+    log("\u2713 WebHID available (" + ((_a = navigator.userAgent.match(/(Edg|Chrome)\/[\d.]+/)) == null ? void 0 : _a[0]) + ")");
+})();
+
 </script>
 </body>
 </html>

@@ -72,27 +72,36 @@ async function guarded(cmd, target, payload: any = null, opt: any = {}) {
   if (lastFail) { try { await probe(); } catch (e) { throw new StatusError(0x08, "mouse unreachable — move it and retry"); } }
   return transact(cmd, target, payload, opt);
 }
-/* 读 1024B 配置 blob。0xA0 大报告时序较慢：读到旧缓存（status 字节不是已知状态码）
-   时重发 0x12 再读，最多 4 轮；每轮内 busy 重试 3 次。 */
+/* 读 1024B 配置 blob。两种响应格式（真机证据见 re/PROTOCOL_NOTES.md）：
+   v1: [0xA0][status@1][保留×14][blob@16]
+   v2: [0xA0][回显0xA1@1][status@2][保留×14][blob@17] —— v2 固件在 0xA0 报告里回显请求报告 ID，
+       导致 v1 格式在 [1] 读到 0xA1 而误判"未备好"（此前误诊为时序问题，重试无效）。 */
+function looksLikeBlob(b: Uint8Array) {
+  return (b[0x0E] >= 1 && b[0x0E] <= 4) && [0x02, 0x04, 0x08, 0x40, 0x80].includes(b[0x05]);
+}
 async function readBlob() {
   let lastDump = "";
   for (let round = 1; round <= 4; round++) {
     await guarded(0x12, 0x00, null, { pace: 250 });
     for (let i = 0; i < 3; i++) {
       const u8 = await rawReceive(RPT_BULK);
-      const status = u8[1];
-      if (status === 0x01 && u8.length >= 1041) {
-        blob = u8.slice(16, 16 + 1024);
-        const levels = blob[0x0E];
-        log(`✓ blob read OK (${blob.length} B, round ${round})  head: ${hex(blob, 16)}`);
-        if (!(levels >= 1 && levels <= 4))
-          log(`⚠ blob[0x0E]=0x${levels.toString(16)} 不在 1..4，布局可能异常；请把日志发给开发者`);
-        return;
+      let status = u8[1], off = 16;
+      if (u8[1] === 0xA1 && u8[2] === 0x01) { status = 0x01; off = 17; }  // v2 回显格式
+      if (status === 0x01 && u8.length >= off + 1024) {
+        const cand = u8.slice(off, off + 1024);
+        if (looksLikeBlob(cand)) {
+          blob = cand;
+          log(`✓ blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 16)}`);
+          return;
+        }
+        // 校验未过（疑似陈旧缓存）：按未就绪处理，继续重试
+        lastDump = hex(cand, 32);
+        log(`⋯ blob 校验未过 (levels=0x${cand[0x0E].toString(16)} polling=0x${cand[0x05].toString(16)}), round ${round}, head: ${lastDump}`);
+        break;
       }
       if (status === 0x03) { log(`⋯ blob busy, retry #${i + 1}`); await sleep(280); continue; }
-      // 其它值（典型 0xA1）= 读到了上一条命令的缓存，说明设备还没把 blob 备好
       lastDump = hex(u8, 32);
-      log(`⋯ 0xA0 not ready (status=0x${status.toString(16)}), round ${round}, head: ${lastDump}`);
+      log(`⋯ 0xA0 not ready (status=0x${u8[1].toString(16)}), round ${round}, head: ${lastDump}`);
       break;
     }
     await sleep(300);
@@ -387,6 +396,22 @@ $("btnPair").onclick = async () => {
   if (!confirm(t("cfPair"))) return;
   try { await guarded(0x70, 0x00, null, { pace: 300 }); log("✓ pair cmd sent"); banner("ok", t("bPairSent")); await sleep(2000); await refreshAll(); }
   catch (e) { banner("err", e.message); }
+};
+/* 0x71 = Pair Default（恢复默认配对，零负载，官方发后等 300ms）
+   0x72 = Get Pair Data（读取配对数据，官方等 350ms 后收，负载偏移 16 起 16 字节）
+   —— 均来自官方 v1.02 工具逆向，见 re/PROTOCOL_NOTES.md */
+$("btnPairDefault").onclick = async () => {
+  if (!confirm(t("cfPairDefault"))) return;
+  try { await guarded(0x71, 0x00, null, { pace: 300 }); log("✓ pair-default cmd sent"); banner("ok", t("bPairDefaultOk")); await sleep(2000); await refreshAll(); }
+  catch (e) { banner("err", e.message); }
+};
+$("btnPairData").onclick = async () => {
+  try {
+    const r = await guarded(0x72, 0x00, null, { pace: 350 });
+    const d = r.slice(16, 32);
+    log("✓ pair data: " + hex(d, 16));
+    banner("ok", t("bPairDataOk") + " " + hex(d, 16));
+  } catch (e) { banner("err", e.message); }
 };
 $("btnReset").onclick = async () => {
   if (!confirm(t("cfReset1"))) return;
