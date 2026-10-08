@@ -65,7 +65,10 @@ const I18N = {
     weNoDevice: "尚未连接 XM2we 设备。", weWakeHint: "鼠标处于休眠：动一下鼠标再点「重新读取」。",
     bWrongFamily: "当前连接的是 XM2we（2020 协议族），此操作属于 4k 族，已阻止以免写坏 EEPROM。",
     xm1BlobNote: "XM1：blob 字段语义尚未核实（官方内部布局与线上布局之间还有一层重排），因此本页只读展示原始字节、不提供写入。等重排层核实后再开放。",
-    bFallbackAll: "精确过滤未匹配到设备，已回退到全量列表。请在选择器中挑选 Endgame Gear 设备（VID 0x22D4 = XM1，0x3367 = 4k/XM2we）。",
+    bFallbackVendor: "精确配置接口未匹配到，已回退到厂商用法页（FF00–FFFF）列表。请挑选厂商定义设备，不要选标准鼠标/键盘。",
+    bRefusePointer: "已拒绝打开：该接口是系统鼠标指针集合。WebHID 打开它会独占接口，导致鼠标无法移动。请重新连接并选择「厂商定义设备」那一项。",
+    bNotVendor: "已拒绝打开：所选接口不是厂商定义集合（usage page < 0xFF00），无法用于配置。请重新选择厂商定义设备。",
+    bNoCollections: "无法读取该设备的集合信息，出于安全考虑已拒绝打开（防止误开鼠标指针接口导致鼠标失效）。请重新连接并选择厂商定义设备。",
   },
   "en": {
     appTitle: "Endgame Gear Web Configurator", notConnected: "Not connected", connectedWired: "Connected (wired)", connectedWireless: "Connected (wireless)",
@@ -130,7 +133,10 @@ const I18N = {
     weNoDevice: "No XM2we device connected yet.", weWakeHint: "Mouse is asleep: move it, then click 'Reload'.",
     bWrongFamily: "An XM2we device (2020 protocol family) is connected. This action belongs to the 4k family and was blocked to avoid corrupting the EEPROM.",
     xm1BlobNote: "XM1: blob field semantics are not yet verified (the vendor applies an extra re-ordering layer between its internal and on-wire layouts), so this page shows the raw bytes read-only and offers no write. Writing will be enabled once that layer is confirmed.",
-    bFallbackAll: "Precise filters matched nothing, falling back to the full device list. Pick the Endgame Gear device in the chooser (VID 0x22D4 = XM1, 0x3367 = 4k/XM2we).",
+    bFallbackVendor: "Precise config interfaces matched nothing; showing vendor-usage devices (FF00-FFFF). Pick a vendor-defined device, not a standard mouse/keyboard.",
+    bRefusePointer: "Refused to open: this is the system mouse pointer collection. Opening it via WebHID takes exclusive access and would make the mouse unusable. Reconnect and pick the vendor-defined device instead.",
+    bNotVendor: "Refused to open: the selected interface is not a vendor-defined collection (usage page < 0xFF00) and cannot carry configuration. Please pick a vendor-defined device.",
+    bNoCollections: "Could not read this device's collection list, so opening was refused for safety (avoids grabbing the mouse pointer interface). Reconnect and pick the vendor-defined device.",
   }
 };
 

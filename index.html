@@ -560,7 +560,10 @@ a {
       weWakeHint: "\u9F20\u6807\u5904\u4E8E\u4F11\u7720\uFF1A\u52A8\u4E00\u4E0B\u9F20\u6807\u518D\u70B9\u300C\u91CD\u65B0\u8BFB\u53D6\u300D\u3002",
       bWrongFamily: "\u5F53\u524D\u8FDE\u63A5\u7684\u662F XM2we\uFF082020 \u534F\u8BAE\u65CF\uFF09\uFF0C\u6B64\u64CD\u4F5C\u5C5E\u4E8E 4k \u65CF\uFF0C\u5DF2\u963B\u6B62\u4EE5\u514D\u5199\u574F EEPROM\u3002",
       xm1BlobNote: "XM1\uFF1Ablob \u5B57\u6BB5\u8BED\u4E49\u5C1A\u672A\u6838\u5B9E\uFF08\u5B98\u65B9\u5185\u90E8\u5E03\u5C40\u4E0E\u7EBF\u4E0A\u5E03\u5C40\u4E4B\u95F4\u8FD8\u6709\u4E00\u5C42\u91CD\u6392\uFF09\uFF0C\u56E0\u6B64\u672C\u9875\u53EA\u8BFB\u5C55\u793A\u539F\u59CB\u5B57\u8282\u3001\u4E0D\u63D0\u4F9B\u5199\u5165\u3002\u7B49\u91CD\u6392\u5C42\u6838\u5B9E\u540E\u518D\u5F00\u653E\u3002",
-      bFallbackAll: "\u7CBE\u786E\u8FC7\u6EE4\u672A\u5339\u914D\u5230\u8BBE\u5907\uFF0C\u5DF2\u56DE\u9000\u5230\u5168\u91CF\u5217\u8868\u3002\u8BF7\u5728\u9009\u62E9\u5668\u4E2D\u6311\u9009 Endgame Gear \u8BBE\u5907\uFF08VID 0x22D4 = XM1\uFF0C0x3367 = 4k/XM2we\uFF09\u3002"
+      bFallbackVendor: "\u7CBE\u786E\u914D\u7F6E\u63A5\u53E3\u672A\u5339\u914D\u5230\uFF0C\u5DF2\u56DE\u9000\u5230\u5382\u5546\u7528\u6CD5\u9875\uFF08FF00\u2013FFFF\uFF09\u5217\u8868\u3002\u8BF7\u6311\u9009\u5382\u5546\u5B9A\u4E49\u8BBE\u5907\uFF0C\u4E0D\u8981\u9009\u6807\u51C6\u9F20\u6807/\u952E\u76D8\u3002",
+      bRefusePointer: "\u5DF2\u62D2\u7EDD\u6253\u5F00\uFF1A\u8BE5\u63A5\u53E3\u662F\u7CFB\u7EDF\u9F20\u6807\u6307\u9488\u96C6\u5408\u3002WebHID \u6253\u5F00\u5B83\u4F1A\u72EC\u5360\u63A5\u53E3\uFF0C\u5BFC\u81F4\u9F20\u6807\u65E0\u6CD5\u79FB\u52A8\u3002\u8BF7\u91CD\u65B0\u8FDE\u63A5\u5E76\u9009\u62E9\u300C\u5382\u5546\u5B9A\u4E49\u8BBE\u5907\u300D\u90A3\u4E00\u9879\u3002",
+      bNotVendor: "\u5DF2\u62D2\u7EDD\u6253\u5F00\uFF1A\u6240\u9009\u63A5\u53E3\u4E0D\u662F\u5382\u5546\u5B9A\u4E49\u96C6\u5408\uFF08usage page < 0xFF00\uFF09\uFF0C\u65E0\u6CD5\u7528\u4E8E\u914D\u7F6E\u3002\u8BF7\u91CD\u65B0\u9009\u62E9\u5382\u5546\u5B9A\u4E49\u8BBE\u5907\u3002",
+      bNoCollections: "\u65E0\u6CD5\u8BFB\u53D6\u8BE5\u8BBE\u5907\u7684\u96C6\u5408\u4FE1\u606F\uFF0C\u51FA\u4E8E\u5B89\u5168\u8003\u8651\u5DF2\u62D2\u7EDD\u6253\u5F00\uFF08\u9632\u6B62\u8BEF\u5F00\u9F20\u6807\u6307\u9488\u63A5\u53E3\u5BFC\u81F4\u9F20\u6807\u5931\u6548\uFF09\u3002\u8BF7\u91CD\u65B0\u8FDE\u63A5\u5E76\u9009\u62E9\u5382\u5546\u5B9A\u4E49\u8BBE\u5907\u3002"
     },
     "en": {
       appTitle: "Endgame Gear Web Configurator",
@@ -702,7 +705,10 @@ a {
       weWakeHint: "Mouse is asleep: move it, then click 'Reload'.",
       bWrongFamily: "An XM2we device (2020 protocol family) is connected. This action belongs to the 4k family and was blocked to avoid corrupting the EEPROM.",
       xm1BlobNote: "XM1: blob field semantics are not yet verified (the vendor applies an extra re-ordering layer between its internal and on-wire layouts), so this page shows the raw bytes read-only and offers no write. Writing will be enabled once that layer is confirmed.",
-      bFallbackAll: "Precise filters matched nothing, falling back to the full device list. Pick the Endgame Gear device in the chooser (VID 0x22D4 = XM1, 0x3367 = 4k/XM2we)."
+      bFallbackVendor: "Precise config interfaces matched nothing; showing vendor-usage devices (FF00-FFFF). Pick a vendor-defined device, not a standard mouse/keyboard.",
+      bRefusePointer: "Refused to open: this is the system mouse pointer collection. Opening it via WebHID takes exclusive access and would make the mouse unusable. Reconnect and pick the vendor-defined device instead.",
+      bNotVendor: "Refused to open: the selected interface is not a vendor-defined collection (usage page < 0xFF00) and cannot carry configuration. Please pick a vendor-defined device.",
+      bNoCollections: "Could not read this device's collection list, so opening was refused for safety (avoids grabbing the mouse pointer interface). Reconnect and pick the vendor-defined device."
     }
   };
   var LANG = localStorage.getItem("xm2w-lang") || "zh-CN";
@@ -743,6 +749,7 @@ a {
   var RPT_CMD = 161;
   var RPT_BULK = 160;
   var XM1_MAX_STAGES = 3;
+  var XM1_SETTLE_MS = 80;
   var isXm1 = (vendorId) => vendorId === VID_22D4;
   function modelOf(vendorId, productId) {
     if (isXm1(vendorId)) return (XM1_PIDS[productId] || ["XM1", 0])[0];
@@ -1090,7 +1097,21 @@ a {
     p.className = "status-pill" + (on ? "" : " off");
     p.textContent = text;
   }
+  function isSafeToOpen(d) {
+    const cols = d.collections || [];
+    if (!cols.length) return { ok: false, why: t("bNoCollections") };
+    if (cols.some((c) => c.usagePage === 1 && c.usage === 2))
+      return { ok: false, why: t("bRefusePointer") };
+    if (!cols.some((c) => c.usagePage >= 65280)) return { ok: false, why: t("bNotVendor") };
+    return { ok: true };
+  }
   async function openXm2we(d) {
+    const guard = isSafeToOpen(d);
+    if (!guard.ok) {
+      log("\u2717 \u62D2\u7EDD\u6253\u5F00\uFF1A" + guard.why);
+      banner("err", guard.why);
+      return;
+    }
     await closeXm2we();
     dev = d;
     wired = d.productId === WE_MOUSE_PID;
@@ -1374,15 +1395,6 @@ a {
           continue;
         }
         const status = u8[1];
-        if (xm1) {
-          if (status === 1) {
-            lastFail = false;
-            return u8;
-          }
-          lastFail = true;
-          log(`\u2717 XM1 cmd 0x${cmd.toString(16)} \u672A\u56DE\u72B6\u6001\u5B57\u8282 (buf[1]=0x${status.toString(16)})`);
-          throw new StatusError(status, "XM1 device error (no status byte)");
-        }
         if (status === 1) {
           lastFail = false;
           return u8;
@@ -1449,9 +1461,9 @@ a {
   }
   async function readBlob() {
     let lastDump = "";
-    const READ_CMD = xm1 ? 8 : 18;
+    if (xm1) return readBlobXm1();
     for (let round = 1; round <= 4; round++) {
-      await guarded(READ_CMD, 0, null, { pace: xm1 ? 120 : 250 });
+      await guarded(18, 0, null, { pace: 250 });
       for (let i = 0; i < 3; i++) {
         let u8;
         try {
@@ -1460,23 +1472,6 @@ a {
           log(`\u2717 \u8BFB 0xA0 \u5931\u8D25: ${e.message}`);
           await sleep(120);
           continue;
-        }
-        if (xm1) {
-          const off2 = 16;
-          if (u8.length >= off2 + 1024) {
-            const cand = u8.slice(off2, off2 + 1024);
-            if (looksLikeBlob(cand, true)) {
-              blob = cand;
-              log(`\u2713 XM1 blob read OK (${blob.length} B @off ${off2}, round ${round})  head: ${hex(blob, 24)}`);
-              return;
-            }
-            lastDump = hex(cand, 32);
-            log(`\u22EF XM1 blob \u6821\u9A8C\u672A\u8FC7, round ${round}, head: ${lastDump}`);
-            break;
-          }
-          lastDump = hex(u8, 32);
-          log(`\u22EF XM1 0xA0 \u957F\u5EA6\u4E0D\u8DB3 (${u8.length} B, \u9700 \u2265${off2 + 1024}), round ${round}, head: ${lastDump}`);
-          break;
         }
         let status = u8[1], off = 16;
         if (u8[1] === 161 && u8[2] === 1) {
@@ -1506,6 +1501,58 @@ a {
       await sleep(xm1 ? 200 : 300);
     }
     throw new Error(`blob read failed after 4 rounds; last head: ${lastDump}`);
+  }
+  async function readBlobXm1() {
+    const SUB = 8;
+    let lastDump = "";
+    for (let round = 1; round <= 4; round++) {
+      const buf = new Uint8Array(1041);
+      buf[0] = 160;
+      buf[1] = 8;
+      buf[2] = 0;
+      buf[3] = 0;
+      buf[4] = 0;
+      buf[5] = SUB;
+      buf[6] = 0;
+      buf[7] = 0;
+      try {
+        await dev2.sendFeatureReport(RPT_BULK, buf.slice(1));
+      } catch (e) {
+        log(`\u2717 XM1 SetFeature(1041) \u5931\u8D25 (round ${round}): ${e.message}`);
+        lastDump = "send:" + e.message;
+        await sleep(300);
+        continue;
+      }
+      await sleep(XM1_SETTLE_MS);
+      let u8;
+      try {
+        u8 = await rawReceive(RPT_BULK);
+      } catch (e) {
+        log(`\u2717 XM1 \u8BFB 0xA0 \u5931\u8D25 (round ${round}): ${e.message}`);
+        lastDump = "recv:" + e.message;
+        await sleep(250);
+        continue;
+      }
+      log(`  XM1 0xA0 \u54CD\u5E94 ${u8.length} B  head: ${hex(u8, 20)}`);
+      const off = 16;
+      if (u8.length >= off + 1024) {
+        const cand = u8.slice(off, off + 1024);
+        if (looksLikeBlob(cand, true)) {
+          blob = cand;
+          lastFail = false;
+          log(`\u2713 XM1 blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 32)}`);
+          return;
+        }
+        lastDump = hex(cand, 32);
+        log(`\u22EF XM1 blob \u6821\u9A8C\u672A\u8FC7, round ${round}, head: ${lastDump}`);
+      } else {
+        lastDump = hex(u8, 32);
+        log(`\u22EF XM1 0xA0 \u957F\u5EA6\u4E0D\u8DB3 (${u8.length} B, \u9700 \u2265${off + 1024}), round ${round}, head: ${lastDump}`);
+      }
+      await sleep(300);
+    }
+    lastFail = true;
+    throw new Error("XM1 blob read failed after 4 rounds; last: " + lastDump);
   }
   function parseBlob() {
     const b = blob;
@@ -1888,7 +1935,22 @@ a {
   function showCards2() {
     for (const id of ["cardInfo", "cardSensor", "cardPerf", "cardBtns", "cardTools"]) $(id).style.display = "";
   }
+  function isSafeToOpen2(d) {
+    const cols = d.collections || [];
+    if (!cols.length) return { ok: false, why: t("bNoCollections") };
+    const isPointer = cols.some((c) => c.usagePage === 1 && c.usage === 2);
+    if (isPointer) return { ok: false, why: t("bRefusePointer") };
+    const isVendor = cols.some((c) => c.usagePage >= 65280);
+    if (!isVendor) return { ok: false, why: t("bNotVendor") };
+    return { ok: true };
+  }
   async function openDevice(d) {
+    const guard = isSafeToOpen2(d);
+    if (!guard.ok) {
+      log("\u2717 \u62D2\u7EDD\u6253\u5F00\uFF1A" + guard.why);
+      banner("err", guard.why);
+      return;
+    }
     dev2 = d;
     xm1 = isXm1(d.vendorId);
     wired2 = xm1 || d.productId !== DONGLE_PID;
@@ -1919,21 +1981,22 @@ a {
     try {
       const filters = [
         { vendorId: VID, usagePage: 65281, usage: 2 },
-        // 4k 无线族
+        // 4k 无线族配置通道
         { vendorId: VID_22D4, usagePage: 65281, usage: 2 },
-        // XM1 / XM1 RGB（2020 变体）
-        { vendorId: VID, usagePage: 65282, usage: 2 },
-        // XM2we / OP1we
-        { vendorId: VID_22D4 },
-        // XM1 其它集合兜底
-        { vendorId: VID }
-        // 4k/8k 其它集合兜底
+        // XM1 / XM1 RGB 配置通道
+        { vendorId: VID, usagePage: 65282, usage: 2 }
+        // XM2we / OP1we 配置通道
       ];
       let devs = await navigator.hid.requestDevice({ filters });
       if (!devs.length) {
-        log("\u26A0 \u7CBE\u786E filter \u672A\u5339\u914D\u5230\u8BBE\u5907\uFF0C\u56DE\u9000\u5230\u5168\u91CF\u624B\u9009");
-        banner("warn", t("bFallbackAll"));
-        devs = await navigator.hid.requestDevice({ filters: [] });
+        log("\u26A0 \u7CBE\u786E\u914D\u7F6E\u63A5\u53E3\u672A\u5339\u914D\u5230\uFF0C\u56DE\u9000\u5230\u5382\u5546\u7528\u6CD5\u9875\uFF08FF00\u2013FFFF\uFF09");
+        banner("warn", t("bFallbackVendor"));
+        devs = await navigator.hid.requestDevice({
+          filters: [
+            { vendorId: VID, usagePage: 65280 },
+            { vendorId: VID_22D4, usagePage: 65280 }
+          ]
+        });
       }
       if (!devs.length) return;
       for (const d of devs) {

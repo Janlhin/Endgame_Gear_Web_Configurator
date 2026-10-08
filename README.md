@@ -50,6 +50,9 @@
 | `src/` | TypeScript（`main.ts` 入口、`protocol.ts`、`xm2we.ts`、`xm2we-ui.ts`、`i18n.ts`、`util.ts`） |
 | `scss/` | **样式唯一来源**（`_tokens.scss` 设计令牌 / `_mixins.scss` 混入 / `main.scss` 组件） |
 
+技术栈：**TypeScript 7**（Go 原生编译器，`tsc --noEmit` 类型检查）+ **esbuild** 打包 +
+**sass** 编译 SCSS。类型检查与打包分离——`tsc` 只负责查类型，产物由 esbuild 生成。
+
 **本地**：双击打开 `index.html`（`file://` 是安全上下文，WebHID 可用）。若浏览器策略拦截，任意静态服务器也行：
 
 ```bash

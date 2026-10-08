@@ -61,14 +61,6 @@ async function transact(cmd, target = 0x00, payload = null, opt: any = {}) {
       try { u8 = await rawReceive(RPT_CMD); }
       catch (e) { log(`✗ GET fail: ${e.message}`); if (attempt === 3) throw e; await sleep(60); continue; }
       const status = u8[1];
-      /* XM1 没有状态字节：官方直接看 HidD_GetFeature/SetFeature 的返回码
-         （反汇编里就是 cmp eax,1）。套用 4k 的状态机只会误判。 */
-      if (xm1) {
-        if (status === 0x01) { lastFail = false; return u8; }
-        lastFail = true;
-        log(`✗ XM1 cmd 0x${cmd.toString(16)} 未回状态字节 (buf[1]=0x${status.toString(16)})`);
-        throw new StatusError(status, "XM1 device error (no status byte)");
-      }
       if (status === 0x01) { lastFail = false; return u8; }
       if (status === 0x03) { log(`⋯ busy, retry #${attempt + 1}`); await sleep(200 * (attempt + 1)); continue; }
       lastFail = true;
@@ -119,32 +111,22 @@ function looksLikeBlob(b: Uint8Array, isXm1Dev = false) {
 }
 async function readBlob() {
   let lastDump = "";
-  const READ_CMD = xm1 ? 0x08 : 0x12;      // XM1 用 0x08 读 blob
+  /* XM1 走**完全不同的路径**（官方函数 0x40FB90，反汇编实证）：
+       memset(buf,0,0x411)              1041B 大报告
+       mov dword [buf], 0x8A0           线上 A0 08 00 00
+       buf[4]=0  buf[5]=子命令  buf[6..7]=0
+       rep movsd (256 dword = 1024B)    blob → 报告偏移 16
+       SetFeature(1041) → Sleep(80) → 再读一次 64B 状态报告
+     所以它**不经过小报告命令通道**（没有"发 cmd → 读 status"这一轮），
+     之前用 guarded(0x08) 走 transact 是错的 —— 那条路会撞上 4k 的状态字节判定。 */
+  if (xm1) return readBlobXm1();
+
   for (let round = 1; round <= 4; round++) {
-    await guarded(READ_CMD, 0x00, null, { pace: xm1 ? 120 : 250 });
+    await guarded(0x12, 0x00, null, { pace: 250 });
     for (let i = 0; i < 3; i++) {
       let u8;
       try { u8 = await rawReceive(RPT_BULK); }
       catch (e) { log(`✗ 读 0xA0 失败: ${e.message}`); await sleep(120); continue; }
-      if (xm1) {
-        /* XM1：无状态字节。官方流程是「发 0x08 → Sleep(80) → 再读一次 64B 状态报告」，
-           这里放宽为：只要 0xA0 报告够长且 blob 看起来有效即接受。 */
-        const off = 16;
-        if (u8.length >= off + 1024) {
-          const cand = u8.slice(off, off + 1024);
-          if (looksLikeBlob(cand, true)) {
-            blob = cand;
-            log(`✓ XM1 blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 24)}`);
-            return;
-          }
-          lastDump = hex(cand, 32);
-          log(`⋯ XM1 blob 校验未过, round ${round}, head: ${lastDump}`);
-          break;
-        }
-        lastDump = hex(u8, 32);
-        log(`⋯ XM1 0xA0 长度不足 (${u8.length} B, 需 ≥${off + 1024}), round ${round}, head: ${lastDump}`);
-        break;
-      }
       let status = u8[1], off = 16;
       if (u8[1] === 0xA1 && u8[2] === 0x01) { status = 0x01; off = 17; }  // v2 回显格式
       if (status === 0x01 && u8.length >= off + 1024) {
@@ -167,6 +149,71 @@ async function readBlob() {
     await sleep(xm1 ? 200 : 300);
   }
   throw new Error(`blob read failed after 4 rounds; last head: ${lastDump}`);
+}
+
+/* ---------------- XM1 专用：1041B 大报告读 blob ----------------
+ * 严格复刻官方函数 0x40FB90（XM1 Configuration Software v1.09，反汇编见 re/XM1_NOTES.md）：
+ *   memset(buf, 0, 0x411)              清零 1041B
+ *   mov dword [buf], 0x8A0             报告头 → 线上 A0 08 00 00
+ *   buf[4] = 0; buf[5] = 子命令; buf[6..7] = 0
+ *   rep movsd 256 dword (1024B)        blob → 报告偏移 16
+ *   HidD_SetFeature(1041) → Sleep(80)
+ *   再读一次 64B 状态报告（cmp eax,1 判成败）
+ * XM1 无状态字节语义，失败判断只看 HidD 调用本身是否抛异常。 */
+async function readBlobXm1() {
+  const SUB = 0x08;                       // 官方 buf[5] 传入的子命令（0x40FB90 的入参）
+  let lastDump = "";
+  for (let round = 1; round <= 4; round++) {
+    // ① 构造 1041B 大报告
+    const buf = new Uint8Array(1041);
+    buf[0] = 0xA0;                        // 报告 ID
+    buf[1] = 0x08;                        // 子命令（同 4k 族的 buf[1] 语义）
+    buf[2] = 0x00;
+    buf[3] = 0x00;
+    buf[4] = 0x00;
+    buf[5] = SUB;
+    buf[6] = 0x00; buf[7] = 0x00;
+    // ② 发送。sendFeatureReport 的 data 不含 reportId → 去掉首字节
+    try {
+      await dev.sendFeatureReport(RPT_BULK, buf.slice(1));
+    } catch (e) {
+      log(`✗ XM1 SetFeature(1041) 失败 (round ${round}): ${e.message}`);
+      lastDump = "send:" + e.message;
+      await sleep(300);
+      continue;
+    }
+    await sleep(XM1_SETTLE_MS);           // 官方 Sleep(80)
+    // ③ 读 1041B 响应
+    let u8;
+    try { u8 = await rawReceive(RPT_BULK); }
+    catch (e) {
+      log(`✗ XM1 读 0xA0 失败 (round ${round}): ${e.message}`);
+      lastDump = "recv:" + e.message;
+      await sleep(250);
+      continue;
+    }
+    log(`  XM1 0xA0 响应 ${u8.length} B  head: ${hex(u8, 20)}`);
+    // ④ blob 在偏移 16（v1 官方路径）
+    const off = 16;
+    if (u8.length >= off + 1024) {
+      const cand = u8.slice(off, off + 1024);
+      if (looksLikeBlob(cand, true)) {
+        blob = cand;
+        lastFail = false;
+        log(`✓ XM1 blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 32)}`);
+        return;
+      }
+      lastDump = hex(cand, 32);
+      log(`⋯ XM1 blob 校验未过, round ${round}, head: ${lastDump}`);
+    } else {
+      // 响应长度不足 —— 可能是被当成 64B 小报告回了
+      lastDump = hex(u8, 32);
+      log(`⋯ XM1 0xA0 长度不足 (${u8.length} B, 需 ≥${off + 1024}), round ${round}, head: ${lastDump}`);
+    }
+    await sleep(300);
+  }
+  lastFail = true;
+  throw new Error("XM1 blob read failed after 4 rounds; last: " + lastDump);
 }
 
 /* ================= blob 解析 / 编码 ================= */
@@ -499,7 +546,27 @@ function fwStr(v) { const h = v.toString(16).padStart(4, "0"); return `${parseIn
 function showCards() { for (const id of ["cardInfo","cardSensor","cardPerf","cardBtns","cardTools"]) $(id).style.display = ""; }
 
 /* ================= 连接 ================= */
+/** 安全闸门：只允许打开厂商配置集合。
+ *  绝不能打开系统鼠标指针集合（UP:0001/0002）——WebHID 打开即独占该接口，
+ *  Windows HID 驱动会失去访问权，导致**鼠标无法移动**（实测发生过）。 */
+function isSafeToOpen(d) {
+  const cols = d.collections || [];
+  // 没有 collections 信息时无法判断 → 拒绝，宁可不连也不能弄坏用户的鼠标
+  if (!cols.length) return { ok: false, why: t("bNoCollections") };
+  const isPointer = cols.some(c => c.usagePage === 0x0001 && c.usage === 0x0002);
+  if (isPointer) return { ok: false, why: t("bRefusePointer") };
+  const isVendor = cols.some(c => c.usagePage >= 0xFF00);
+  if (!isVendor) return { ok: false, why: t("bNotVendor") };
+  return { ok: true };
+}
+
 async function openDevice(d) {
+  const guard = isSafeToOpen(d);
+  if (!guard.ok) {
+    log("✗ 拒绝打开：" + guard.why);
+    banner("err", guard.why);
+    return;
+  }
   dev = d;
   xm1 = isXm1(d.vendorId);
   wired = xm1 || d.productId !== DONGLE_PID;
@@ -530,20 +597,30 @@ $("btnConnect").onclick = async () => {
        「找不到任何兼容设备」，整个流程中断，用户只看到一个空选择器。
        （插着 XM1 时 VID 0x3367 必然匹配不到，就是这个现象。）
        filter 内各字段之间是 AND，字段省略即通配。 */
+    /* ★★ 安全要求：filters 里**绝不能放"只有 vendorId"的宽泛项**。
+       XM1 是复合设备，MI_00 = 鼠标指针集合（UP:0001/0002）、MI_01 = 厂商集合。
+       一旦 requestDevice 暴露了鼠标指针集合，用户选中它 → WebHID 打开该接口会
+       **独占它**，Windows 的 HID 驱动随即失去对鼠标指针接口的访问权 →
+       **鼠标完全无法移动**（实测用户反馈）。
+       所以这里只列厂商配置接口（FF01:02 / FF02:02），并按 VID 精确限定。 */
     const filters = [
-      { vendorId: VID,     usagePage: 0xFF01, usage: 0x02 },  // 4k 无线族
-      { vendorId: VID_22D4, usagePage: 0xFF01, usage: 0x02 },  // XM1 / XM1 RGB（2020 变体）
-      { vendorId: VID,     usagePage: 0xFF02, usage: 0x02 },  // XM2we / OP1we
-      { vendorId: VID_22D4 },                                 // XM1 其它集合兜底
-      { vendorId: VID },                                      // 4k/8k 其它集合兜底
+      { vendorId: VID,     usagePage: 0xFF01, usage: 0x02 },  // 4k 无线族配置通道
+      { vendorId: VID_22D4, usagePage: 0xFF01, usage: 0x02 },  // XM1 / XM1 RGB 配置通道
+      { vendorId: VID,     usagePage: 0xFF02, usage: 0x02 },  // XM2we / OP1we 配置通道
     ];
     let devs = await (navigator as any).hid.requestDevice({ filters });
     if (!devs.length) {
-      /* 精确 filter 全落空时，再让用户从全部 HID 设备里手选一次
-         （此时选择器会列出所有已连接设备，仍需用户主动点击"连接"）。 */
-      log("⚠ 精确 filter 未匹配到设备，回退到全量手选");
-      banner("warn", t("bFallbackAll"));
-      devs = await (navigator as any).hid.requestDevice({ filters: [] });
+      /* 精确 filter 全落空 → 回退到**只列厂商用法页**的集合（仍然不会暴露鼠标指针）。
+         注意：不能退到 filters:[]，那会把键盘/鼠标/摄像头全列出来，
+         用户很容易误选危险接口。 */
+      log("⚠ 精确配置接口未匹配到，回退到厂商用法页（FF00–FFFF）");
+      banner("warn", t("bFallbackVendor"));
+      devs = await (navigator as any).hid.requestDevice({
+        filters: [
+          { vendorId: VID,     usagePage: 0xFF00 },
+          { vendorId: VID_22D4, usagePage: 0xFF00 },
+        ],
+      });
     }
     if (!devs.length) return;
     for (const d of devs) {
