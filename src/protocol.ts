@@ -32,9 +32,18 @@ const DONGLE_PID = 0x1970;
        XM2 8k v2  = 0x1980   OP1 8k v2  = 0x1978   （工具 v1.07）
      限定/变体共用工具 → 同 PID：OP1 8k Purple Frost = 0x1964、OP1 8k v2 Raw Input = 0x1978。
 
-   ★ 第三个元素 verified=0 表示「协议同构已静态实证，但**未在真机验证**」：
-     这种型号只允许读取（写入入口会被禁用，guard4k 也会兜一层）。
-     gen 值（1/2）是按 PID 分组推测的，**真机确认前不要写入**。 */
+   ★ 第三个元素 verified=0 表示「未在真机验证」：只允许读取，写入被禁用。
+
+   ⚠️ 8k 族**不只是缺 PID**（2026-10-09 用社区实现交叉验证后修正）：
+     · 读取可复用 —— 8k 的 LOAD 也是 `0x12` + `0xA1`，与 4k 相同
+     · **写入不同** —— 8k 是 `0x11` 整块写出（官方工具与社区 qsxcv/egctl 一致），
+       而 4k 是 `0x14/0x15/0x16` 分块写 → 写入路径必须另行实现，不能套用
+     · **按键区布局不同** —— 8k 为 7 个按键记录、起点比 4k（`0x37`）晚 6 字节（`0x3D`）
+     · **gen 模型不适用** —— 8k 的 LOD 是 1/2mm（同 gen1），却同时带 glass / max-FPS
+       （gen2 特征）。下面填的 1/2 只是"让 UI 有值可用"的近似，**别当真**。
+   其余字段偏移（LOD `0x09`、angle `0x0A`、ripple `0x0B`、motionSync `0x0C`、
+   levels `0x0E`、CPI `0x23+5n` 的 `[xy][X][Y]`、glass `0x6F`）经 egctl 与
+   官方工具二进制**双向印证，与 4k 完全一致**，见 re/upstream/SOURCES.md。 */
 const MOUSE_PIDS: Record<number, [string, number, number?]> = {
   0x1968: ["XM2w 4k", 1], 0x1972: ["OP1w 4k", 1], 0x1969: ["XM2w 4k (变体)", 1],
   0x1982: ["XM2w 4k v2", 2], 0x1984: ["OP1w 4k v2", 2], 0x1981: ["XM2w 4k v2 (变体)", 2],

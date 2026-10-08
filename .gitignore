@@ -22,6 +22,12 @@ re/upstream/xm1_funcs/
 re/upstream/xm1_proto/
 re/upstream/xm1_strings_*.txt
 
+# ── 第三方参考实现（AGPL，仅参考不入库；结论沉淀在 re/upstream/SOURCES.md）──
+re/upstream/_egctl/
+re/upstream/_egctl.zip
+re/upstream/_egctl_tree.json
+re/upstream/_Endgame_Gear_*/
+
 # ── 真机配置快照（含用户设备数据，不入库）──
 re/xm1_blob_*.bin
 re/upstream/_Endgame_Gear_*/
