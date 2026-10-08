@@ -10,6 +10,8 @@ import { VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK,
 import { isXm2weFamily } from "./xm2we.js";
 import { applyLayout, layoutFor, applyLayoutFromHash, reapplyLayout } from "./layout.js";
 import { openXm2we, closeXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
+import { S, newStage } from "./state.js";
+import { rawReceive, transact, guarded, probe, StatusError, xm1WriteDisabled } from "./transport.js";
 
 // —— 语言切换时重渲染（i18n.ts 通过事件解耦） ——
 /* 语言切换：applyI18n() 已在 i18n.ts 的 onchange 里跑过，这里补上
@@ -37,110 +39,11 @@ const BTN_NAMES = {
 const FILTER_OPTS = [["off","off"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"],["9","9"],["10","10"],["11","11"],["12","12"],["13","13"],["14","14"],["15","15"]];
 
 
-let dev = null, queue = Promise.resolve(), lastFail = false;
-let gen = null, mouseName = "—";
-/* 8k 有线族：读走 0xA1/0xA0 的 1024B 帧，写走 **0x11 整块写**（不是 0x14/0x15/0x16）。
-   lastFrame 保留最近一次读回的**完整 1041B 报告帧** —— 写回时要透传报告 2..15 与尾字节。
-   frameAligned 表示该帧的配置数据确实起始于报告偏移 16（写回的前提，否则拒绝写）。 */
-let eightK = false, lastFrame = null, frameAligned = false;
-/* 第四协议族（XM1r / OP1 / OP1 RGB，usagePage 0xFFA1）：只识别不通信 */
-let family4 = false;
-let unverified = false;   // 该型号仅静态实证、未真机验证 → 只读
-let unknownModel = false;  // PID 不在设备表里 → 无法判断协议族，同样只读
-let blob = null;
-let dongleFw = "—", mouseFw = "—", battery = null, wired = false;
-/* XM1（VID 0x22D4）是 2020 变体：帧格式与 4k 族相同，但
-   ① 状态字节在 [1]（0x01 = 成功，与 4k 同）② 无独立唤醒命令（0x0F 是 4k 无线专属）
-   ③ 4 档 CPI ④ 写后 settle 80ms。证据见 re/XM1_NOTES.md 第 3 / 6.7 节。 */
-let xm1 = false;
-/* ★ XM1 写入的两道闸门（2026-10-09）
-   xm1LastRead：最近一次成功读回的线上布局 1024B —— 写入只允许「回声」这份数据。
-   xm1Armed   ：是否处于一次明确的写回测试中；非 arm 状态下一律拦截。 */
-let xm1LastRead: Uint8Array | null = null;
-let xm1Armed = false;
-let stage: any = newS();
-
-function newS() {
-  return { cpi: [[0,400,400],[0,800,800],[0,1600,1600],[0,3200,3200]], levels: 4, active: 1,
-           lod: 3, lodMM: 1.0, glass: 0, angleSnap: 0, ripple: 0, angleTune: 0, ledLiftoff: 1,
-           motionSync: 0, polling: 0x08, flags: 0, powerSaving: 1, deepSleep: 3,
-           filters: [8,8,8,8,8], buttons: [] };
-}
-
+/* 共享可变状态集中在 ./state.js（拆 main.ts 时搬走）：
+   这些量被传输层、各设备族、渲染层共同读写，放一处才能避免模块间循环引用。
+   引用统一写作 S.xxx —— 一眼可辨「这是跨模块状态」而不是局部量。 */
 function setConn(on, text) { const p = $("connState"); p.className = "status-pill" + (on ? "" : " off"); p.textContent = text; }
 
-/* ================= 传输层 ================= */
-/* rawReceive 归一化：Chrome 各平台对 receiveFeatureReport 的返回不一致——
-   可能带 reportId、剥掉 reportId（payload-only）、或把 reportId 置 0（零占位）。
-   参考 qsxcv/UnofficialEGGWebConfig 的 eggNormalizeFeature（re/upstream/）。
-   v2 固件的 0xA0 响应首字节是 0xA1 回显，由 readBlob 的双格式分支处理。 */
-async function rawReceive(reportId, size?: number) {
-  /* WebHID 的 receiveFeatureReport(reportId) 用 reportId 定位报告。
-     ★ XM1 的 1041B 报告首字节是 **0xA1**，不是 0xA0！
-       官方 0x40FC80：memset(1041B,0) / mov byte [buf], 0xA1 /
-       push 0x411 / push buf / call HidD_GetFeature
-       即 GetFeature 的 reportId 取自**缓冲区首字节** = 0xA1。
-       （曾误传 0xA0 → 设备把空请求原样回显，日志里全是 0x00。）
-     size：某些实现需要显式长度，XM1 走 1041B 时传它。 */
-  const d = size !== undefined ? await dev.receiveFeatureReport(reportId, size)
-                               : await dev.receiveFeatureReport(reportId);
-  let u8 = new Uint8Array(d.buffer);
-  if (u8.length && u8[0] === 0x00) u8 = u8.slice(1);              // 零占位 → 丢弃
-  if (u8.length && u8[0] === reportId) return u8;                 // 已含 reportId
-  const out = new Uint8Array(u8.length + 1); out[0] = reportId; out.set(u8, 1); return out;
-}
-async function transact(cmd, target = 0x00, payload = null, opt: any = {}) {
-  /* XM1 不走 4k 族的命令通道：它的命令表只有 4 条，报文形态也完全不同
-     （读 = 0xA1 空请求 + GetFeature 读回，见 readBlobXm1）。
-     4k 的 13 条命令若发给 XM1 会被当作乱码配置，故一律拒绝。
-     另：2026-10-09 事故记录见 readBlobXm1 上方注释——曾因发送 1041B
-     全零 blob（写形态）把用户鼠标的 DPI/CPI 清零。 */
-  if (xm1) xm1WriteDisabled();
-  const run = async () => {
-    const buf = new Uint8Array(63);                  // sendFeatureReport 的 data 不含 reportId
-    buf[0] = cmd; buf[1] = target;
-    buf[2] = opt.lenByte !== undefined ? opt.lenByte : (payload ? payload.length : 0);
-    if (opt.chunk) buf[6] = opt.chunk;
-    if (payload) buf.set(payload, 15);               // 报告内偏移 16 = 去掉 ID 后的 15
-    for (let attempt = 0; attempt < 4; attempt++) {
-      try { await dev.sendFeatureReport(RPT_CMD, buf); }
-      catch (e) { log(`✗ SET fail (cmd 0x${cmd.toString(16)}): ${e.message}`); if (attempt === 3) throw e; await sleep(60); continue; }
-      await sleep(opt.pace || 170);
-      let u8;
-      try { u8 = await rawReceive(RPT_CMD); }
-      catch (e) { log(`✗ GET fail: ${e.message}`); if (attempt === 3) throw e; await sleep(60); continue; }
-      const status = u8[1];
-      if (status === 0x01) { lastFail = false; return u8; }
-      if (status === 0x03) { log(`⋯ busy, retry #${attempt + 1}`); await sleep(200 * (attempt + 1)); continue; }
-      lastFail = true;
-      const map = { 0x07: "N/A on this connection", 0x08: "mouse asleep/unreachable", 0x11: "mouse asleep/unreachable" };
-      log(`✗ cmd 0x${cmd.toString(16)} status=0x${status.toString(16)} (${map[status] || "unknown"})`);
-      throw new StatusError(status, map[status] || "device error 0x" + status.toString(16));
-    }
-    throw new StatusError(0x03, "device stays busy");
-  };
-  const p = queue.then(run, run);
-  queue = p.catch(() => {});
-  return p;
-}
-class StatusError extends Error { code: any; constructor(code: any, msg: string) { super(msg); this.code = code; } }
-/* 探测/唤醒。0x0F 是**无线专属**唤醒（官方仅 0x22 路径唤醒，见 re/PROTOCOL_NOTES.md）：
-   有线直连时发 0x0F 两个变体都会回状态 7，且会让后续写入被 ACK 后静默丢弃
-   （zexsso/OP1-WebAPP device.ts 真机验证）。有线直接走 0x0E 读鼠标信息。
-   XM1 的命令表只有 4 条（0x03/0x04/0x07/0x08），**没有 0x0E/0x0F**，
-   故 XM1 跳过探测直接读 blob。 */
-async function probe() {
-  if (xm1) return;                       // XM1 无探测命令
-  if (!wired) {
-    try { await transact(0x0F, 0x01, null, { pace: 120 }); return; } catch (e) { /* 试下一变体 */ }
-    try { await transact(0x0F, 0x0F, null, { pace: 120 }); return; } catch (e) { /* 落到 0x0E */ }
-  }
-  await transact(0x0E, 0x00, null, { pace: 120 });
-}
-async function guarded(cmd, target, payload: any = null, opt: any = {}) {
-  if (lastFail) { try { await probe(); } catch (e) { throw new StatusError(0x08, "mouse unreachable — move it and retry"); } }
-  return transact(cmd, target, payload, opt);
-}
 /* 读 1024B 配置 blob。两种响应格式（真机证据见 re/PROTOCOL_NOTES.md）：
      v1: [0xA0][status@1][保留×14][blob@16]
      v2: [0xA0][回显0xA1@1][status@2][保留×14][blob@17] —— v2 固件在 0xA0 报告里回显请求报告 ID，
@@ -168,7 +71,7 @@ async function readBlob() {
        SetFeature(1041) → Sleep(80) → 再读一次 64B 状态报告
      所以它**不经过小报告命令通道**（没有"发 cmd → 读 status"这一轮），
      之前用 guarded(0x08) 走 transact 是错的 —— 那条路会撞上 4k 的状态字节判定。 */
-  if (xm1) return readBlobXm1();
+  if (S.xm1) return readBlobXm1();
 
   for (let round = 1; round <= 4; round++) {
     await guarded(0x12, 0x00, null, { pace: 250 });
@@ -181,8 +84,8 @@ async function readBlob() {
       if (status === 0x01 && u8.length >= off + 1024) {
         const cand = u8.slice(off, off + 1024);
         if (looksLikeBlob(cand)) {
-          blob = cand;
-          log(`✓ blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 16)}`);
+          S.blob = cand;
+          log(`✓ blob read OK (${S.blob.length} B @off ${off}, round ${round})  head: ${hex(S.blob, 16)}`);
           return;
         }
         // 校验未过（疑似陈旧缓存）：按未就绪处理，继续重试
@@ -195,7 +98,7 @@ async function readBlob() {
       log(`⋯ 0xA0 not ready (status=0x${u8[1].toString(16)}), round ${round}, head: ${lastDump}`);
       break;
     }
-    await sleep(xm1 ? 200 : 300);
+    await sleep(S.xm1 ? 200 : 300);
   }
   throw new Error(`blob read failed after 4 rounds; last head: ${lastDump}`);
 }
@@ -278,7 +181,7 @@ const XM1_READ_REQ = xm1QueryReq(0x07);
  * ------------------------------------------------------------------------- */
 async function xm1QueryByte() {
   try {
-    await dev.sendFeatureReport(RPT_CMD, xm1QueryReq(0x03));
+    await S.dev.sendFeatureReport(RPT_CMD, xm1QueryReq(0x03));
   } catch (e) {
     log(`✗ XM1 cmd 0x03 发送失败: ${e.message}`);
     return null;
@@ -327,7 +230,7 @@ async function readBlob8k() {
   const cmd = new Uint8Array(63); cmd[0] = 0x12;      // LOAD，无负载
   let last = "";
   for (let round = 1; round <= 3; round++) {
-    try { await dev.sendFeatureReport(RPT_CMD, cmd); }
+    try { await S.dev.sendFeatureReport(RPT_CMD, cmd); }
     catch (e) { log(`✗ 8k LOAD 发送失败: ${e.message}`); await sleep(200); continue; }
     await sleep(80);
     let delay = 60;
@@ -338,11 +241,11 @@ async function readBlob8k() {
         if (u8.length < 16 + 1024) { last = `len=${u8.length} [${hex(u8, 8)}]`; continue; }
         const cand = u8.slice(16, 16 + 1024);
         if (u8[1] === 0x01 && looksLikeBlob8k(cand)) {
-          blob = cand;
-          lastFrame = u8.slice();
-          frameAligned = true;
-          lastFail = false;
-          log(`✓ 8k blob read OK (${blob.length} B @off 16, report 0x${u8[0].toString(16)})  head: ${hex(blob, 16)}`);
+          S.blob = cand;
+          S.lastFrame = u8.slice();
+          S.frameAligned = true;
+          S.lastFail = false;
+          log(`✓ 8k blob read OK (${S.blob.length} B @off 16, report 0x${u8[0].toString(16)})  head: ${hex(S.blob, 16)}`);
           return;
         }
         last = `status=0x${u8[1].toString(16)} levels=${u8[16 + 0x0E]} polling=${u8[16 + 0x05]}`;
@@ -351,7 +254,7 @@ async function readBlob8k() {
     }
     log(`⋯ 8k 读取第 ${round} 轮未取得有效帧（${last}）`);
   }
-  lastFail = true;
+  S.lastFail = true;
   throw new Error(`8k blob read failed; last: ${last}`);
 }
 
@@ -366,12 +269,12 @@ async function pollAck8k(polls: number): Promise<boolean> {
 
 /** 8k 写：整块 1024B 读-改-写。返回是否收到 ACK。 */
 async function store8k(newBlob: Uint8Array): Promise<boolean> {
-  if (!lastFrame || !frameAligned)
+  if (!S.lastFrame || !S.frameAligned)
     throw new Error(t("b8kNoFrame"));
-  const data = build8kStoreData(lastFrame, newBlob);
+  const data = build8kStoreData(S.lastFrame, newBlob);
   let lastErr: any = null;
   for (let a = 0; a < 4; a++) {
-    try { await dev.sendFeatureReport(RPT_BULK, data); lastErr = null; break; }
+    try { await S.dev.sendFeatureReport(RPT_BULK, data); lastErr = null; break; }
     catch (e) { lastErr = e; await sleep(50); }
   }
   if (lastErr) throw lastErr;
@@ -384,23 +287,23 @@ async function store8k(newBlob: Uint8Array): Promise<boolean> {
 function verifySensor8k(w: any): string[] {
   const bad: string[] = [];
   for (let n = 0; n < 4; n++) {
-    const a = stage.cpi[n] || [0, 0, 0];
+    const a = S.stage.cpi[n] || [0, 0, 0];
     if (w.cpi[n][0] !== (a[0] ? 1 : 0)) bad.push(`CPI ${n + 1} XY-enable`);
     if (w.cpi[n][1] !== (a[1] | 0)) bad.push(`CPI ${n + 1} X ${w.cpi[n][1]}→${a[1] | 0}`);
     const wantY = w.cpi[n][0] ? w.cpi[n][2] : w.cpi[n][1];
     if (wantY !== (a[2] | 0)) bad.push(`CPI ${n + 1} Y ${wantY}→${a[2] | 0}`);
   }
-  if (w.levels !== (stage.levels | 0)) bad.push(`Levels ${w.levels}→${stage.levels}`);
-  if (w.active !== (stage.active & 3)) bad.push(`Active stage ${w.active + 1}→${(stage.active & 3) + 1}`);
-  if (w.angleSnap !== (stage.angleSnap ? 1 : 0)) bad.push("Angle Snap");
-  if (w.ripple !== (stage.ripple ? 1 : 0)) bad.push("Ripple");
+  if (w.levels !== (S.stage.levels | 0)) bad.push(`Levels ${w.levels}→${S.stage.levels}`);
+  if (w.active !== (S.stage.active & 3)) bad.push(`Active stage ${w.active + 1}→${(S.stage.active & 3) + 1}`);
+  if (w.angleSnap !== (S.stage.angleSnap ? 1 : 0)) bad.push("Angle Snap");
+  if (w.ripple !== (S.stage.ripple ? 1 : 0)) bad.push("Ripple");
   return bad;
 }
 function verifyPerf8k(w: any): string[] {
   const bad: string[] = [];
-  const f = stage.flags | 0;
-  if (w.polling !== stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}→0x${stage.polling.toString(16)}`);
-  if (w.motionSync !== (stage.motionSync ? 1 : 0)) bad.push("Motion Sync");
+  const f = S.stage.flags | 0;
+  if (w.polling !== S.stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}→0x${S.stage.polling.toString(16)}`);
+  if (w.motionSync !== (S.stage.motionSync ? 1 : 0)) bad.push("Motion Sync");
   if (w.slamclick !== (f & 1 ? 1 : 0)) bad.push("Slamclick");
   if (w.jitter !== (f & 0x10 ? 1 : 0)) bad.push("Jitter filter");
   return bad;
@@ -409,7 +312,7 @@ function verifyPerf8k(w: any): string[] {
 /** 8k 应用：一次整块写覆盖传感器页与性能页（8k 的写是整块，不区分两张卡）。 */
 async function apply8k() {
   const want = snapSensor(), wantPerf = snapPerf();
-  const nb = buildBlob8k(blob, stage);               // 从读回值出发，只打补丁
+  const nb = buildBlob8k(S.blob, S.stage);               // 从读回值出发，只打补丁
   const acked = await store8k(nb);
   log(acked ? "✓ 8k STORE 已确认（ACK）" : "⋯ 8k STORE 未收到 ACK，继续回读校验");
   await refreshAll();
@@ -421,7 +324,7 @@ async function readBlobXm1() {
   for (let round = 1; round <= 4; round++) {
     // ① 发 64B 空请求（无负载，不改动鼠标任何配置）
     try {
-      await dev.sendFeatureReport(RPT_CMD, XM1_READ_REQ);
+      await S.dev.sendFeatureReport(RPT_CMD, XM1_READ_REQ);
     } catch (e) {
       log(`✗ XM1 空请求失败 (round ${round}): ${e.message}`);
       lastDump = "send:" + e.message;
@@ -463,40 +366,34 @@ async function readBlobXm1() {
     }
     const cand = u8.slice(off, off + 1024);
     if (looksLikeBlob(cand, true)) {
-      blob = cand;
-      xm1LastRead = cand.slice();          // 写入只能「回声」这一份（逐字节相等校验）
-      lastFail = false;
-      log(`✓ XM1 blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 32)}`);
+      S.blob = cand;
+      S.xm1LastRead = cand.slice();          // 写入只能「回声」这一份（逐字节相等校验）
+      S.lastFail = false;
+      log(`✓ XM1 blob read OK (${S.blob.length} B @off ${off}, round ${round})  head: ${hex(S.blob, 32)}`);
       return;
     }
     lastDump = hex(cand, 32);
     log(`⋯ XM1 blob 校验未过, round ${round}, head: ${lastDump}`);
     await sleep(300);
   }
-  lastFail = true;
+  S.lastFail = true;
   throw new Error("XM1 blob read failed after 4 rounds; last: " + lastDump);
-}
-
-/** XM1 写入仍未实现：0x4103D0 重排层未逐字节核实，保持永久停用。 */
-function xm1WriteDisabled(): never {
-  banner("warn", t("xm1WriteOff"));
-  throw new Error(t("xm1Blocked") + " (re/XM1_NOTES.md 6.5 / 6.13)");
 }
 
 /* ================= blob 解析 / 编码 ================= */
 function parseBlob() {
-  const b = blob; const s: any = newS();
+  const b = S.blob; const s: any = newStage();
 
   /* XM1（VID 0x22D4）：blob 布局与 4k 族同构，但字段语义**尚未逐字节核实**
      ——官方内部布局与线上布局之间还有一层重排（函数 0x40FD60，298 条搬运）。
      因此这里只做「不猜」的解析：把原始字节整体带出，供界面显示与导出对照，
      绝不按 4k 的偏移猜测并回写（写错会永久损坏鼠标配置）。 */
-  if (xm1) {
+  if (S.xm1) {
     s.raw = b;
     s.levels = XM1_MAX_STAGES;                 // XM1 为 4 档（官方 UI 有 4 张 CPI 卡片）
     s.active = 1;
     s.unknown = true;                          // 标记：UI 应转为只读视图
-    stage = s;
+    S.stage = s;
     return;
   }
 
@@ -522,35 +419,35 @@ function parseBlob() {
     const o = 0x37 + 7 * n;
     s.buttons.push({ type: b[o], code: b[o+1], key: b[o+2], filter: b[o+6] });
   }
-  s.glass = (gen === 2 && b[0x6F]) ? 1 : 0;
+  s.glass = (S.gen === 2 && b[0x6F]) ? 1 : 0;
   s.lodMM = lodByteToMm(s.lod, s.glass);
-  stage = s;
+  S.stage = s;
 }
 function lodByteToMm(v, glass) {
-  if (gen === 1) return v === 1 ? 1.0 : 2.0;
+  if (S.gen === 1) return v === 1 ? 1.0 : 2.0;
   if (glass) return v === 1 ? 1.0 : 2.0;
   return (v + 7) / 10;
 }
 function mmToLodByte(mm, glass) {
-  if (gen === 1 || glass) return Math.round(mm);
+  if (S.gen === 1 || glass) return Math.round(mm);
   return Math.round(mm * 10) - 7;
 }
 function buildSensorPayload() {
   const p = new Uint8Array(28);
-  p[0] = stage.unk7 ?? 0;                           // 透传 blob[7]（勿清零——语义未知，官方工具原样回写）
-  p[1] = stage.ledLiftoff;
-  p[2] = mmToLodByte(stage.lodMM, stage.glass);
-  p[3] = stage.angleSnap; p[4] = stage.ripple;
-  p[5] = gen === 2 ? (stage.angleTune & 0xFF) : 0;
-  p[6] = stage.levels;
-  p[7] = stage.active;
+  p[0] = S.stage.unk7 ?? 0;                           // 透传 blob[7]（勿清零——语义未知，官方工具原样回写）
+  p[1] = S.stage.ledLiftoff;
+  p[2] = mmToLodByte(S.stage.lodMM, S.stage.glass);
+  p[3] = S.stage.angleSnap; p[4] = S.stage.ripple;
+  p[5] = S.gen === 2 ? (S.stage.angleTune & 0xFF) : 0;
+  p[6] = S.stage.levels;
+  p[7] = S.stage.active;
   for (let n = 0; n < 4; n++) {
     const o = 8 + 5 * n;
-    const xyOn = stage.cpi[n][0] ? 1 : 0;
-    const x = stage.cpi[n][1] | 0;
+    const xyOn = S.stage.cpi[n][0] ? 1 : 0;
+    const x = S.stage.cpi[n][1] | 0;
     /* ★ 未启用独立 → Y 必须等于 X（官方单值语义）。
        即使 UI 被绕过，写出去的报文也是自洽的。 */
-    const y = xyOn ? (stage.cpi[n][2] | 0) : x;
+    const y = xyOn ? (S.stage.cpi[n][2] | 0) : x;
     p[o] = xyOn;
     p[o+1] = x & 0xFF; p[o+2] = (x >> 8) & 0xFF;
     p[o+3] = y & 0xFF; p[o+4] = (y >> 8) & 0xFF;
@@ -559,18 +456,18 @@ function buildSensorPayload() {
 }
 function buildPowerPayload() {
   const p = new Uint8Array(11);
-  p[0] = stage.motionSync;
-  p[1] = stage.polling;
+  p[0] = S.stage.motionSync;
+  p[1] = S.stage.polling;
   let f = 0;
-  if (stage.slamclick) f |= 1;
-  if (gen === 1 && stage.jitter) f |= 0x10;
-  if (gen === 2 && stage.multiclick) f |= 0x20;
-  if (gen === 2 && stage.maxFps) f |= 0x40;
+  if (S.stage.slamclick) f |= 1;
+  if (S.gen === 1 && S.stage.jitter) f |= 0x10;
+  if (S.gen === 2 && S.stage.multiclick) f |= 0x20;
+  if (S.gen === 2 && S.stage.maxFps) f |= 0x40;
   p[2] = f;
-  p[3] = stage.powerSaving === "off" ? 0x80 : stage.powerSaving;
-  for (let i = 0; i < 5; i++) p[4 + i] = stage.filters[i];
-  p[9] = stage.deepSleep === "off" ? 0x80 : stage.deepSleep;
-  p[10] = gen === 2 ? stage.glass : 0;
+  p[3] = S.stage.powerSaving === "off" ? 0x80 : S.stage.powerSaving;
+  for (let i = 0; i < 5; i++) p[4 + i] = S.stage.filters[i];
+  p[9] = S.stage.deepSleep === "off" ? 0x80 : S.stage.deepSleep;
+  p[10] = S.gen === 2 ? S.stage.glass : 0;
   return p;
 }
 
@@ -642,23 +539,23 @@ function xm1Parse(b) {
  *   发送白名单会把这一点**逐字节强制校验**：载荷不等于刚读回的那份就直接拦截。
  */
 async function writeBlobXm1(payloadIn?: Uint8Array) {
-  const ref = xm1LastRead;
-  if (!dev || !xm1) throw new Error("XM1 未连接");
+  const ref = S.xm1LastRead;
+  if (!S.dev || !S.xm1) throw new Error("XM1 未连接");
   if (!ref || ref.length !== 1024) throw new Error("尚未成功读取过配置");
-  if (lastFail) throw new Error("设备状态异常，请先重新读取");
+  if (S.lastFail) throw new Error("设备状态异常，请先重新读取");
 
   await xm1QueryByte();                                   // ① 握手（空载荷）
 
   const data = buildXm1BlobReport(payloadIn || ref);      // ② 写 blob（构造与校验同源）
-  xm1Armed = true;
+  S.xm1Armed = true;
   try {
-    await dev.sendFeatureReport(RPT_BULK, data);
+    await S.dev.sendFeatureReport(RPT_BULK, data);
     await sleep(XM1_SETTLE_MS);
     try { await rawReceive(RPT_CMD); } catch (e) { /* 官方的 64B 确认读，失败不致命 */ }
-    await dev.sendFeatureReport(RPT_CMD, buildXm1ByteReport(ref[0]));   // ③ 写单字节 = blob[0]
+    await S.dev.sendFeatureReport(RPT_CMD, buildXm1ByteReport(ref[0]));   // ③ 写单字节 = blob[0]
     await sleep(XM1_SETTLE_MS);
   } finally {
-    xm1Armed = false;                                     // 无论成败，立刻解除武装
+    S.xm1Armed = false;                                     // 无论成败，立刻解除武装
   }
 }
 
@@ -671,13 +568,13 @@ let xm1Edit: any = null;
 /* 快照：每次成功读取、以及每次写入前各存一份，最多 20 份，支持一键回退。 */
 const xm1Snaps: { at: number; label: string; blob: Uint8Array }[] = [];
 function xm1Snapshot(label: string) {
-  if (!xm1LastRead) return;
-  const last = xm1Snaps[xm1Snaps.length - 1];
-  if (last && last.blob.length === xm1LastRead.length && last.blob.every((v, i) => v === xm1LastRead![i])) return;
-  xm1Snaps.push({ at: Date.now(), label, blob: xm1LastRead.slice() });
-  if (xm1Snaps.length > 20) xm1Snaps.shift();
+  if (!S.xm1LastRead) return;
+  const last = S.xm1Snaps[S.xm1Snaps.length - 1];
+  if (last && last.blob.length === S.xm1LastRead.length && last.blob.every((v, i) => v === S.xm1LastRead![i])) return;
+  S.xm1Snaps.push({ at: Date.now(), label, blob: S.xm1LastRead.slice() });
+  if (S.xm1Snaps.length > 20) S.xm1Snaps.shift();
   const b = $("btnXm1Undo");
-  if (b) b.textContent = t("xm1Undo") + " (" + xm1Snaps.length + ")";
+  if (b) b.textContent = t("xm1Undo") + " (" + S.xm1Snaps.length + ")";
 }
 
 /** 把编辑状态打成一份新的 1024B（只动 XM1_F 里登记的偏移）。 */
@@ -718,14 +615,14 @@ function xm1FieldName(off: number): string {
 
 /** 应用编辑：差异预览 → 快照 → 写入 → 回读校验 */
 async function xm1Apply() {
-  if (!xm1LastRead || !xm1Edit) return banner("err", t("bRead"));
-  const next = xm1PatchEdit(xm1LastRead, xm1Edit);
+  if (!S.xm1LastRead || !S.xm1Edit) return banner("err", t("bRead"));
+  const next = xm1PatchEdit(S.xm1LastRead, S.xm1Edit);
   const diffs: number[] = [];
-  for (let i = 0; i < 1024; i++) if (next[i] !== xm1LastRead[i]) diffs.push(i);
+  for (let i = 0; i < 1024; i++) if (next[i] !== S.xm1LastRead[i]) diffs.push(i);
   if (!diffs.length) return banner("warn", t("xm1NoChange"));
 
   const lines = diffs.map(o => "  0x" + o.toString(16).padStart(3, "0") + "  " +
-    xm1FieldName(o) + "   " + xm1LastRead[o].toString(16).padStart(2, "0") + " → " +
+    xm1FieldName(o) + "   " + S.xm1LastRead[o].toString(16).padStart(2, "0") + " → " +
     next[o].toString(16).padStart(2, "0")).join("\n");
   if (!window.confirm(t("xm1ApplyConfirm").replace("{0}", String(diffs.length)) + "\n\n" + lines)) return;
 
@@ -735,8 +632,8 @@ async function xm1Apply() {
     await writeBlobXm1(next);
     await readBlob();
     // 回读校验：把读回的数据按编辑状态再解一次，逐项比对
-    const p = xm1Parse(blob);
-    const want = xm1Edit;
+    const p = xm1Parse(S.blob);
+    const want = S.xm1Edit;
     const bad: string[] = [];
     if (p.active !== (want.active | 0)) bad.push(t("xm1FActive"));
     for (let i = 0; i < 4; i++) {
@@ -766,7 +663,7 @@ async function xm1Apply() {
      其余字节必须与刚读回的数据逐字节一致 —— 由 protocol.ts 的 xm1GuardWrite 强制。
    ★ CPI 是**单值**：XM1 固件只读取 X、忽略 Y（6.15 节，实测 + 协议层双重印证）。 */
 function renderXm1() {
-  $("iModel").textContent = mouseName;
+  $("iModel").textContent = S.mouseName;
   $("iMouseFw").textContent = "—";
   $("iDongleFw").textContent = t("noDongleWired");
   $("iBattery").textContent = "—";
@@ -777,31 +674,31 @@ function renderXm1() {
 
   const tb = $("cpiRows");
   tb.innerHTML = "";
-  if (!blob || !blob.length || !xm1Edit) {
+  if (!S.blob || !S.blob.length || !S.xm1Edit) {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td colspan="5" class="muted">${t("bRead")}</td>`;
     tb.appendChild(tr);
     return;
   }
 
-  xm1Edit.stages.forEach((st, i) => {
+  S.xm1Edit.stages.forEach((st, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML =
       `<td>CPI ${i + 1}</td>` +
       `<td><input type="checkbox" data-on="${i}"${st.on ? " checked" : ""}></td>` +
-      `<td style="text-align:center"><input type="radio" name="xm1act" data-act="${i}"${xm1Edit.active === i ? " checked" : ""}></td>` +
+      `<td style="text-align:center"><input type="radio" name="xm1act" data-act="${i}"${S.xm1Edit.active === i ? " checked" : ""}></td>` +
       `<td colspan="2"><input type="number" data-x="${i}" min="50" max="30000" step="50" value="${st.x}"></td>`;
     tb.appendChild(tr);
   });
   // 事件：直接改编辑状态，不立即写设备
   tb.querySelectorAll("input[data-on]").forEach(el => {
-    el.onchange = () => { xm1Edit.stages[+el.dataset.on!].on = el.checked ? 1 : 0; };
+    el.onchange = () => { S.xm1Edit.stages[+el.dataset.on!].on = el.checked ? 1 : 0; };
   });
   tb.querySelectorAll("input[data-act]").forEach(el => {
-    el.onchange = () => { xm1Edit.active = +el.dataset.act!; };
+    el.onchange = () => { S.xm1Edit.active = +el.dataset.act!; };
   });
   tb.querySelectorAll("input[data-x]").forEach(el => {
-    el.oninput = () => { xm1Edit.stages[+el.dataset.x!].x = +el.value || 0; };
+    el.oninput = () => { S.xm1Edit.stages[+el.dataset.x!].x = +el.value || 0; };
   });
   const note = document.createElement("tr");
   note.innerHTML = `<td colspan="5" class="muted">${t("xm1EditNote")}</td>`;
@@ -810,15 +707,15 @@ function renderXm1() {
   // LOD / Ripple：XM1 只有这两个传感器项已核实
   const lodSel = $("lod");
   if (lodSel) {
-    fillSelect(lodSel, [[1, "1 mm"], [2, "2 mm"], [3, "3 mm"]], Math.round(xm1Edit.lodMM));
+    fillSelect(lodSel, [[1, "1 mm"], [2, "2 mm"], [3, "3 mm"]], Math.round(S.xm1Edit.lodMM));
     lodSel.disabled = false;
-    lodSel.onchange = () => { xm1Edit.lodMM = +lodSel.value; };
+    lodSel.onchange = () => { S.xm1Edit.lodMM = +lodSel.value; };
   }
   const rip = $("ripple");
   if (rip) {
-    rip.checked = !!xm1Edit.ripple;
+    rip.checked = !!S.xm1Edit.ripple;
     rip.disabled = false;
-    rip.onchange = () => { xm1Edit.ripple = rip.checked ? 1 : 0; };
+    rip.onchange = () => { S.xm1Edit.ripple = rip.checked ? 1 : 0; };
   }
   // 档位数：XM1 固定 4 档（官方 UI 也是 4 张卡片），只读展示
   const lv = $("cpiLevels");
@@ -835,20 +732,20 @@ function renderXm1() {
     const el = $(id); if (el) el.disabled = true;
   }
   const apply = $("btnApplySensor");
-  if (apply) { apply.disabled = !xm1LastRead; apply.onclick = () => { void xm1Apply(); }; }
+  if (apply) { apply.disabled = !S.xm1LastRead; apply.onclick = () => { void xm1Apply(); }; }
   const save = $("btnSave"); if (save) save.disabled = false;
   const echoBtn = $("btnXm1Echo");
-  if (echoBtn) { echoBtn.style.display = ""; echoBtn.disabled = !xm1LastRead; }
+  if (echoBtn) { echoBtn.style.display = ""; echoBtn.disabled = !S.xm1LastRead; }
   const undo = $("btnXm1Undo");
   if (undo) {
     undo.style.display = "";
-    undo.disabled = xm1Snaps.length < 2;
-    undo.textContent = t("xm1Undo") + " (" + xm1Snaps.length + ")";
+    undo.disabled = S.xm1Snaps.length < 2;
+    undo.textContent = t("xm1Undo") + " (" + S.xm1Snaps.length + ")";
   }
 }
 /* 第四协议族（XM1r / OP1 / OP1 RGB）专用：只填设备信息，不渲染任何可编辑控件。 */
 function renderInfoOnly() {
-  $("iModel").textContent = mouseName;
+  $("iModel").textContent = S.mouseName;
   $("iMouseFw").textContent = "—";
   $("iDongleFw").textContent = "—";
   $("iBattery").textContent = "—";
@@ -858,45 +755,45 @@ function renderInfoOnly() {
 
 function render() {
   /* XM1：字段已实测确认，走 renderXm1() 的受限编辑器（写入只涉及 23 个已核实字节）。 */
-  if (xm1) return renderXm1();
+  if (S.xm1) return renderXm1();
 
-  $("iModel").textContent = mouseName;
-  $("iMouseFw").textContent = mouseFw;
-  $("iDongleFw").textContent = wired ? t("noDongleWired") : dongleFw;
-  $("iBattery").textContent = battery === null ? "—"
-    : (wired && battery < 100 ? t("charging", battery) : battery + " %");
-  $("iConn").textContent = wired ? t("wiredMode") : t("wirelessMode");
-  $("iGen").textContent = eightK ? t("gen8k") : (gen ? `v${gen}` : "—");
+  $("iModel").textContent = S.mouseName;
+  $("iMouseFw").textContent = S.mouseFw;
+  $("iDongleFw").textContent = S.wired ? t("noDongleWired") : S.dongleFw;
+  $("iBattery").textContent = S.battery === null ? "—"
+    : (S.wired && S.battery < 100 ? t("charging", S.battery) : S.battery + " %");
+  $("iConn").textContent = S.wired ? t("wiredMode") : t("wirelessMode");
+  $("iGen").textContent = S.eightK ? t("gen8k") : (S.gen ? `v${S.gen}` : "—");
 
   const tb = $("cpiRows"); tb.innerHTML = "";
   for (let n = 0; n < 4; n++) {
     const tr = document.createElement("tr");
-    const dis = n >= stage.levels ? "disabled" : "";
+    const dis = n >= S.stage.levels ? "disabled" : "";
     /* XY 开关关闭 = 官方软件的单值语义：Y 显示为与 X 相同（框禁用但跟随） */
-    const xyOn = stage.cpi[n][0] ? 1 : 0;
-    const xv = stage.cpi[n][1], yv = xyOn ? stage.cpi[n][2] : stage.cpi[n][1];
-    tr.innerHTML = `<td>CPI ${n + 1}${n === stage.active ? t("current") : ""}</td><td>${STAGE_COLORS[LANG][n]}</td>
+    const xyOn = S.stage.cpi[n][0] ? 1 : 0;
+    const xv = S.stage.cpi[n][1], yv = xyOn ? S.stage.cpi[n][2] : S.stage.cpi[n][1];
+    tr.innerHTML = `<td>CPI ${n + 1}${n === S.stage.active ? t("current") : ""}</td><td>${STAGE_COLORS[LANG][n]}</td>
       <td><input type="checkbox" data-xy="${n}" ${xyOn ? "checked" : ""} ${dis}></td>
       <td><input type="number" data-x="${n}" min="50" max="30000" step="50" value="${xv}" ${dis}></td>
       <td><input type="number" data-y="${n}" min="50" max="30000" step="50" value="${yv}" ${xyOn && !dis ? "" : "disabled"}></td>`;
     tb.appendChild(tr);
   }
   tb.querySelectorAll("input[data-xy]").forEach(el => el.onchange = () => {
-    const n = +el.dataset.xy; stage.cpi[n][0] = el.checked ? 1 : 0;
+    const n = +el.dataset.xy; S.stage.cpi[n][0] = el.checked ? 1 : 0;
     const yEl: any = tb.querySelector(`input[data-y="${n}"]`);
     yEl.disabled = !el.checked;
     /* 取消独立 → 立刻回到单值语义：Y 同步为 X，
        不留下"开关关着、两个值却不同"的中间状态。 */
-    if (!el.checked) { stage.cpi[n][2] = stage.cpi[n][1]; yEl.value = String(stage.cpi[n][1]); }
+    if (!el.checked) { S.stage.cpi[n][2] = S.stage.cpi[n][1]; yEl.value = String(S.stage.cpi[n][1]); }
   });
   tb.querySelectorAll("input[data-x],input[data-y]").forEach(el => el.onchange = () => {
     const n = +(el.dataset.x ?? el.dataset.y); const ax = el.dataset.x ? 1 : 2;
     const v = Math.max(10, Math.min(30000, +el.value || 400));
     (el as any).value = String(v);                       // clamp 后回显
-    stage.cpi[n][ax] = v;
+    S.stage.cpi[n][ax] = v;
     /* ★ 未启用 XY 独立时两个值联动 —— 等同官方软件的单一 CPI 输入 */
-    if (!stage.cpi[n][0]) {
-      stage.cpi[n][1] = stage.cpi[n][2] = v;
+    if (!S.stage.cpi[n][0]) {
+      S.stage.cpi[n][1] = S.stage.cpi[n][2] = v;
       const xEl: any = tb.querySelector(`input[data-x="${n}"]`);
       const yEl: any = tb.querySelector(`input[data-y="${n}"]`);
       if (xEl) xEl.value = String(v);
@@ -908,73 +805,73 @@ function render() {
   hint.innerHTML = `<td colspan="5" class="muted">${t("xyHint")}</td>`;
   tb.appendChild(hint);
 
-  $("cpiLevels").value = String(stage.levels);
-  $("cpiLevels").onchange = e => stage.levels = +e.target.value;
+  $("cpiLevels").value = String(S.stage.levels);
+  $("cpiLevels").onchange = e => S.stage.levels = +e.target.value;
   const actSel = $("cpiActive");
-  fillSelect(actSel, [[0,"CPI 1"],[1,"CPI 2"],[2,"CPI 3"],[3,"CPI 4"]], stage.active);
-  actSel.disabled = gen === 1;
-  $("cpiActiveNote").textContent = gen === 1 ? t("v1StageNote") : "";
-  actSel.onchange = e => stage.active = +e.target.value;
+  fillSelect(actSel, [[0,"CPI 1"],[1,"CPI 2"],[2,"CPI 3"],[3,"CPI 4"]], S.stage.active);
+  actSel.disabled = S.gen === 1;
+  $("cpiActiveNote").textContent = S.gen === 1 ? t("v1StageNote") : "";
+  actSel.onchange = e => S.stage.active = +e.target.value;
 
   const lodSel = $("lod");
-  if (gen === 1 || stage.glass) {
-    fillSelect(lodSel, [[1,"1.0 mm"],[2,"2.0 mm"]], Math.round(stage.lodMM));
+  if (S.gen === 1 || S.stage.glass) {
+    fillSelect(lodSel, [[1,"1.0 mm"],[2,"2.0 mm"]], Math.round(S.stage.lodMM));
   } else {
     const opts = []; for (let i = 7; i <= 17; i++) opts.push([i / 10, (i / 10).toFixed(1) + " mm"]);
-    fillSelect(lodSel, opts, +stage.lodMM.toFixed(1));
+    fillSelect(lodSel, opts, +S.stage.lodMM.toFixed(1));
   }
-  lodSel.onchange = e => stage.lodMM = +e.target.value;
-  $("glass").value = String(stage.glass);
-  $("glass").disabled = gen !== 2;
+  lodSel.onchange = e => S.stage.lodMM = +e.target.value;
+  $("glass").value = String(S.stage.glass);
+  $("glass").disabled = S.gen !== 2;
   $("glass").onchange = e => {
-    const g = +e.target.value; const old = stage.glass;
-    stage.glass = g;
+    const g = +e.target.value; const old = S.stage.glass;
+    S.stage.glass = g;
     if (g !== old) {
-      if (g === 1) stage.lodMM = stage.lodMM <= 0.8 ? 1 : 2;
-      else stage.lodMM = stage.lodMM === 1 ? 1.0 : 1.7;
+      if (g === 1) S.stage.lodMM = S.stage.lodMM <= 0.8 ? 1 : 2;
+      else S.stage.lodMM = S.stage.lodMM === 1 ? 1.0 : 1.7;
     }
     render();
   };
-  $("angleSnap").value = String(stage.angleSnap); $("angleSnap").onchange = e => stage.angleSnap = +e.target.value;
-  $("ripple").value = String(stage.ripple); $("ripple").onchange = e => stage.ripple = +e.target.value;
-  $("ledLiftoff").value = String(stage.ledLiftoff); $("ledLiftoff").onchange = e => stage.ledLiftoff = +e.target.value;
-  $("angleTune").value = stage.angleTune;
-  $("angleTune").disabled = gen !== 2;
-  $("angleTune").onchange = e => stage.angleTune = Math.max(-30, Math.min(30, +e.target.value || 0));
+  $("angleSnap").value = String(S.stage.angleSnap); $("angleSnap").onchange = e => S.stage.angleSnap = +e.target.value;
+  $("ripple").value = String(S.stage.ripple); $("ripple").onchange = e => S.stage.ripple = +e.target.value;
+  $("ledLiftoff").value = String(S.stage.ledLiftoff); $("ledLiftoff").onchange = e => S.stage.ledLiftoff = +e.target.value;
+  $("angleTune").value = S.stage.angleTune;
+  $("angleTune").disabled = S.gen !== 2;
+  $("angleTune").onchange = e => S.stage.angleTune = Math.max(-30, Math.min(30, +e.target.value || 0));
 
   const pollSel = $("polling");
   const isEn = LANG === "en";
   const ps = isEn ? "power saving" : "省电", of = isEn ? "office" : "办公";
   /* 8k 有线：divider 1/2/4/8 → 8000/4000/2000/1000 Hz（egctl 与官方工具一致）。
      4k 无线则没有 8000 档，且 1000 Hz 有省电/办公两个特殊编码。 */
-  const pollOpts = eightK
+  const pollOpts = S.eightK
     ? [[0x01,"8000 Hz"],[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"]]
-    : gen === 1
+    : S.gen === 1
       ? [[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"]]
       : [[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"],[0x80,`1000 Hz (${ps})`],[0x40,`125 Hz (${of})`]];
-  fillSelect(pollSel, pollOpts, stage.polling);
-  if (eightK || !(gen === 1 && ![0x02,0x04,0x08].includes(stage.polling))) pollSel.value = String(stage.polling);
-  $("pollNote").textContent = wired ? t("pollWiredNote") : "";
-  pollSel.onchange = e => stage.polling = +e.target.value;
-  $("motionSync").value = String(stage.motionSync); $("motionSync").onchange = e => stage.motionSync = +e.target.value;
-  stage.slamclick = !!(stage.flags & 1);
-  $("slamclick").value = stage.slamclick ? "1" : "0"; $("slamclick").onchange = e => stage.slamclick = +e.target.value;
+  fillSelect(pollSel, pollOpts, S.stage.polling);
+  if (S.eightK || !(S.gen === 1 && ![0x02,0x04,0x08].includes(S.stage.polling))) pollSel.value = String(S.stage.polling);
+  $("pollNote").textContent = S.wired ? t("pollWiredNote") : "";
+  pollSel.onchange = e => S.stage.polling = +e.target.value;
+  $("motionSync").value = String(S.stage.motionSync); $("motionSync").onchange = e => S.stage.motionSync = +e.target.value;
+  S.stage.slamclick = !!(S.stage.flags & 1);
+  $("slamclick").value = S.stage.slamclick ? "1" : "0"; $("slamclick").onchange = e => S.stage.slamclick = +e.target.value;
   /* 注意：行级显示（rowV1Jitter / rowV2Max / rowV2Multi 等）**统一由 layout.ts 负责**，
      这里不再设置 display —— 两处各自切换会互相打架（8k 就同时踩到这一点）。 */
-  stage.jitter = !!(stage.flags & 0x10);
-  $("jitter").value = stage.jitter ? "1" : "0"; $("jitter").onchange = e => stage.jitter = +e.target.value;
-  stage.maxFps = !!(stage.flags & 0x40);
-  $("maxFps").value = stage.maxFps ? "1" : "0"; $("maxFps").onchange = e => stage.maxFps = +e.target.value;
-  stage.multiclick = !!(stage.flags & 0x20);
-  $("multiclick").value = stage.multiclick ? "1" : "0"; $("multiclick").onchange = e => stage.multiclick = +e.target.value;
+  S.stage.jitter = !!(S.stage.flags & 0x10);
+  $("jitter").value = S.stage.jitter ? "1" : "0"; $("jitter").onchange = e => S.stage.jitter = +e.target.value;
+  S.stage.maxFps = !!(S.stage.flags & 0x40);
+  $("maxFps").value = S.stage.maxFps ? "1" : "0"; $("maxFps").onchange = e => S.stage.maxFps = +e.target.value;
+  S.stage.multiclick = !!(S.stage.flags & 0x20);
+  $("multiclick").value = S.stage.multiclick ? "1" : "0"; $("multiclick").onchange = e => S.stage.multiclick = +e.target.value;
   const toOpts = [["off", t("minutes") === "min" ? "Off" : "关闭"]].concat(Array.from({length:120},(_,i)=>[i+1, t("minutesFmt", i+1)]));
-  fillSelect($("powerSaving"), toOpts, stage.powerSaving); $("powerSaving").value = String(stage.powerSaving);
-  $("powerSaving").onchange = e => stage.powerSaving = e.target.value === "off" ? "off" : +e.target.value;
-  fillSelect($("deepSleep"), toOpts, stage.deepSleep); $("deepSleep").value = String(stage.deepSleep);
-  $("deepSleep").onchange = e => stage.deepSleep = e.target.value === "off" ? "off" : +e.target.value;
+  fillSelect($("powerSaving"), toOpts, S.stage.powerSaving); $("powerSaving").value = String(S.stage.powerSaving);
+  $("powerSaving").onchange = e => S.stage.powerSaving = e.target.value === "off" ? "off" : +e.target.value;
+  fillSelect($("deepSleep"), toOpts, S.stage.deepSleep); $("deepSleep").value = String(S.stage.deepSleep);
+  $("deepSleep").onchange = e => S.stage.deepSleep = e.target.value === "off" ? "off" : +e.target.value;
 
   const br = $("btnRows"); br.innerHTML = "";
-  stage.buttons.forEach((btn, i) => {
+  S.stage.buttons.forEach((btn, i) => {
     br.insertAdjacentHTML("beforeend", `<tr><td>${BTN_NAMES[LANG][i]}</td><td>${describeMap(btn)}</td><td>${btn.filter === 0xF0 ? t("gxSafe") : btn.filter === 0xF1 ? t("gxSpeed") : (btn.filter & 0x7F)}</td></tr>`);
   });
   const fr = $("filterRows"); fr.innerHTML = "";
@@ -985,21 +882,21 @@ function render() {
     const sel = tr.querySelector("select");
     const opts = FILTER_OPTS.slice();
     if (i <= 1) opts.push(["0xF0", t("gxSafe")],["0xF1", t("gxSpeed")]);
-    fillSelect(sel, opts, stage.filters[i]);
-    sel.value = String(stage.filters[i]);
-    sel.onchange = e => stage.filters[i] = +(e.target as HTMLSelectElement).value;
+    fillSelect(sel, opts, S.stage.filters[i]);
+    sel.value = String(S.stage.filters[i]);
+    sel.onchange = e => S.stage.filters[i] = +(e.target as HTMLSelectElement).value;
   });
 
   /* 「没读到配置就不给写」的界面侧体现：按钮直接禁用，而不是等用户点了才弹错。
      零负载命令（配对/恢复出厂）不在其列。 */
-  const canWrite = !!blob && !!gen && !unverified;
+  const canWrite = !!S.blob && !!S.gen && !S.unverified;
   for (const id of ["btnApplySensor", "btnApplyPerf", "btnLoad", "btnReset", "btnPair", "btnPairDefault"]) {
     const el = $(id); if (el) el.disabled = !canWrite;
   }
 
   /* 未真机验证的型号：禁用全部写入入口（guard4k 还会再兜一层）。
      读取、导出照常可用 —— 只读本身是有价值的，写入必须等硬件确认。 */
-  if (unverified) {
+  if (S.unverified) {
     for (const id of ["btnApplySensor", "btnApplyPerf", "btnReset", "btnLoad",
                       "cpiLevels", "cpiActive", "lod", "glass", "angleSnap", "ripple",
                       "ledLiftoff", "angleTune"]) {
@@ -1026,8 +923,8 @@ function describeMap(b) {
 
 /* ================= 应用流程 ================= */
 /* 官方工具的写后 settle：有线 500ms / 无线 880ms（模式字节 0x11/0x22，见 re/PROTOCOL_NOTES.md） */
-const writeSettle = () => wired ? 500 : 880;
-const resetSettle = () => wired ? 800 : 1080;
+const writeSettle = () => S.wired ? 500 : 880;
+const resetSettle = () => S.wired ? 800 : 1080;
 
 /* ================= 写入后回读校验（4k 族） =================
    0x14 / 0x15 / 0x16 这些写入命令只回执行状态，**不回报配置内容**，
@@ -1042,15 +939,15 @@ const resetSettle = () => wired ? 800 : 1080;
 /** 写入前：记录传感器页期望值 */
 function snapSensor(): any {
   return {
-    cpi: stage.cpi.map((r: number[]) => [r[0] ? 1 : 0, r[1] | 0, r[0] ? (r[2] | 0) : (r[1] | 0)]),
-    levels: stage.levels | 0,
-    active: stage.active | 0,
-    angleSnap: stage.angleSnap ? 1 : 0,
-    ripple: stage.ripple ? 1 : 0,
-    ledLiftoff: stage.ledLiftoff ? 1 : 0,
-    lodMM: +stage.lodMM,
-    glass: stage.glass ? 1 : 0,
-    angleTune: (stage.angleTune << 24) >> 24,
+    cpi: S.stage.cpi.map((r: number[]) => [r[0] ? 1 : 0, r[1] | 0, r[0] ? (r[2] | 0) : (r[1] | 0)]),
+    levels: S.stage.levels | 0,
+    active: S.stage.active | 0,
+    angleSnap: S.stage.angleSnap ? 1 : 0,
+    ripple: S.stage.ripple ? 1 : 0,
+    ledLiftoff: S.stage.ledLiftoff ? 1 : 0,
+    lodMM: +S.stage.lodMM,
+    glass: S.stage.glass ? 1 : 0,
+    angleTune: (S.stage.angleTune << 24) >> 24,
   };
 }
 
@@ -1058,62 +955,62 @@ function snapSensor(): any {
 function verifySensor(w: any): string[] {
   const bad: string[] = [];
   for (let n = 0; n < 4; n++) {
-    const a = stage.cpi[n] || [0, 0, 0];
+    const a = S.stage.cpi[n] || [0, 0, 0];
     if (w.cpi[n][0] !== (a[0] ? 1 : 0)) bad.push(`CPI ${n + 1} XY-enable`);
     if (w.cpi[n][1] !== (a[1] | 0)) bad.push(`CPI ${n + 1} X ${w.cpi[n][1]}→${a[1] | 0}`);
     const wantY = w.cpi[n][0] ? w.cpi[n][2] : w.cpi[n][1];   // 未启用独立时从 X 取期望
     if (wantY !== (a[2] | 0)) bad.push(`CPI ${n + 1} Y ${wantY}→${a[2] | 0}`);
   }
-  if (w.levels !== (stage.levels | 0)) bad.push(`Levels ${w.levels}→${stage.levels}`);
-  if (gen === 2 && w.active !== (stage.active & 3)) bad.push(`Active stage ${w.active + 1}→${(stage.active & 3) + 1}`);
-  if (w.angleSnap !== (stage.angleSnap ? 1 : 0)) bad.push("Angle Snap");
-  if (w.ripple !== (stage.ripple ? 1 : 0)) bad.push("Ripple");
-  if (w.ledLiftoff !== (stage.ledLiftoff ? 1 : 0)) bad.push("LED liftoff");
-  if (Math.abs(w.lodMM - +stage.lodMM) > 0.05) bad.push(`LOD ${w.lodMM}mm→${stage.lodMM}mm`);
-  if (gen === 2 && w.glass !== (stage.glass ? 1 : 0)) bad.push("Glass mode");
-  if (gen === 2 && w.angleTune !== ((stage.angleTune << 24) >> 24)) bad.push("Angle Tune");
+  if (w.levels !== (S.stage.levels | 0)) bad.push(`Levels ${w.levels}→${S.stage.levels}`);
+  if (S.gen === 2 && w.active !== (S.stage.active & 3)) bad.push(`Active stage ${w.active + 1}→${(S.stage.active & 3) + 1}`);
+  if (w.angleSnap !== (S.stage.angleSnap ? 1 : 0)) bad.push("Angle Snap");
+  if (w.ripple !== (S.stage.ripple ? 1 : 0)) bad.push("Ripple");
+  if (w.ledLiftoff !== (S.stage.ledLiftoff ? 1 : 0)) bad.push("LED liftoff");
+  if (Math.abs(w.lodMM - +S.stage.lodMM) > 0.05) bad.push(`LOD ${w.lodMM}mm→${S.stage.lodMM}mm`);
+  if (S.gen === 2 && w.glass !== (S.stage.glass ? 1 : 0)) bad.push("Glass mode");
+  if (S.gen === 2 && w.angleTune !== ((S.stage.angleTune << 24) >> 24)) bad.push("Angle Tune");
   return bad;
 }
 
 /** 写入前：记录性能/电源页期望值（开关位从 flags 现拆，不依赖 render 是否跑过） */
 function snapPerf(): any {
-  const f = stage.flags | 0;
+  const f = S.stage.flags | 0;
   return {
-    polling: stage.polling, motionSync: stage.motionSync ? 1 : 0,
+    polling: S.stage.polling, motionSync: S.stage.motionSync ? 1 : 0,
     slamclick: f & 1 ? 1 : 0, jitter: f & 0x10 ? 1 : 0,
     multiclick: f & 0x20 ? 1 : 0, maxFps: f & 0x40 ? 1 : 0,
-    powerSaving: stage.powerSaving, deepSleep: stage.deepSleep,
-    filters: (stage.filters || []).slice(),
+    powerSaving: S.stage.powerSaving, deepSleep: S.stage.deepSleep,
+    filters: (S.stage.filters || []).slice(),
   };
 }
 
 /** 写入后：比对性能/电源页 */
 function verifyPerf(w: any): string[] {
   const bad: string[] = [];
-  const f = stage.flags | 0;
-  if (w.polling !== stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}→0x${stage.polling.toString(16)}`);
-  if (w.motionSync !== (stage.motionSync ? 1 : 0)) bad.push("Motion Sync");
+  const f = S.stage.flags | 0;
+  if (w.polling !== S.stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}→0x${S.stage.polling.toString(16)}`);
+  if (w.motionSync !== (S.stage.motionSync ? 1 : 0)) bad.push("Motion Sync");
   if (w.slamclick !== (f & 1 ? 1 : 0)) bad.push("Slamclick");
-  if (gen === 1 && w.jitter !== (f & 0x10 ? 1 : 0)) bad.push("Jitter filter");
-  if (gen === 2 && w.multiclick !== (f & 0x20 ? 1 : 0)) bad.push("Multiclick");
-  if (gen === 2 && w.maxFps !== (f & 0x40 ? 1 : 0)) bad.push("Force max FPS");
-  if (w.powerSaving !== stage.powerSaving) bad.push(`Power saving ${w.powerSaving}→${stage.powerSaving}`);
-  if (w.deepSleep !== stage.deepSleep) bad.push(`Deep sleep ${w.deepSleep}→${stage.deepSleep}`);
+  if (S.gen === 1 && w.jitter !== (f & 0x10 ? 1 : 0)) bad.push("Jitter filter");
+  if (S.gen === 2 && w.multiclick !== (f & 0x20 ? 1 : 0)) bad.push("Multiclick");
+  if (S.gen === 2 && w.maxFps !== (f & 0x40 ? 1 : 0)) bad.push("Force max FPS");
+  if (w.powerSaving !== S.stage.powerSaving) bad.push(`Power saving ${w.powerSaving}→${S.stage.powerSaving}`);
+  if (w.deepSleep !== S.stage.deepSleep) bad.push(`Deep sleep ${w.deepSleep}→${S.stage.deepSleep}`);
   for (let i = 0; i < w.filters.length; i++)
-    if (w.filters[i] !== stage.filters[i]) bad.push(`Filter ${i + 1} ${w.filters[i]}→${stage.filters[i]}`);
+    if (w.filters[i] !== S.stage.filters[i]) bad.push(`Filter ${i + 1} ${w.filters[i]}→${S.stage.filters[i]}`);
   return bad;
 }
 
 /** 写入前：记录按键映射 */
 function snapButtons(): any {
-  return (stage.buttons || []).map((b: any) => ({ type: b.type, code: b.code, key: b.key, filter: b.filter }));
+  return (S.stage.buttons || []).map((b: any) => ({ type: b.type, code: b.code, key: b.key, filter: b.filter }));
 }
 
 /** 写入后：比对按键映射 */
 function verifyButtons(w: any[]): string[] {
   const bad: string[] = [];
   for (let i = 0; i < w.length; i++) {
-    const a = (stage.buttons || [])[i];
+    const a = (S.stage.buttons || [])[i];
     if (!a) { bad.push(`Button ${i + 1} missing`); continue; }
     if (w[i].type !== a.type || w[i].code !== a.code || w[i].key !== a.key)
       bad.push(`Button ${i + 1} mapping`);
@@ -1134,10 +1031,10 @@ function reportVerify(okKey: string, bad: string[]) {
 }
 
 async function applySensor() {
-  if (eightK) return apply8k();                  // 8k 是整块写，两张卡共用一条路径
+  if (S.eightK) return apply8k();                  // 8k 是整块写，两张卡共用一条路径
   const want = snapSensor();                     // 期望值（写入前）
   const wantPerf = snapPerf();                   // 联动写 0x15 时玻璃模式也在里面
-  const glassChanged = gen === 2 && (blob[0x6F] ? 1 : 0) !== stage.glass;
+  const glassChanged = S.gen === 2 && (S.blob[0x6F] ? 1 : 0) !== S.stage.glass;
   await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
   log("✓ cmd 0x14 written");
   if (glassChanged) {
@@ -1150,10 +1047,10 @@ async function applySensor() {
   reportVerify("bSensor", bad);
 }
 async function applyPerf() {
-  if (eightK) return apply8k();                  // 同上：8k 的性能项与传感器项在同一次整块写里
+  if (S.eightK) return apply8k();                  // 同上：8k 的性能项与传感器项在同一次整块写里
   const want = snapPerf();                       // 期望值（写入前）
   const wantSensor = snapSensor();               // 联动写 0x14 时传感器字段也在里面
-  const glassChanged = gen === 2 && (blob[0x6F] ? 1 : 0) !== stage.glass;
+  const glassChanged = S.gen === 2 && (S.blob[0x6F] ? 1 : 0) !== S.stage.glass;
   await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
   log("✓ cmd 0x15 written");
   if (glassChanged) {
@@ -1171,20 +1068,20 @@ async function refreshAll() {
     /* 第四协议族（XM1r / OP1 / OP1 RGB）：只显示型号与原因，不发送任何报文。
        该族报文格式与本工具实现的三族完全不同（64B 包 + 54 条 kCom* 命令 + 口令握手），
        在没有实现之前连接它是无意义的；明确告知比"连不上"更有用。 */
-    if (family4) {
-      mouseName = PID_FAMILY4[dev.productId] || t("f4Unknown");
-      mouseFw = "—"; dongleFw = "—"; battery = null;
+    if (S.family4) {
+      S.mouseName = PID_FAMILY4[S.dev.productId] || t("f4Unknown");
+      S.mouseFw = "—"; S.dongleFw = "—"; S.battery = null;
       applyLayout("unsupported");
       renderInfoOnly();
       banner("warn", t("bFamily4"));
-      log(`⚠ 第四协议族：VID=0x${dev.vendorId.toString(16)} PID=0x${dev.productId.toString(16)}，仅识别不通信`);
+      log(`⚠ 第四协议族：VID=0x${S.dev.vendorId.toString(16)} PID=0x${S.dev.productId.toString(16)}，仅识别不通信`);
       return;
     }
     /* 8k 有线族：从 PID 即可确定型号（有线直连，无需 0x0E 查询），
        读走 0x12 + 1024B 帧，写走 0x11 整块写。 */
-    if (eightK) {
-      mouseName = PID_8K[dev.productId];
-      mouseFw = "—"; dongleFw = "—"; battery = null;
+    if (S.eightK) {
+      S.mouseName = PID_8K[S.dev.productId];
+      S.mouseFw = "—"; S.dongleFw = "—"; S.battery = null;
       applyLayout("8k");
       try {
         await readBlob8k();
@@ -1205,10 +1102,10 @@ async function refreshAll() {
        0xB4 电量，所以跳过这些查询，直接用 0xA1 空请求读 blob。
        读取路径已按官方 0x40FC80 修正（见 readBlobXm1 上方注释）；
        写入仍停用（重排层未核实），blob 仅供只读展示。 */
-    if (xm1) {
-      mouseName = modelOf(VID_22D4, dev.productId);
-      gen = 0;
-      dongleFw = "—"; mouseFw = "—"; battery = null;
+    if (S.xm1) {
+      S.mouseName = modelOf(VID_22D4, S.dev.productId);
+      S.gen = 0;
+      S.dongleFw = "—"; S.mouseFw = "—"; S.battery = null;
       /* XM1 只显示它真正有的东西：CPI（单值）/ LOD / Ripple + 备份工具。
          没有性能卡片（回报率是底部硬件开关）、没有按键卡片（按键表未验证）、
          传感器里也不显示未定位的角度/灯效项。 */
@@ -1218,7 +1115,7 @@ async function refreshAll() {
            这条通道是唯一入口。只读，不含负载。 */
         await xm1QueryByte();
         await readBlob();
-        xm1Edit = xm1Parse(blob);            // 编辑状态以读回值为初始
+        S.xm1Edit = xm1Parse(S.blob);            // 编辑状态以读回值为初始
         xm1Snapshot(t("xm1SnapRead"));
         parseBlob();
         render();
@@ -1232,31 +1129,31 @@ async function refreshAll() {
       return;
     }
 
-    try { const r = await guarded(0x0D, 0x00, null, { pace: 150 }); dongleFw = fwStr(r[16] | (r[17] << 8)); }
-    catch (e) { if (e.code !== 0x07) throw e; dongleFw = "—"; }
+    try { const r = await guarded(0x0D, 0x00, null, { pace: 150 }); S.dongleFw = fwStr(r[16] | (r[17] << 8)); }
+    catch (e) { if (e.code !== 0x07) throw e; S.dongleFw = "—"; }
     let mouseOk = false;
     try {
       const r = await guarded(0x0E, 0x00, null, { pace: 150 });
       const pid = r[18] | (r[19] << 8);
       if (MOUSE_PIDS[pid]) {
-        mouseName = MOUSE_PIDS[pid][0]; gen = MOUSE_PIDS[pid][1];
-        unverified = MOUSE_PIDS[pid][2] === 0;
+        S.mouseName = MOUSE_PIDS[pid][0]; S.gen = MOUSE_PIDS[pid][1];
+        S.unverified = MOUSE_PIDS[pid][2] === 0;
       } else {
         /* ★ fail-safe：PID 不认识 ⇒ 不知道它属于哪一族，绝不能按 4k 的偏移去写。
            此前这里是 unverified = false，等于给未知型号开了写入口。 */
-        mouseName = `Unknown (PID 0x${pid.toString(16)})`;
-        gen = null; unverified = true; unknownModel = true;
+        S.mouseName = `Unknown (PID 0x${pid.toString(16)})`;
+        S.gen = null; S.unverified = true; S.unknownModel = true;
       }
-      mouseFw = fwStr(r[22] | (r[23] << 8));
+      S.mouseFw = fwStr(r[22] | (r[23] << 8));
       mouseOk = true;
     } catch (e) { if (![0x08, 0x11].includes(e.code)) throw e; }
-    try { const r = await guarded(0xB4, 0x00, null, { pace: 150 }); battery = r[16]; } catch (e) { battery = null; }
+    try { const r = await guarded(0xB4, 0x00, null, { pace: 150 }); S.battery = r[16]; } catch (e) { S.battery = null; }
     /* 界面按型号裁剪：v1 不显示 v2 专属项，反之亦然。 */
-    applyLayout(layoutFor({ unverified, gen }));
+    applyLayout(layoutFor({ unverified: S.unverified, gen: S.gen }));
     if (mouseOk) {
       await readBlob(); parseBlob(); render();
-      if (unknownModel) banner("warn", t("bUnknownModel"));
-      else if (unverified) banner("warn", t("bUnverifiedModel"));
+      if (S.unknownModel) banner("warn", t("bUnknownModel"));
+      else if (S.unverified) banner("warn", t("bUnverifiedModel"));
       else banner("ok", t("bReadOk"));
     }
     else { render(); banner("warn", t("bSleep")); }
@@ -1275,8 +1172,8 @@ function fwStr(v) { const h = v.toString(16).padStart(4, "0"); return `${parseIn
 let releasedOnHide = false;
 async function releaseAllDevices() {
   try { await closeXm2we(); } catch (_) {}
-  if (dev && dev.opened) { try { await dev.close(); } catch (_) {} }
-  dev = null;
+  if (S.dev && S.dev.opened) { try { await S.dev.close(); } catch (_) {} }
+  S.dev = null;
 }
 window.addEventListener("beforeunload", () => { releaseAllDevices(); });
 window.addEventListener("pagehide", () => { releaseAllDevices(); });
@@ -1347,13 +1244,13 @@ async function openGuarded(d) {
 
 async function openDevice(d) {
   if (!(await openGuarded(d))) return;
-  dev = d;
-  xm1 = isXm1(d.vendorId);
-  eightK = !xm1 && is8k(d.productId);
-  family4 = !xm1 && !eightK && (isFamily4(d.productId)
+  S.dev = d;
+  S.xm1 = isXm1(d.vendorId);
+  S.eightK = !S.xm1 && is8k(d.productId);
+  S.family4 = !S.xm1 && !S.eightK && (isFamily4(d.productId)
             || (d.collections || []).some((c: any) => c.usagePage === USAGE_FAMILY4.page));
-  wired = xm1 || eightK || family4 || d.productId !== DONGLE_PID;
-  lastFrame = null; frameAligned = false;
+  S.wired = S.xm1 || S.eightK || S.family4 || d.productId !== DONGLE_PID;
+  S.lastFrame = null; S.frameAligned = false;
   /* ★ XM1 发送白名单（防止再次损坏配置）
    *
    * 【常驻放行】64B 空请求，命令码为官方**读路径**的两条查询命令：
@@ -1370,19 +1267,19 @@ async function openDevice(d) {
    * 【一律拦截】其余任何发送，尤其"非回声"的 1041B。
    * 依据：2026-10-09 事故（发送 0xA0 全零 1024B blob 导致 DPI/CPI 清零）。
    * 比"全禁"更精确：全禁会让 XM1 完全不可用，而上述报文可证明安全。 */
-  if (xm1) {
+  if (S.xm1) {
     const realSend = d.sendFeatureReport.bind(d);
-    const echo = () => xm1LastRead;
+    const echo = () => S.xm1LastRead;
     d.sendFeatureReport = async (reportId: number, data: any) => {
       const u8 = data instanceof Uint8Array ? data : null;
       // 校验全部来自 protocol.ts（与构造函数同一源头，并有单元测试覆盖）
       const ref = echo();
       const isQuery = xm1GuardQuery(reportId, u8);                       // ① 无负载查询，常驻
-      const isEchoBlob = xm1Armed && xm1GuardWrite(reportId, u8, ref);  // ② 写 blob（仅限已核实字段）
-      const isEchoByte = xm1Armed && xm1GuardEchoByte(reportId, u8, ref); // ③ 回声写单字节
+      const isEchoBlob = S.xm1Armed && xm1GuardWrite(reportId, u8, ref);  // ② 写 blob（仅限已核实字段）
+      const isEchoByte = S.xm1Armed && xm1GuardEchoByte(reportId, u8, ref); // ③ 回声写单字节
       if (!isQuery && !isEchoBlob && !isEchoByte) {
-        log(`✗ XM1 拦截：非常规发送（reportId=${reportId}, len=${u8?.length}, cmd=${u8?.[0] ?? "?"}, armed=${xm1Armed}）`);
-        xm1Armed = false;
+        log(`✗ XM1 拦截：非常规发送（reportId=${reportId}, len=${u8?.length}, cmd=${u8?.[0] ?? "?"}, armed=${S.xm1Armed}）`);
+        S.xm1Armed = false;
         xm1WriteDisabled();
       }
       return realSend(reportId, data);
@@ -1390,13 +1287,13 @@ async function openDevice(d) {
     (d as any).__realSend = realSend;
     log("⚠ XM1：读查询常驻放行；写 blob 仅允许「原样回声」（逐字节校验），其余一律拦截");
   }
-  dev.addEventListener("inputreport", e => {
+  S.dev.addEventListener("inputreport", e => {
     if (e.data.byteLength < 2) return;
     const code = e.data.getUint8(0), v = e.data.getUint8(1);
-    if (code === 0xB4) { battery = e.data.getUint8(2); render(); log(`⚡ battery event: ${battery}%`); }
+    if (code === 0xB4) { S.battery = e.data.getUint8(2); render(); log(`⚡ battery event: ${S.battery}%`); }
     else if (code === 0xB1) { log(v === 1 ? "⚡ radio link: up" : "⚡ radio link: down (mouse asleep)"); }
   });
-  setConn(true, wired ? t("connectedWired") : t("connectedWireless"));
+  setConn(true, S.wired ? t("connectedWired") : t("connectedWireless"));
   $("btnRefresh").disabled = false;
   log(`✓ opened ${d.productName} VID=0x${d.vendorId.toString(16)} PID=0x${d.productId.toString(16)}`);
   await refreshAll();
@@ -1487,13 +1384,13 @@ function guard4k(needConfig = true) {
   /* 未真机验证的型号（8k 有线族）只读：协议同构是静态实证的，
      但 gen 编码与字段语义没在硬件上确认过 —— 按未验证的偏移写回去，
      正是 2026-10-09 把 XM1 配置写坏的同一个错误。 */
-  if (family4) {
+  if (S.family4) {
     banner("err", t("bFamily4"));
     log("✗ blocked: 4th protocol family (0xFFA1) is not implemented");
     throw new Error("unsupported protocol family");
   }
-  if (unverified) {
-    banner("err", t(unknownModel ? "bUnknownModel" : "bUnverifiedModel"));
+  if (S.unverified) {
+    banner("err", t(S.unknownModel ? "bUnknownModel" : "bUnverifiedModel"));
     log("✗ blocked: model not verified on hardware (read-only)");
     throw new Error("unverified model");
   }
@@ -1502,7 +1399,7 @@ function guard4k(needConfig = true) {
      这与 2026-10-09 把 XM1 配置写坏是同一类错误：不知道当前值就发。
      零负载命令（配对 / 恢复出厂）不受此限，用 guard4k(false) 调用。 */
   /* 8k 没有 0x0E 型号查询，gen 恒为 null —— 判据换成「是否读到过 blob」。 */
-  if (needConfig && (!blob || (!gen && !eightK))) {
+  if (needConfig && (!S.blob || (!S.gen && !S.eightK))) {
     banner("err", t("bNoReadYet"));
     log("✗ blocked: no successful config read yet (write would send UI defaults)");
     throw new Error("no config read");
@@ -1544,16 +1441,16 @@ $("btnReset").onclick = async () => {
 /* XM1 一键回退：把上一份快照（写入前 / 上一次读取）原样写回。
    快照之间的差异同样只落在已核实字段内，所以走的还是同一个白名单。 */
 $("btnXm1Undo").onclick = async () => {
-  if (xm1Snaps.length < 2) return banner("warn", t("xm1NoSnap"));
-  const prev = xm1Snaps[xm1Snaps.length - 2];
+  if (S.xm1Snaps.length < 2) return banner("warn", t("xm1NoSnap"));
+  const prev = S.xm1Snaps[S.xm1Snaps.length - 2];
   if (!window.confirm(t("xm1UndoConfirm").replace("{0}", new Date(prev.at).toLocaleTimeString()))) return;
   banner("warn", t("xm1Applying"));
   try {
     await writeBlobXm1(prev.blob);
     await readBlob();
-    xm1Edit = xm1Parse(blob);
+    S.xm1Edit = xm1Parse(S.blob);
     render();
-    xm1Snaps.pop();                        // 丢弃"当前"这一份，回到上一份
+    S.xm1Snaps.pop();                        // 丢弃"当前"这一份，回到上一份
     banner("ok", t("xm1UndoOk"));
     log("✓ 已回退到快照（" + new Date(prev.at).toLocaleTimeString() + "，" + prev.label + "）");
   } catch (e) {
@@ -1563,42 +1460,42 @@ $("btnXm1Undo").onclick = async () => {
 };
 
 $("btnSave").onclick = () => {
-  if (!blob) return banner("err", t("cfgNoRead"));
+  if (!S.blob) return banner("err", t("cfgNoRead"));
   // 附带可读的 hex dump，便于人工比对与差分分析
   const hexLines = [];
-  for (let o = 0; o < blob.length; o += 16) {
+  for (let o = 0; o < S.blob.length; o += 16) {
     const row = [];
-    for (let i = 0; i < 16 && o + i < blob.length; i++) row.push(blob[o + i].toString(16).padStart(2, "0"));
+    for (let i = 0; i < 16 && o + i < S.blob.length; i++) row.push(S.blob[o + i].toString(16).padStart(2, "0"));
     hexLines.push(o.toString(16).padStart(4, "0") + ": " + row.join(" "));
   }
   const out = { app: "endgame-gear-web-configurator", savedAt: new Date().toISOString(),
-                device: mouseName, gen, lang: LANG,
-                blobB64: btoa(String.fromCharCode(...blob)),
+                device: S.mouseName, gen: S.gen, lang: LANG,
+                blobB64: btoa(String.fromCharCode(...S.blob)),
                 blobHex: hexLines.join("\n") };
   download(JSON.stringify(out, null, 2), `egg-mouse-config-${Date.now()}.json`, "application/json");
 };
 /* XM1 原样写回测试：发送的每个字节都必须等于刚读回的那份（白名单强制）。
    成功后再读一次比对 —— 一致即说明「读=写同一套布局」闭环成立。 */
 $("btnXm1Echo").onclick = async () => {
-  if (!xm1LastRead) return banner("err", t("bRead"));
+  if (!S.xm1LastRead) return banner("err", t("bRead"));
   if (!window.confirm(t("xm1EchoConfirm"))) return;
-  const before = xm1LastRead.slice();
+  const before = S.xm1LastRead.slice();
   banner("warn", t("xm1EchoRunning"));
   log(`⋯ 回声写回测试：将原样写回 ${before.length} 字节（内容 = 刚读回的那份）`);
   try {
     await writeBlobXm1();
     log("✓ 回声写回已发送，正在回读比对…");
     await readBlob();
-    const same = !!blob && blob.length === before.length && blob.every((v, i) => v === before[i]);
+    const same = !!S.blob && S.blob.length === before.length && S.blob.every((v, i) => v === before[i]);
     if (same) { banner("ok", t("xm1EchoOk")); log("✓ 回读与写前逐字节一致 —— 布局闭环成立，可以进入下一步"); }
-    else { banner("warn", t("xm1EchoDiff")); log(`⋯ 回读与写前不同：${hex(blob, 32)}`); }
+    else { banner("warn", t("xm1EchoDiff")); log(`⋯ 回读与写前不同：${hex(S.blob, 32)}`); }
   } catch (e) {
     banner("err", t("xm1EchoFail") + e.message);
     log("✗ 回声写回失败：" + e.message);
   }
 };
 
-$("btnBlob").onclick = () => { if (blob) download(new Blob([blob]), `egg-mouse-blob-${Date.now()}.bin`); };
+$("btnBlob").onclick = () => { if (S.blob) download(new Blob([S.blob]), `egg-mouse-blob-${Date.now()}.bin`); };
 $("btnLoad").onclick = () => $("fileLoad").click();
 $("fileLoad").onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
@@ -1608,23 +1505,23 @@ $("fileLoad").onchange = async e => {
   try { guard4k(); } catch { e.target.value = ""; return; }
   /* 8k 的写是整块写：导入一个来自别的型号的 blob 等于把未知偏移整体覆盖 ——
      这正是 XM1 事故的形态。故 8k 暂不支持导入（导出不受影响）。 */
-  if (eightK) { banner("err", t("b8kNoImport")); e.target.value = ""; return; }
+  if (S.eightK) { banner("err", t("b8kNoImport")); e.target.value = ""; return; }
   try {
     const j = JSON.parse(await f.text());
     const b = Uint8Array.from(atob(j.blobB64), c => c.charCodeAt(0));
     if (b.length !== 1024) throw new Error("blob length != 1024");
-    blob = b; parseBlob();
-    stage.slamclick = !!(stage.flags & 1);
-    stage.jitter = !!(stage.flags & 0x10);
-    stage.multiclick = !!(stage.flags & 0x20);
-    stage.maxFps = !!(stage.flags & 0x40);
+    S.blob = b; parseBlob();
+    S.stage.slamclick = !!(S.stage.flags & 1);
+    S.stage.jitter = !!(S.stage.flags & 0x10);
+    S.stage.multiclick = !!(S.stage.flags & 0x20);
+    S.stage.maxFps = !!(S.stage.flags & 0x40);
     const wantSensor = snapSensor(), wantPerf = snapPerf(), wantBtns = snapButtons();
     await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
     await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
     for (let chunk = 1; chunk <= 2; chunk++) {
       const p = new Uint8Array(28);
       for (let i = 0; i < 4; i++) {
-        const btn = stage.buttons[(chunk - 1) * 4 + i];
+        const btn = S.stage.buttons[(chunk - 1) * 4 + i];
         p[i*7] = btn.type; p[i*7+1] = btn.code; p[i*7+2] = btn.key; p[i*7+6] = btn.filter;
       }
       await guarded(0x16, 0x0F, p, { chunk, pace: writeSettle() });
