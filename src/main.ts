@@ -6,10 +6,13 @@ import { VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK,
          buildXm1BlobReport, buildXm1ByteReport,
          xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte } from "./protocol.js";
 import { isXm2weFamily } from "./xm2we.js";
+import { applyLayout, layoutFor, applyLayoutFromHash, reapplyLayout } from "./layout.js";
 import { openXm2we, closeXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
 
 // —— 语言切换时重渲染（i18n.ts 通过事件解耦） ——
-document.addEventListener("langchange", () => render());
+/* 语言切换：applyI18n() 已在 i18n.ts 的 onchange 里跑过，这里补上
+   「由 t() 生成的表头」与各卡片的重渲染。 */
+document.addEventListener("langchange", () => { reapplyLayout(); render(); });
 
 const STAGE_COLORS = { "zh-CN": ["蓝", "绿", "黄", "红"], "en": ["Blue", "Green", "Yellow", "Red"] };
 const BTN_NAMES = { "zh-CN": ["左键", "右键", "中键", "后退", "前进", "特殊(CPI)", "滚轮上", "滚轮下"],
@@ -629,11 +632,7 @@ function renderXm1() {
   $("iConn").textContent = t("wiredMode");
   $("iGen").textContent = "2020 (XM1)";
 
-  // XM1 的表头含义与 4k 族不同（启用 / 激活 / X / Y）
-  const ths = document.querySelectorAll("#cardSensor thead th");
-  // ★ XM1 只有一个 CPI 值：固件只读 X、忽略 Y（实测 + 协议层双重印证），故合并为一列
-  const labels = [t("stage"), t("xm1On"), t("xm1ActiveCol"), "CPI", ""];
-  ths.forEach((el, i) => { if (labels[i]) el.textContent = labels[i]; });
+  // 表头由 layout.ts 的 applyLayout("xm1") 设置（XM1 是单值 CPI，固件只读 X）
 
   const tb = $("cpiRows");
   tb.innerHTML = "";
@@ -837,12 +836,24 @@ function render() {
     sel.onchange = e => stage.filters[i] = +(e.target as HTMLSelectElement).value;
   });
 
+  /* 「没读到配置就不给写」的界面侧体现：按钮直接禁用，而不是等用户点了才弹错。
+     零负载命令（配对/恢复出厂）不在其列。 */
+  const canWrite = !!blob && !!gen && !unverified;
+  for (const id of ["btnApplySensor", "btnApplyPerf", "btnLoad", "btnReset", "btnPair", "btnPairDefault"]) {
+    const el = $(id); if (el) el.disabled = !canWrite;
+  }
+
   /* 未真机验证的型号：禁用全部写入入口（guard4k 还会再兜一层）。
      读取、导出照常可用 —— 只读本身是有价值的，写入必须等硬件确认。 */
   if (unverified) {
-    for (const id of ["btnApplySensor", "btnApplyPerf", "btnReset", "btnLoad"]) {
+    for (const id of ["btnApplySensor", "btnApplyPerf", "btnReset", "btnLoad",
+                      "cpiLevels", "cpiActive", "lod", "glass", "angleSnap", "ripple",
+                      "ledLiftoff", "angleTune"]) {
       const el = $(id); if (el) el.disabled = true;
     }
+    /* 表内的 CPI 输入框也要禁掉 —— 否则用户能改数字却点不动"应用"，
+       像是页面坏了，而不是"这个型号暂不支持写入"。 */
+    document.querySelectorAll("#cpiRows input").forEach((el: any) => { el.disabled = true; });
   }
 }
 function describeMap(b) {
@@ -1011,7 +1022,10 @@ async function refreshAll() {
       mouseName = modelOf(VID_22D4, dev.productId);
       gen = 0;
       dongleFw = "—"; mouseFw = "—"; battery = null;
-      showCards();
+      /* XM1 只显示它真正有的东西：CPI（单值）/ LOD / Ripple + 备份工具。
+         没有性能卡片（回报率是底部硬件开关）、没有按键卡片（按键表未验证）、
+         传感器里也不显示未定位的角度/灯效项。 */
+      applyLayout(layoutFor({ xm1: true }));
       try {
         /* 先读单字节（官方读取事务的第一步）：回报率等全局量不在 blob 里，
            这条通道是唯一入口。只读，不含负载。 */
@@ -1050,7 +1064,8 @@ async function refreshAll() {
       mouseOk = true;
     } catch (e) { if (![0x08, 0x11].includes(e.code)) throw e; }
     try { const r = await guarded(0xB4, 0x00, null, { pace: 150 }); battery = r[16]; } catch (e) { battery = null; }
-    showCards();
+    /* 界面按型号裁剪：v1 不显示 v2 专属项，反之亦然。 */
+    applyLayout(layoutFor({ unverified, gen }));
     if (mouseOk) {
       await readBlob(); parseBlob(); render();
       if (unknownModel) banner("warn", t("bUnknownModel"));
@@ -1061,7 +1076,8 @@ async function refreshAll() {
   } catch (e) { banner("err", t("bRead") + e.message); log("✗ " + e.message); }
 }
 function fwStr(v) { const h = v.toString(16).padStart(4, "0"); return `${parseInt(h.slice(0, 2), 16)}.${parseInt(h.slice(2), 16)}`; }
-function showCards() { for (const id of ["cardInfo","cardSensor","cardPerf","cardBtns","cardTools"]) $(id).style.display = ""; }
+/* 卡片可见性统一由 layout.ts 的 applyLayout() 管理，这里不再各自 show/hide，
+   避免「一处显示、另一处忘了隐藏」造成的跨型号残留。 */
 
 /* ================= 连接 ================= */
 /* ★★★ 页面卸载/关闭时必须释放已打开的 HID 接口。
@@ -1271,7 +1287,7 @@ $("btnConnect").onclick = async () => {
 $("btnRefresh").onclick = () => isXm2weOpen() ? refreshWe() : refreshAll();
 /* 护栏：4k 族的写操作绝不能对 XM2we 族执行（协议族完全不同，会写坏 EEPROM）。
    正常路径下卡片已隐藏，这里再挡一次以防脚本/控制台误调。 */
-function guard4k() {
+function guard4k(needConfig = true) {
   if (isXm2weOpen()) { banner("err", t("bWrongFamily")); log("✗ blocked: XM2we device connected"); throw new Error("wrong protocol family"); }
   /* 未真机验证的型号（8k 有线族）只读：协议同构是静态实证的，
      但 gen 编码与字段语义没在硬件上确认过 —— 按未验证的偏移写回去，
@@ -1281,11 +1297,20 @@ function guard4k() {
     log("✗ blocked: model not verified on hardware (read-only)");
     throw new Error("unverified model");
   }
+  /* ★「没读到配置就不给写」。写入的前提是**知道设备现在是什么状态** ——
+     否则 applySensor 会把界面上的初始值当成当前配置下发（stage 是 newS() 的默认值）。
+     这与 2026-10-09 把 XM1 配置写坏是同一类错误：不知道当前值就发。
+     零负载命令（配对 / 恢复出厂）不受此限，用 guard4k(false) 调用。 */
+  if (needConfig && (!blob || !gen)) {
+    banner("err", t("bNoReadYet"));
+    log("✗ blocked: no successful config read yet (write would send UI defaults)");
+    throw new Error("no config read");
+  }
 }
 $("btnApplySensor").onclick = () => { try { guard4k(); } catch { return; } applySensor().catch(e => banner("err", t("errWrite") + e.message)); };
 $("btnApplyPerf").onclick = () => { try { guard4k(); } catch { return; } applyPerf().catch(e => banner("err", t("errWrite") + e.message)); };
 $("btnPair").onclick = async () => {
-  try { guard4k(); } catch { return; }
+  try { guard4k(false); } catch { return; }   // 0x70 零负载
   if (!confirm(t("cfPair"))) return;
   try { await guarded(0x70, 0x00, null, { pace: 300 }); log("✓ pair cmd sent"); banner("ok", t("bPairSent")); await sleep(2000); await refreshAll(); }
   catch (e) { banner("err", e.message); }
@@ -1294,7 +1319,7 @@ $("btnPair").onclick = async () => {
    0x72 = Get Pair Data（读取配对数据，官方等 350ms 后收，负载偏移 16 起 16 字节）
    —— 均来自官方 v1.02 工具逆向，见 re/PROTOCOL_NOTES.md */
 $("btnPairDefault").onclick = async () => {
-  try { guard4k(); } catch { return; }
+  try { guard4k(false); } catch { return; }
   if (!confirm(t("cfPairDefault"))) return;
   try { await guarded(0x71, 0x00, null, { pace: 300 }); log("✓ pair-default cmd sent"); banner("ok", t("bPairDefaultOk")); await sleep(2000); await refreshAll(); }
   catch (e) { banner("err", e.message); }
@@ -1309,7 +1334,7 @@ $("btnPairData").onclick = async () => {
   } catch (e) { banner("err", e.message); }
 };
 $("btnReset").onclick = async () => {
-  try { guard4k(); } catch { return; }
+  try { guard4k(false); } catch { return; }   // 0x13 零负载，不需要先读配置
   if (!confirm(t("cfReset1"))) return;
   if (!confirm(t("cfReset2"))) return;
   try { await guarded(0x13, 0x00, null, { pace: resetSettle() }); log("✓ factory reset done"); await refreshAll(); banner("ok", t("bResetOk")); }
@@ -1376,6 +1401,10 @@ $("btnBlob").onclick = () => { if (blob) download(new Blob([blob]), `egg-mouse-b
 $("btnLoad").onclick = () => $("fileLoad").click();
 $("fileLoad").onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
+  /* ★ 导入配置同样是写入（0x14 + 0x15 + 0x16×2），必须过同一道闸门。
+     此前这里没有 guard4k() —— 单靠按钮 disabled 是不设防的：
+     只要 handler 能被触发（旧文件选择器、脚本调用），只读型号就会被写。 */
+  try { guard4k(); } catch { e.target.value = ""; return; }
   try {
     const j = JSON.parse(await f.text());
     const b = Uint8Array.from(atob(j.blobB64), c => c.charCodeAt(0));
@@ -1432,7 +1461,11 @@ $("btnTheme").onclick = () => {
 document.addEventListener("langchange", applyThemeButton);
 applyThemeButton();
 
-applyI18n();
+applyI18n();   // ★ 必须先跑：它会按 data-i18n 写文本，跑在布局之后会覆盖型号专属表头
+
+/* 未连接状态：设备相关卡片全部收起（确定性初始态，不依赖模板里的 inline style）。
+   若 URL 带 #layout=xxx 则套用该预览布局（便于无实机时查看裁剪效果）。 */
+if (!applyLayoutFromHash()) applyLayout("none");
 log("ℹ ready. Click 'Connect' and pick the Endgame Gear mouse / dongle.");
 if (!("hid" in navigator))
   banner("warn", LANG === "zh"

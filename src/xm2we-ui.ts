@@ -3,6 +3,7 @@
  * 协议依据：okms/xm2we-linux PROTOCOL.md（真机验证），存档于 re/upstream/。 */
 import { $, sleep, log, banner } from "./util.js";
 import { t } from "./i18n.js";
+import { applyLayout } from "./layout.js";
 import { Xm2weSession, WE_MOUSE_PID, POLLING_BY_MASK } from "./xm2we.js";
 
 const WE_POLL_OPTS = [125, 250, 500, 1000];
@@ -12,13 +13,8 @@ let dev = null;                 // 打开的 HIDDevice
 let model = "XM2we", wired = true;
 let reading = false;
 
-/* 4k 族卡片在 XM2we 下必须隐藏，反之亦然 */
-const CARDS_4K = ["cardInfo", "cardSensor", "cardPerf", "cardBtns", "cardTools"];
-const CARDS_WE = ["cardWeInfo", "cardWeCpi", "cardWeBtns", "cardWeTools"];
-
-function showCards(ids: string[]) { for (const id of ids) $(id).style.display = ""; }
-function hideCards(ids: string[]) { for (const id of ids) $(id).style.display = "none"; }
-
+/* 卡片可见性统一交给 layout.ts：XM2we 走 "we" 布局（只显示它那四张卡片），
+   关闭时回到 "none"（全部收起）。这样两族的显示规则只有一个来源。 */
 function setConn(on: boolean, text: string) {
   const p = $("connState");
   p.className = "status-pill" + (on ? "" : " off");
@@ -72,8 +68,7 @@ export async function openXm2we(d: any) {
   const bat = await sess.readBattery();
   await sess.readLink();
 
-  hideCards(CARDS_4K);
-  showCards(CARDS_WE);
+  applyLayout("we");
   setConn(true, wired ? t("connectedWired") : t("connectedWireless"));
   log(`✓ opened ${d.productName} VID=0x${d.vendorId.toString(16)} PID=0x${d.productId.toString(16)} [XM2we]`);
   log(`  usage pages: ` + (d.collections || []).map((c: any) => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
@@ -90,7 +85,7 @@ export async function closeXm2we() {
     try { if (dev.opened) await dev.close(); } catch (_) {}
     dev = null;
   }
-  hideCards(CARDS_4K);
+  applyLayout("none");   // 断开后收起全部设备卡片
 }
 
 /* 页面切走/关闭时释放接口——WebHID 独占不释放会造成系统侧设备异常。

@@ -42,10 +42,10 @@
       <div>
         <div class="row"><label data-i18n="model">型号</label><span class="val" id="iModel">—</span></div>
         <div class="row"><label data-i18n="mouseFw">鼠标固件</label><span class="val" id="iMouseFw">—</span></div>
-        <div class="row"><label data-i18n="dongleFw">接收器固件</label><span class="val" id="iDongleFw">—</span></div>
+        <div class="row" id="rowDongleFw"><label data-i18n="dongleFw">接收器固件</label><span class="val" id="iDongleFw">—</span></div>
       </div>
       <div>
-        <div class="row"><label data-i18n="battery">电量</label><span class="val" id="iBattery">—</span></div>
+        <div class="row" id="rowBattery"><label data-i18n="battery">电量</label><span class="val" id="iBattery">—</span></div>
         <div class="row"><label data-i18n="connMode">连接方式</label><span class="val" id="iConn">—</span></div>
         <div class="row"><label data-i18n="gen">协议代数</label><span class="val" id="iGen">—</span></div>
       </div>
@@ -117,26 +117,28 @@
       </tr></thead>
       <tbody id="cpiRows"></tbody>
     </table>
-    <div class="row" style="margin-top:12px">
+    <div class="row" id="rowStages" style="margin-top:12px">
       <label data-i18n="cpiLevels">启用档位数</label>
       <select id="cpiLevels"><option>1</option><option>2</option><option>3</option><option>4</option></select>
       <label style="min-width:auto" data-i18n="activeStage">当前档位</label>
       <select id="cpiActive" style="width:90px"></select>
       <span class="muted" id="cpiActiveNote"></span>
     </div>
-    <div class="row">
+    <div class="row" id="rowLod">
       <label data-i18n="lod">抬离距离 (LOD)</label>
       <select id="lod" style="width:110px"></select>
+      <span class="cell" id="cellGlass">
       <label style="min-width:auto" data-i18n="glassMode">玻璃面模式</label>
       <select id="glass" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
       <span class="muted" data-i18n="glassNote">v2 专属；切换时 LOD 编码会随之换算</span>
+      </span>
     </div>
     <div class="row">
-      <label data-i18n="angleSnap">角度捕捉</label><select id="angleSnap" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
-      <label style="min-width:auto" data-i18n="ripple">波纹控制</label><select id="ripple" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
-      <label style="min-width:auto" data-i18n="ledLiftoff">抬离时 LED</label><select id="ledLiftoff" style="width:80px"><option value="1" data-i18n="on">开</option><option value="0" data-i18n="off">关</option></select>
+      <span class="cell" id="cellAngleSnap"><label data-i18n="angleSnap">角度捕捉</label><select id="angleSnap" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></span>
+      <span class="cell" id="cellRipple"><label style="min-width:auto" data-i18n="ripple">波纹控制</label><select id="ripple" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></span>
+      <span class="cell" id="cellLedLiftoff"><label style="min-width:auto" data-i18n="ledLiftoff">抬离时 LED</label><select id="ledLiftoff" style="width:80px"><option value="1" data-i18n="on">开</option><option value="0" data-i18n="off">关</option></select></span>
     </div>
-    <div class="row">
+    <div class="row" id="rowAngleTune">
       <label data-i18n="angleTune">角度调校 (°)</label><input type="number" id="angleTune" min="-30" max="30" step="1" style="width:80px">
       <span class="muted" data-i18n="angleTuneNote">v2 专属</span>
     </div>
@@ -145,13 +147,13 @@
 
   <section class="card" id="cardPerf" style="display:none">
     <h2 data-i18n="secPerf">性能 / 电源</h2>
-    <div class="row"><label data-i18n="polling">回报率</label><select id="polling"></select><span class="muted" id="pollNote"></span></div>
-    <div class="row"><label>Motion Sync</label><select id="motionSync" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-    <div class="row"><label data-i18n="slamclick">Slamclick 过滤</label><select id="slamclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+    <div class="row" id="rowPolling"><label data-i18n="polling">回报率</label><select id="polling"></select><span class="muted" id="pollNote"></span></div>
+    <div class="row" id="rowMotionSync"><label>Motion Sync</label><select id="motionSync" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+    <div class="row" id="rowSlamclick"><label data-i18n="slamclick">Slamclick 过滤</label><select id="slamclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
     <div class="row" id="rowV1Jitter"><label data-i18n="jitter">抖动过滤 (v1)</label><select id="jitter" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
     <div class="row" id="rowV2Max"><label data-i18n="maxFps">强制最高传感器 FPS (v2)</label><select id="maxFps" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
     <div class="row" id="rowV2Multi"><label data-i18n="multiclick">多击确认过滤 (v2)</label><select id="multiclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-    <div class="row"><label data-i18n="powerSaving">省电超时 (分钟)</label><select id="powerSaving"></select>
+    <div class="row" id="rowPower"><label data-i18n="powerSaving">省电超时 (分钟)</label><select id="powerSaving"></select>
       <label style="min-width:auto" data-i18n="deepSleep">深度休眠 (分钟)</label><select id="deepSleep"></select></div>
     <div class="row"><button id="btnApplyPerf" data-i18n="applyPerf">应用性能/电源</button></div>
   </section>
@@ -179,7 +181,7 @@
       <button id="btnXm1Echo" class="ghost" style="display:none" data-i18n="xm1Echo">XM1 实验：原样写回测试</button>
       <button id="btnXm1Undo" class="ghost" style="display:none" data-i18n="xm1Undo">回到上一份</button>
     </div>
-    <div class="row">
+    <div class="row" id="rowPairing">
       <button id="btnPair" class="ghost" data-i18n="pair">重新配对接收器</button>
       <button id="btnPairDefault" class="ghost" data-i18n="pairDefault">恢复默认配对</button>
       <button id="btnPairData" class="ghost" data-i18n="getPairData">读取配对数据</button>
@@ -187,7 +189,7 @@
     </div>
     <div class="row"><button id="btnLog" class="ghost" style="background:#eef0f3;color:var(--sub)" data-i18n="toggleLog">显示/隐藏通讯日志</button></div>
     <div id="log"></div>
-    <p class="muted" data-i18n="persistNote">写入立即持久化（无需保存操作）；0x13 是恢复出厂而非保存，慎用。</p>
+    <p class="muted" id="persistNote" data-i18n="persistNote">写入立即持久化（无需保存操作）；0x13 是恢复出厂而非保存，慎用。</p>
   </section>
 
   <section class="card" id="cardCredits">

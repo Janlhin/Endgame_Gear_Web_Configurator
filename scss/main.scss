@@ -81,6 +81,12 @@ main {
   }
 
   .val { font-weight: 600; }
+
+  /* 「成组的 label + 控件」包装。用 display:contents 让它对布局完全透明
+     （label 与控件仍按 .row 的直接子项参与 flex），
+     但整组可以被 applyLayout 一次性隐藏 —— 用于按型号裁剪设置项。
+     注意：不要给它加 border/背景等会脱离 contents 语义的属性。 */
+  .cell { display: contents; }
 }
 
 select, input[type="number"] {
