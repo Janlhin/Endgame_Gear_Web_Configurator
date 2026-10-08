@@ -84,7 +84,17 @@ export async function openXm2we(d: any) {
 export async function closeXm2we() {
   sess?.dispose();
   sess = null;
-  if (dev) { try { await dev.close(); } catch (_) {} dev = null; }
+  if (dev) {
+    try { if (dev.opened) await dev.close(); } catch (_) {}
+    dev = null;
+  }
+  hideCards(CARDS_4K);
+}
+
+/* 页面切走/关闭时释放接口——WebHID 独占不释放会造成系统侧设备异常。
+ * 与 main.ts 的 releaseAllDevices() 是同一道保险，两处都注册不冲突。 */
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", () => { closeXm2we(); });
 }
 
 function renderInfo() {

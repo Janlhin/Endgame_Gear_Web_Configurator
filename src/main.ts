@@ -546,6 +546,26 @@ function fwStr(v) { const h = v.toString(16).padStart(4, "0"); return `${parseIn
 function showCards() { for (const id of ["cardInfo","cardSensor","cardPerf","cardBtns","cardTools"]) $(id).style.display = ""; }
 
 /* ================= 连接 ================= */
+/* ★★★ 页面卸载/关闭时必须释放已打开的 HID 接口。
+ * WebHID 打开接口即独占，若页面被意外保留（浏览器崩溃、标签页恢复等），
+ * 系统会一直认为该接口仍被占用 —— 极端情况下鼠标指针会一直失效。
+ * 三个时机都兜一遍：beforeunload（用户关页/刷新）、pagehide（导航离开）、
+ * visibilitychange 变 hidden（切走标签页，对应 macOS/Linux 的行为差异）。 */
+let releasedOnHide = false;
+async function releaseAllDevices() {
+  try { await closeXm2we(); } catch (_) {}
+  if (dev && dev.opened) { try { await dev.close(); } catch (_) {} }
+  dev = null;
+}
+window.addEventListener("beforeunload", () => { releaseAllDevices(); });
+window.addEventListener("pagehide", () => { releaseAllDevices(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "hidden" || releasedOnHide) return;
+  // 延迟一点再关：visibilitychange 早期关闭可能被 Chrome 拒绝
+  releasedOnHide = true;
+  setTimeout(() => { releaseAllDevices(); }, 50);
+});
+
 /** 安全闸门：只允许打开厂商配置集合。
  *  绝不能打开系统鼠标指针集合（UP:0001/0002）——WebHID 打开即独占该接口，
  *  Windows HID 驱动会失去访问权，导致**鼠标无法移动**（实测发生过：

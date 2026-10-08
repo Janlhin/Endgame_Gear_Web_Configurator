@@ -1155,11 +1155,17 @@ a {
     sess = null;
     if (dev) {
       try {
-        await dev.close();
+        if (dev.opened) await dev.close();
       } catch (_) {
       }
       dev = null;
     }
+    hideCards(CARDS_4K);
+  }
+  if (typeof window !== "undefined") {
+    window.addEventListener("pagehide", () => {
+      closeXm2we();
+    });
   }
   function renderInfo() {
     if (!sess) return;
@@ -1955,6 +1961,33 @@ a {
   function showCards2() {
     for (const id of ["cardInfo", "cardSensor", "cardPerf", "cardBtns", "cardTools"]) $(id).style.display = "";
   }
+  var releasedOnHide = false;
+  async function releaseAllDevices() {
+    try {
+      await closeXm2we();
+    } catch (_) {
+    }
+    if (dev2 && dev2.opened) {
+      try {
+        await dev2.close();
+      } catch (_) {
+      }
+    }
+    dev2 = null;
+  }
+  window.addEventListener("beforeunload", () => {
+    releaseAllDevices();
+  });
+  window.addEventListener("pagehide", () => {
+    releaseAllDevices();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden" || releasedOnHide) return;
+    releasedOnHide = true;
+    setTimeout(() => {
+      releaseAllDevices();
+    }, 50);
+  });
   var POINTER_PAGE = 1;
   var POINTER_USAGE = 2;
   var VENDOR_PAGE_MIN = 65280;
