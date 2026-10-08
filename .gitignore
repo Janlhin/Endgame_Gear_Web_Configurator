@@ -9,6 +9,7 @@ re/upstream/*.exe
 re/upstream/*.json
 re/upstream/eggweb_app.js
 re/.test_xm2we.mjs
+re/.test_xm1_write.mjs
 re/style_check.png
 re/upstream/xm1_extracted/
 re/upstream/xm1_payload/
