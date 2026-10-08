@@ -1685,13 +1685,38 @@ a {
     }
     sel.value = String(val);
   }
-  var XM1_CPI_OFF = [52, 61, 82, 92];
-  function xm1ReadCpi(b) {
-    return XM1_CPI_OFF.map((o, i) => ({
-      idx: i,
-      x: b[o] | b[o + 1] << 8,
-      y: b[o + 2] | b[o + 3] << 8
-    }));
+  var XM1_F = {
+    active: 50,
+    // 当前激活档索引，0-based（0–3）；官方显示"档 N 为 On"即 N-1
+    lod: 70,
+    // Lift Cut-Off：编码 = 5×mm − 4（实测 3mm=0x0B、2mm=0x06）
+    ripple: 87,
+    // Ripple Control：00=Off，01=On
+    stages: [
+      // 4 档，每档 [启用标志:1][X:u16 LE][Y:u16 LE]
+      { flag: 51, x: 52, y: 54 },
+      { flag: 60, x: 61, y: 63 },
+      { flag: 81, x: 82, y: 84 },
+      { flag: 91, x: 92, y: 94 }
+    ]
+  };
+  var XM1_STAGE_ON = 0;
+  var xm1LodToMm = (raw) => raw ? (raw + 4) / 5 : 0;
+  function xm1Parse(b) {
+    const u16 = (o) => b[o] | b[o + 1] << 8;
+    const lodRaw = b[XM1_F.lod];
+    return {
+      active: b[XM1_F.active],
+      lodRaw,
+      lodMM: xm1LodToMm(lodRaw),
+      ripple: b[XM1_F.ripple] ? 1 : 0,
+      stages: XM1_F.stages.map((s, i) => ({
+        idx: i,
+        on: b[s.flag] === XM1_STAGE_ON,
+        x: u16(s.x),
+        y: u16(s.y)
+      }))
+    };
   }
   function renderXm1Readonly() {
     $("iModel").textContent = mouseName;
@@ -1707,15 +1732,29 @@ a {
       tr.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
       tb.appendChild(tr);
     } else {
-      const rows = xm1ReadCpi(blob);
-      for (const r of rows) {
+      const p = xm1Parse(blob);
+      for (const s of p.stages) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>CPI ${r.idx + 1}</td><td class="muted">\u2014</td><td class="muted">\u2014</td><td><input type="number" value="${r.x}" disabled></td><td><input type="number" value="${r.y}" disabled></td>`;
+        tr.innerHTML = `<td>CPI ${s.idx + 1}${s.idx === p.active ? t("current") : ""}</td><td>${s.on ? "On" : "Off"}</td><td class="muted">\u2014</td><td><input type="number" value="${s.x}" disabled></td><td><input type="number" value="${s.y}" disabled></td>`;
+        if (!s.on) tr.style.opacity = "0.5";
         tb.appendChild(tr);
       }
       const note = document.createElement("tr");
       note.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
       tb.appendChild(note);
+    }
+    const lodSel = $("lod");
+    if (lodSel && blob) {
+      const p = xm1Parse(blob);
+      const opts = [[1, "1 mm"], [2, "2 mm"], [3, "3 mm"]];
+      fillSelect(lodSel, opts, Math.round(p.lodMM));
+      lodSel.onchange = null;
+    }
+    const rip = $("ripple");
+    if (rip && blob) {
+      const p = xm1Parse(blob);
+      rip.checked = !!p.ripple;
+      rip.onchange = null;
     }
     for (const id of [
       "btnApplySensor",

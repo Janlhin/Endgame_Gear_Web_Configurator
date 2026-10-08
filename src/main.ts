@@ -374,26 +374,49 @@ function fillSelect(sel, opts, val) {
   sel.value = String(val);
 }
 
-/* ★ XM1 CPI 表偏移（内部布局，2026-10-09 差分实测确凿）
-   方法：官方软件把一档从 800 改成 1150，blob 仅 4 字节变化：
-     0x03D-0x03E: 20 03 → 7e 04   (800 → 1150) = CPI X
-     0x03F-0x040: 20 03 → 7e 04   (800 → 1150) = CPI Y
-   结论：每档 = [X:u16 LE][Y:u16 LE]，小端、**直接存储无缩放**（1150=0x047E 直存）。
-   四组的 X 偏移实测为 0x034 / 0x03D / 0x052 / 0x05C（Y 各 +2）。
-   ⚠️ 组间间距不均（9/21/10），中间疑似夹有 LED/标志字段；
-      且档位编号与官方软件显示顺序的对应关系尚未确认。 */
-const XM1_CPI_OFF = [0x034, 0x03D, 0x052, 0x05C];
+/* ★★ XM1 字段偏移表（**内部布局**）
+ *
+ * 全部由 2026-10-09 的三次真机差分实测确认（方法：官方软件改一个值 → 导出
+ * → 与上一份 blob 逐字节对比，变化的字节即字段偏移）。证据见 re/XM1_NOTES.md 6.7。
+ *
+ * 差分记录：
+ *   ① CPI：改一档 800→1150，仅 0x03D-0x040 变化 → 每档 [X:u16][Y:u16]，小端无缩放
+ *   ② 启用/激活：档2 关、档1 开 → 0x03C 00→ff、0x033 ff→00、0x032 01→00
+ *   ③ Lift Cut-Off 3mm→2mm → 0x046 0b→06
+ *   ④ Ripple Control 开 → 0x057 00→01
+ */
+const XM1_F = {
+  active: 0x032,      // 当前激活档索引，0-based（0–3）；官方显示"档 N 为 On"即 N-1
+  lod:    0x046,      // Lift Cut-Off：编码 = 5×mm − 4（实测 3mm=0x0B、2mm=0x06）
+  ripple: 0x057,      // Ripple Control：00=Off，01=On
+  stages: [           // 4 档，每档 [启用标志:1][X:u16 LE][Y:u16 LE]
+    { flag: 0x033, x: 0x034, y: 0x036 },
+    { flag: 0x03C, x: 0x03D, y: 0x03F },
+    { flag: 0x051, x: 0x052, y: 0x054 },
+    { flag: 0x05B, x: 0x05C, y: 0x05E },
+  ],
+};
+/* 实测：启用标志 0x00 = On，0xFF = Off（与直觉相反，但两次差分均一致） */
+const XM1_STAGE_ON = 0x00;
+/** Lift Cut-Off 编码 ⇄ 毫米（实测 3mm=11、2mm=6 ⇒ 5×mm−4） */
+const xm1LodToMm = (raw) => raw ? (raw + 4) / 5 : 0;
+const xm1MmToLod = (mm) => Math.round(mm * 5) - 4;
 
-function xm1ReadCpi(b) {
-  return XM1_CPI_OFF.map((o, i) => ({
-    idx: i,
-    x: b[o] | (b[o + 1] << 8),
-    y: b[o + 2] | (b[o + 3] << 8),
-  }));
+function xm1Parse(b) {
+  const u16 = (o) => b[o] | (b[o + 1] << 8);
+  const lodRaw = b[XM1_F.lod];
+  return {
+    active: b[XM1_F.active],
+    lodRaw, lodMM: xm1LodToMm(lodRaw),
+    ripple: b[XM1_F.ripple] ? 1 : 0,
+    stages: XM1_F.stages.map((s, i) => ({
+      idx: i, on: b[s.flag] === XM1_STAGE_ON, x: u16(s.x), y: u16(s.y),
+    })),
+  };
 }
 
-/* XM1 视图：显示解析出的 CPI 值（只读）。
-   ★ 读取路径已按官方 0x40FC80 修正；**写入永久停用**——
+/* XM1 视图：显示解析出的传感器配置（**只读**）。
+   ★ 读取路径按官方 0x40FC80 实现；**写入永久停用**——
      写路径 0x40FB90 需要 0x4103D0 重排层，该层未逐字节核实，
      贸然下发 1024B 负载会覆盖鼠标配置（2026-10-09 事故：DPI/CPI 被清零）。 */
 function renderXm1Readonly() {
@@ -410,16 +433,16 @@ function renderXm1Readonly() {
     tr.innerHTML = `<td colspan="5" class="muted">${t("xm1ReadOnly")}</td>`;
     tb.appendChild(tr);
   } else {
-    // 解析出的 CPI 档位（只读展示）
-    const rows = xm1ReadCpi(blob);
-    for (const r of rows) {
+    const p = xm1Parse(blob);
+    for (const s of p.stages) {
       const tr = document.createElement("tr");
       tr.innerHTML =
-        `<td>CPI ${r.idx + 1}</td>` +
+        `<td>CPI ${s.idx + 1}${s.idx === p.active ? t("current") : ""}</td>` +
+        `<td>${s.on ? "On" : "Off"}</td>` +
         `<td class="muted">—</td>` +
-        `<td class="muted">—</td>` +
-        `<td><input type="number" value="${r.x}" disabled></td>` +
-        `<td><input type="number" value="${r.y}" disabled></td>`;
+        `<td><input type="number" value="${s.x}" disabled></td>` +
+        `<td><input type="number" value="${s.y}" disabled></td>`;
+      if (!s.on) tr.style.opacity = "0.5";
       tb.appendChild(tr);
     }
     const note = document.createElement("tr");
@@ -427,7 +450,23 @@ function renderXm1Readonly() {
     tb.appendChild(note);
   }
 
-  // 禁用所有写入控件；导出保持可用（纯本地操作）
+  // 传感器项：填入读到的值（只读）
+  const lodSel = $("lod");
+  if (lodSel && blob) {
+    const p = xm1Parse(blob);
+    // XM1 Lift Cut-Off 可选值（编码 5×mm−4；1/2/3mm 由实测两例 + 线性外推）
+    const opts = [[1, "1 mm"], [2, "2 mm"], [3, "3 mm"]];
+    fillSelect(lodSel, opts, Math.round(p.lodMM));
+    lodSel.onchange = null;
+  }
+  const rip = $("ripple");
+  if (rip && blob) {
+    const p = xm1Parse(blob);
+    rip.checked = !!p.ripple;
+    rip.onchange = null;
+  }
+
+  // 禁用所有写入控件；导出保持可用（纯本地操作，无害）
   for (const id of ["btnApplySensor", "btnApplyPerf", "cpiLevels", "cpiActive", "lod", "glass",
                     "angleSnap", "ripple", "ledLiftoff", "angleTune", "polling", "motionSync",
                     "slamclick", "jitter", "maxFps", "multiclick", "powerSaving", "deepSleep",
