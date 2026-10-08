@@ -99,7 +99,7 @@
 - **按键**：映射表与点击过滤展示；过滤值可编辑并写入；GX Safe/Speed 模式（左右键）
 - **工具**：配置导出/导入（JSON + 原始 1024B blob）、重新配对、恢复默认配对（0x71）、读取配对数据（0x72）、恢复出厂（双重确认）、hex 级通讯日志
 - **XM2we 族**：CPI 八槽（槽 1 即时生效）、回报率（125/250/500/1000 Hz one-hot 掩码）、点击去抖、按键矩阵（type 0x01 解码 + 其余原样展示）、EEPROM 导出（.txt / .json）；每次写入均回读校验
-- **i18n**：简体中文 / English，右上角切换，偏好存于 localStorage；`I18N` 字典结构见源码，欢迎提交更多语言
+- **i18n**：简体中文 / English。**首次打开按浏览器语言自动选择**（`navigator.languages` 依次匹配，认不出则用简体中文），之后右上角手动切换的选择存于 localStorage 并优先；`I18N` 字典结构见源码，欢迎提交更多语言
 
 ## 本地运行 / 部署到 GitHub Pages
 
@@ -253,7 +253,7 @@ zlib/deflate/LZMA/BZ2 全部解不开），用 `pawstas80/Unpacker` 剥出真实
 2. **XM2we 真机验证** —— input report 桥接时序、回报率写入
 3. **按键重映射 UI** —— 4k 族协议层已实现，缺编辑器
 4. **XM1 灯效 / 按键映射 / Angle Snap / Smoothing** —— 差分定位后即可做
-5. **更多语言** —— 在 `src/i18n.ts` 的 `I18N` 字典加条目即可，欢迎 PR
+5. **更多语言** —— 在 `src/i18n.ts` 的 `I18N` 字典加一条，并在 `normalizeLang()` 里补上对应的语言标签映射（浏览器语言自动检测要用），欢迎 PR
 6. **部署 GitHub Pages + 向官方申请协议文档** —— 见 `docs/email-to-endgamegear.md`
 
 > ✅ 已完成（2026-10-09）：4k 族写入后回读校验；**XY 独立 CPI 真机验证通过**

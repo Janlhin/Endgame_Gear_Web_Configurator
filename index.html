@@ -881,7 +881,29 @@ a {
       bNoCollections: "Could not read this device's collection list, so opening was refused for safety (avoids grabbing the mouse pointer interface). Reconnect and pick the vendor-defined device."
     }
   };
-  var LANG = localStorage.getItem("xm2w-lang") || "zh-CN";
+  var LANGS = Object.keys(I18N);
+  var FALLBACK_LANG = "zh-CN";
+  function normalizeLang(tag) {
+    if (!tag) return null;
+    const s = String(tag).toLowerCase().split(";")[0].trim().replace("_", "-");
+    if (s === "zh" || s.indexOf("zh-") === 0) return "zh-CN";
+    if (s === "en" || s.indexOf("en-") === 0) return "en";
+    return null;
+  }
+  function detectLang() {
+    try {
+      const saved = localStorage.getItem("xm2w-lang");
+      if (saved && LANGS.indexOf(saved) >= 0) return saved;
+    } catch (e) {
+    }
+    const list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+    for (let i = 0; i < list.length; i++) {
+      const m = normalizeLang(list[i]);
+      if (m) return m;
+    }
+    return FALLBACK_LANG;
+  }
+  var LANG = detectLang();
   function t(key, ...args) {
     let s = I18N[LANG] && I18N[LANG][key] || I18N["zh-CN"][key] || key;
     args.forEach((a, i) => s = s.replace(`{${i}}`, a));
@@ -3074,7 +3096,7 @@ a {
   $("btnConnect").onclick = async () => {
     log("\u2192 \u8FDE\u63A5\u70B9\u51FB: WebHID \u53EF\u7528=" + ("hid" in navigator) + " \u5B89\u5168\u4E0A\u4E0B\u6587=" + window.isSecureContext);
     if (!("hid" in navigator)) {
-      const why = !window.isSecureContext && location.protocol !== "file:" ? LANG === "zh" ? "\u5F53\u524D\u9875\u9762\u4E0D\u662F\u5B89\u5168\u4E0A\u4E0B\u6587\uFF08\u987B https:// \u6216 file://\uFF09\uFF0CWebHID \u88AB\u7981\u7528\u3002" : "Page is not a secure context (https:// or file:// required); WebHID disabled." : t("bNoWebhid");
+      const why = !window.isSecureContext && location.protocol !== "file:" ? LANG === "zh-CN" ? "\u5F53\u524D\u9875\u9762\u4E0D\u662F\u5B89\u5168\u4E0A\u4E0B\u6587\uFF08\u987B https:// \u6216 file://\uFF09\uFF0CWebHID \u88AB\u7981\u7528\u3002" : "Page is not a secure context (https:// or file:// required); WebHID disabled." : t("bNoWebhid");
       banner("err", why);
       return;
     }
@@ -3376,7 +3398,7 @@ a {
   log("\u2139 ready. Click 'Connect' and pick the Endgame Gear mouse / dongle.");
   var _a;
   if (!("hid" in navigator))
-    banner("warn", LANG === "zh" ? "\u6B64\u73AF\u5883\u6CA1\u6709 WebHID\uFF1A\u5185\u7F6E\u9884\u89C8/iframe/Firefox \u90FD\u4E0D\u652F\u6301\u3002\u8BF7\u628A\u8FD9\u4E2A index.html \u4E0B\u8F7D\u5230\u672C\u5730\uFF0C\u7528 Chrome \u6216 Edge \u76F4\u63A5\u6253\u5F00\u3002" : "No WebHID here: embedded previews/iframes/Firefox are not supported. Download index.html and open it directly in Chrome or Edge.");
+    banner("warn", LANG === "zh-CN" ? "\u6B64\u73AF\u5883\u6CA1\u6709 WebHID\uFF1A\u5185\u7F6E\u9884\u89C8/iframe/Firefox \u90FD\u4E0D\u652F\u6301\u3002\u8BF7\u628A\u8FD9\u4E2A index.html \u4E0B\u8F7D\u5230\u672C\u5730\uFF0C\u7528 Chrome \u6216 Edge \u76F4\u63A5\u6253\u5F00\u3002" : "No WebHID here: embedded previews/iframes/Firefox are not supported. Download index.html and open it directly in Chrome or Edge.");
   else
     log("\u2713 WebHID available (" + ((_a = navigator.userAgent.match(/(Edg|Chrome)\/[\d.]+/)) == null ? void 0 : _a[0]) + ")");
 })();

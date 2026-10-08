@@ -1390,7 +1390,7 @@ $("btnConnect").onclick = async () => {
   log("→ 连接点击: WebHID 可用=" + ("hid" in navigator) + " 安全上下文=" + window.isSecureContext);
   if (!("hid" in navigator)) {
     const why = !window.isSecureContext && location.protocol !== "file:"
-      ? (LANG === "zh" ? "当前页面不是安全上下文（须 https:// 或 file://），WebHID 被禁用。" : "Page is not a secure context (https:// or file:// required); WebHID disabled.")
+      ? (LANG === "zh-CN" ? "当前页面不是安全上下文（须 https:// 或 file://），WebHID 被禁用。" : "Page is not a secure context (https:// or file:// required); WebHID disabled.")
       : t("bNoWebhid");
     banner("err", why); return;
   }
@@ -1657,7 +1657,7 @@ applyI18n();   // ★ 必须先跑：它会按 data-i18n 写文本，跑在布�
 if (!applyLayoutFromHash()) applyLayout("none");
 log("ℹ ready. Click 'Connect' and pick the Endgame Gear mouse / dongle.");
 if (!("hid" in navigator))
-  banner("warn", LANG === "zh"
+  banner("warn", LANG === "zh-CN"
     ? "此环境没有 WebHID：内置预览/iframe/Firefox 都不支持。请把这个 index.html 下载到本地，用 Chrome 或 Edge 直接打开。"
     : "No WebHID here: embedded previews/iframes/Firefox are not supported. Download index.html and open it directly in Chrome or Edge.");
 else

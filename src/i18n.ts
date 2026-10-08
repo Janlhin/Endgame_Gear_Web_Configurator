@@ -230,7 +230,50 @@ const I18N = {
   }
 };
 
-let LANG = localStorage.getItem("xm2w-lang") || "zh-CN";
+/* ---------------- 语言选择 ---------------- */
+
+// 受支持的语言（= I18N 的键）与兜底语言。
+const LANGS = Object.keys(I18N);
+const FALLBACK_LANG = "zh-CN";
+
+/** 把浏览器给的语言标签归一化到本工具支持的两种之一；不认识返回 null。
+ *  zh / zh-CN / zh-Hans-CN / zh-TW → "zh-CN"，en / en-US / en-GB → "en"。
+ *  容错：剥掉 "en-US;q=0.9" 这类权重后缀，并把下划线写法（zh_CN）当连字符处理。 */
+function normalizeLang(tag) {
+  if (!tag) return null;
+  const s = String(tag).toLowerCase().split(";")[0].trim().replace("_", "-");
+  if (s === "zh" || s.indexOf("zh-") === 0) return "zh-CN";
+  if (s === "en" || s.indexOf("en-") === 0) return "en";
+  return null;
+}
+
+/** 语言来源优先级：
+ *    ① 用户在本页手动选过（localStorage；必须是受支持的值，否则忽略）
+ *    ② 浏览器界面语言：navigator.languages 按优先级依次尝试，再退回 navigator.language
+ *    ③ 兜底 zh-CN
+ *
+ *  ⚠️ navigator 读到的是**浏览器界面语言**，不等于操作系统语言 ——
+ *     Chrome/Edge 可在「设置 → 语言」里单独改，两者可能不一致（以浏览器为准）。
+ *  ⚠️ navigator.languages 在很老的浏览器上是 undefined，只有 navigator.language。
+ *  ⚠️ localStorage 的值必须白名单校验：它可能被手改或来自旧版本，
+ *     而 STAGE_COLORS[LANG] / BTN_NAMES[LANG] 会直接按它取表（取不到就是 undefined）。
+ */
+function detectLang() {
+  try {
+    const saved = localStorage.getItem("xm2w-lang");
+    if (saved && LANGS.indexOf(saved) >= 0) return saved;
+  } catch (e) { /* 隐私模式下 localStorage 可能不可用，忽略 */ }
+  const list = (navigator.languages && navigator.languages.length)
+    ? navigator.languages
+    : [navigator.language];
+  for (let i = 0; i < list.length; i++) {
+    const m = normalizeLang(list[i]);
+    if (m) return m;
+  }
+  return FALLBACK_LANG;
+}
+
+let LANG = detectLang();
 function t(key, ...args) {
   let s = (I18N[LANG] && I18N[LANG][key]) || I18N["zh-CN"][key] || key;
   args.forEach((a, i) => s = s.replace(`{${i}}`, a));

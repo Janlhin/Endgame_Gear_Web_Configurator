@@ -8,7 +8,8 @@
     "build": "node build.mjs",
     "check": "tsc --noEmit",
     "dev": "node build.mjs --watch",
-    "test": "node re/run_test.mjs"
+    "test": "node re/run_test.mjs",
+    "check:ui": "python re/layout_check.py && python re/i18n_check.py"
   },
   "devDependencies": {
     "esbuild": "^0.24.2",
