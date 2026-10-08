@@ -558,7 +558,8 @@ a {
       weApplyOk: "\u5DF2\u5199\u5165\u5E76\u56DE\u8BFB\u6821\u9A8C\u901A\u8FC7\u3002",
       weNoDevice: "\u5C1A\u672A\u8FDE\u63A5 XM2we \u8BBE\u5907\u3002",
       weWakeHint: "\u9F20\u6807\u5904\u4E8E\u4F11\u7720\uFF1A\u52A8\u4E00\u4E0B\u9F20\u6807\u518D\u70B9\u300C\u91CD\u65B0\u8BFB\u53D6\u300D\u3002",
-      bWrongFamily: "\u5F53\u524D\u8FDE\u63A5\u7684\u662F XM2we\uFF082020 \u534F\u8BAE\u65CF\uFF09\uFF0C\u6B64\u64CD\u4F5C\u5C5E\u4E8E 4k \u65CF\uFF0C\u5DF2\u963B\u6B62\u4EE5\u514D\u5199\u574F EEPROM\u3002"
+      bWrongFamily: "\u5F53\u524D\u8FDE\u63A5\u7684\u662F XM2we\uFF082020 \u534F\u8BAE\u65CF\uFF09\uFF0C\u6B64\u64CD\u4F5C\u5C5E\u4E8E 4k \u65CF\uFF0C\u5DF2\u963B\u6B62\u4EE5\u514D\u5199\u574F EEPROM\u3002",
+      xm1BlobNote: "XM1\uFF1Ablob \u5B57\u6BB5\u8BED\u4E49\u5C1A\u672A\u6838\u5B9E\uFF08\u5B98\u65B9\u5185\u90E8\u5E03\u5C40\u4E0E\u7EBF\u4E0A\u5E03\u5C40\u4E4B\u95F4\u8FD8\u6709\u4E00\u5C42\u91CD\u6392\uFF09\uFF0C\u56E0\u6B64\u672C\u9875\u53EA\u8BFB\u5C55\u793A\u539F\u59CB\u5B57\u8282\u3001\u4E0D\u63D0\u4F9B\u5199\u5165\u3002\u7B49\u91CD\u6392\u5C42\u6838\u5B9E\u540E\u518D\u5F00\u653E\u3002"
     },
     "en": {
       appTitle: "Endgame Gear Web Configurator",
@@ -698,7 +699,8 @@ a {
       weApplyOk: "Written and verified by read-back.",
       weNoDevice: "No XM2we device connected yet.",
       weWakeHint: "Mouse is asleep: move it, then click 'Reload'.",
-      bWrongFamily: "An XM2we device (2020 protocol family) is connected. This action belongs to the 4k family and was blocked to avoid corrupting the EEPROM."
+      bWrongFamily: "An XM2we device (2020 protocol family) is connected. This action belongs to the 4k family and was blocked to avoid corrupting the EEPROM.",
+      xm1BlobNote: "XM1: blob field semantics are not yet verified (the vendor applies an extra re-ordering layer between its internal and on-wire layouts), so this page shows the raw bytes read-only and offers no write. Writing will be enabled once that layer is confirmed."
     }
   };
   var LANG = localStorage.getItem("xm2w-lang") || "zh-CN";
@@ -725,6 +727,7 @@ a {
 
   // src/protocol.ts
   var VID = 13159;
+  var VID_22D4 = 8916;
   var DONGLE_PID = 6512;
   var MOUSE_PIDS = {
     6504: ["XM2w 4k", 1],
@@ -734,8 +737,15 @@ a {
     6532: ["OP1w 4k v2", 2],
     6529: ["XM2w 4k v2 (\u53D8\u4F53)", 2]
   };
+  var XM1_PIDS = { 6147: ["XM1", 0] };
   var RPT_CMD = 161;
   var RPT_BULK = 160;
+  var XM1_MAX_STAGES = 3;
+  var isXm1 = (vendorId) => vendorId === VID_22D4;
+  function modelOf(vendorId, productId) {
+    if (isXm1(vendorId)) return (XM1_PIDS[productId] || ["XM1", 0])[0];
+    return (MOUSE_PIDS[productId] || ["\u672A\u77E5\u578B\u53F7", 1])[0];
+  }
 
   // src/xm2we.ts
   var WE_MOUSE_PID = 6496;
@@ -1296,6 +1306,7 @@ a {
   var mouseFw = "\u2014";
   var battery = null;
   var wired2 = false;
+  var xm1 = false;
   var stage = newS();
   function newS() {
     return {
@@ -1361,6 +1372,15 @@ a {
           continue;
         }
         const status = u8[1];
+        if (xm1) {
+          if (status === 1) {
+            lastFail = false;
+            return u8;
+          }
+          lastFail = true;
+          log(`\u2717 XM1 cmd 0x${cmd.toString(16)} \u672A\u56DE\u72B6\u6001\u5B57\u8282 (buf[1]=0x${status.toString(16)})`);
+          throw new StatusError(status, "XM1 device error (no status byte)");
+        }
         if (status === 1) {
           lastFail = false;
           return u8;
@@ -1389,6 +1409,7 @@ a {
     }
   };
   async function probe() {
+    if (xm1) return;
     if (!wired2) {
       try {
         await transact(15, 1, null, { pace: 120 });
@@ -1413,15 +1434,48 @@ a {
     }
     return transact(cmd, target, payload, opt);
   }
-  function looksLikeBlob(b) {
+  function looksLikeBlob(b, isXm1Dev = false) {
+    if (isXm1Dev) {
+      let nonZero = 0, nonFF = 0;
+      for (let i = 0; i < b.length; i++) {
+        if (b[i] !== 0) nonZero++;
+        if (b[i] !== 255) nonFF++;
+      }
+      return nonZero > 16 && nonFF > 16;
+    }
     return b[14] >= 1 && b[14] <= 4 && [2, 4, 8, 64, 128].includes(b[5]);
   }
   async function readBlob() {
     let lastDump = "";
+    const READ_CMD = xm1 ? 8 : 18;
     for (let round = 1; round <= 4; round++) {
-      await guarded(18, 0, null, { pace: 250 });
+      await guarded(READ_CMD, 0, null, { pace: xm1 ? 120 : 250 });
       for (let i = 0; i < 3; i++) {
-        const u8 = await rawReceive(RPT_BULK);
+        let u8;
+        try {
+          u8 = await rawReceive(RPT_BULK);
+        } catch (e) {
+          log(`\u2717 \u8BFB 0xA0 \u5931\u8D25: ${e.message}`);
+          await sleep(120);
+          continue;
+        }
+        if (xm1) {
+          const off2 = 16;
+          if (u8.length >= off2 + 1024) {
+            const cand = u8.slice(off2, off2 + 1024);
+            if (looksLikeBlob(cand, true)) {
+              blob = cand;
+              log(`\u2713 XM1 blob read OK (${blob.length} B @off ${off2}, round ${round})  head: ${hex(blob, 24)}`);
+              return;
+            }
+            lastDump = hex(cand, 32);
+            log(`\u22EF XM1 blob \u6821\u9A8C\u672A\u8FC7, round ${round}, head: ${lastDump}`);
+            break;
+          }
+          lastDump = hex(u8, 32);
+          log(`\u22EF XM1 0xA0 \u957F\u5EA6\u4E0D\u8DB3 (${u8.length} B, \u9700 \u2265${off2 + 1024}), round ${round}, head: ${lastDump}`);
+          break;
+        }
         let status = u8[1], off = 16;
         if (u8[1] === 161 && u8[2] === 1) {
           status = 1;
@@ -1447,13 +1501,21 @@ a {
         log(`\u22EF 0xA0 not ready (status=0x${u8[1].toString(16)}), round ${round}, head: ${lastDump}`);
         break;
       }
-      await sleep(300);
+      await sleep(xm1 ? 200 : 300);
     }
     throw new Error(`blob read failed after 4 rounds; last head: ${lastDump}`);
   }
   function parseBlob() {
     const b = blob;
     const s = newS();
+    if (xm1) {
+      s.raw = b;
+      s.levels = XM1_MAX_STAGES;
+      s.active = 1;
+      s.unknown = true;
+      stage = s;
+      return;
+    }
     s.angleTune = b[1] << 24 >> 24;
     s.unk7 = b[7];
     s.deepSleep = b[3] & 127;
@@ -1537,7 +1599,63 @@ a {
     }
     sel.value = String(val);
   }
+  function renderXm1Readonly() {
+    $("iModel").textContent = mouseName + (xm1 ? "" : "");
+    $("iMouseFw").textContent = "\u2014";
+    $("iDongleFw").textContent = t("noDongleWired");
+    $("iBattery").textContent = "\u2014";
+    $("iConn").textContent = t("wiredMode");
+    $("iGen").textContent = "2020 (XM1)";
+    const tb = $("cpiRows");
+    tb.innerHTML = "";
+    if (!blob || !blob.length) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="5" class="muted">${t("bRead")}</td>`;
+      tb.appendChild(tr);
+    } else {
+      const b = blob;
+      for (let row = 0; row < 16; row++) {
+        const o = row * 16;
+        const cells = [];
+        for (let i = 0; i < 16; i++) cells.push(b[o + i].toString(16).padStart(2, "0"));
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td class="muted">0x${o.toString(16).padStart(3, "0")}</td><td colspan="4" style="font-family:Consolas,monospace;font-size:11.5px">${cells.join(" ")}</td>`;
+        tb.appendChild(tr);
+      }
+      const tail = document.createElement("tr");
+      tail.innerHTML = `<td colspan="5" class="muted">${t("xm1BlobNote")}</td>`;
+      tb.appendChild(tail);
+    }
+    for (const id of [
+      "btnApplySensor",
+      "btnApplyPerf",
+      "cpiLevels",
+      "cpiActive",
+      "lod",
+      "glass",
+      "angleSnap",
+      "ripple",
+      "ledLiftoff",
+      "angleTune",
+      "polling",
+      "motionSync",
+      "slamclick",
+      "jitter",
+      "maxFps",
+      "multiclick",
+      "powerSaving",
+      "deepSleep",
+      "btnReset",
+      "btnLoad"
+    ]) {
+      const el = $(id);
+      if (el) el.disabled = true;
+    }
+    const keep = $("btnSave");
+    if (keep) keep.disabled = false;
+  }
   function render() {
+    if (xm1) return renderXm1Readonly();
     $("iModel").textContent = mouseName;
     $("iMouseFw").textContent = mouseFw;
     $("iDongleFw").textContent = wired2 ? t("noDongleWired") : dongleFw;
@@ -1703,6 +1821,20 @@ a {
     banner("warn", "");
     try {
       await probe();
+      if (xm1) {
+        mouseName = modelOf(VID_22D4, dev2.productId);
+        gen = 0;
+        dongleFw = "\u2014";
+        mouseFw = "\u2014";
+        battery = null;
+        showCards2();
+        await readBlob();
+        parseBlob();
+        render();
+        banner("ok", t("bReadOk"));
+        log(`\u2713 XM1 blob \u5DF2\u8BFB\u53D6\uFF08\u5B57\u6BB5\u8BED\u4E49\u5F85\u6838\u5B9E\uFF0C\u4EC5\u53EA\u8BFB\u5C55\u793A\uFF09`);
+        return;
+      }
       try {
         const r = await guarded(13, 0, null, { pace: 150 });
         dongleFw = fwStr(r[16] | r[17] << 8);
@@ -1756,7 +1888,8 @@ a {
   }
   async function openDevice(d) {
     dev2 = d;
-    wired2 = d.productId !== DONGLE_PID;
+    xm1 = isXm1(d.vendorId);
+    wired2 = xm1 || d.productId !== DONGLE_PID;
     await dev2.open();
     dev2.addEventListener("inputreport", (e) => {
       if (e.data.byteLength < 2) return;
@@ -1784,7 +1917,9 @@ a {
     try {
       const attempts = [
         { vendorId: VID, usagePage: 65281, usage: 2 },
+        { vendorId: VID_22D4, usagePage: 65281, usage: 2 },
         { vendorId: VID, usagePage: 65282, usage: 2 },
+        { vendorId: VID_22D4 },
         { vendorId: VID },
         {}
       ];
@@ -1795,11 +1930,10 @@ a {
       }
       if (!devs.length) return;
       for (const d of devs) {
-        const fam = isXm2weFamily(d.productId, d.collections) ? "XM2we/2020" : "4k";
-        const kind = fam === "XM2we/2020" ? d.productId === WE_DONGLE_PID ? "\u63A5\u6536\u5668" : "\u9F20\u6807" : d.productId === DONGLE_PID ? "dongle" : MOUSE_PIDS[d.productId] ? "\u9F20\u6807" : "\u672A\u77E5\u8BBE\u5907";
-        log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} [${fam} \xB7 ${kind}] collections=` + (d.collections || []).map((c) => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
+        const fam = isXm2weFamily(d.productId, d.collections) ? "XM2we/2020" : isXm1(d.vendorId) ? "XM1/2020" : "4k";
+        log(`candidate: "${d.productName}" VID=0x${d.vendorId.toString(16)} PID=0x${d.productId.toString(16)} [${fam}] collections=` + (d.collections || []).map((c) => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
       }
-      const pick = devs.find((d) => isXm2weFamily(d.productId, d.collections)) || devs.find((d) => (d.collections || []).some((c) => c.usagePage >= 65280)) || devs[0];
+      const pick = devs.find((d) => isXm2weFamily(d.productId, d.collections)) || devs.find((d) => isXm1(d.vendorId) && (d.collections || []).some((c) => c.usagePage === 65281)) || devs.find((d) => (d.collections || []).some((c) => c.usagePage >= 65280)) || devs[0];
       if (isXm2weFamily(pick.productId, pick.collections)) {
         await openXm2we(pick);
         return;

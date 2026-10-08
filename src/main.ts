@@ -1,7 +1,8 @@
 // 应用主体：全局状态 / 传输层 / blob 读写解析 / UI 渲染 / 连接与事件绑定
 import { $, sleep, hex, log, banner } from "./util.js";
 import { I18N, LANG, t, applyI18n } from "./i18n.js";
-import { VID, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK, POLLING_LABELS } from "./protocol.js";
+import { VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK, POLLING_LABELS,
+         XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf } from "./protocol.js";
 import { isXm2weFamily, WE_MOUSE_PID, WE_DONGLE_PID } from "./xm2we.js";
 import { openXm2we, closeXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
 
@@ -18,6 +19,10 @@ let dev = null, queue = Promise.resolve(), lastFail = false;
 let gen = null, mouseName = "—";
 let blob = null;
 let dongleFw = "—", mouseFw = "—", battery = null, wired = false;
+/* XM1（VID 0x22D4）是 2020 变体：帧格式与 4k 族相同，但
+   ① 无状态字节（成败看 HidD 返回码）② 无独立唤醒命令（0x0F 是 4k 无线专属）
+   ③ 只有 3 档 CPI ④ 写后 settle 80ms。证据见 re/XM1_NOTES.md 第 3 节。 */
+let xm1 = false;
 let stage: any = newS();
 
 function newS() {
@@ -56,6 +61,14 @@ async function transact(cmd, target = 0x00, payload = null, opt: any = {}) {
       try { u8 = await rawReceive(RPT_CMD); }
       catch (e) { log(`✗ GET fail: ${e.message}`); if (attempt === 3) throw e; await sleep(60); continue; }
       const status = u8[1];
+      /* XM1 没有状态字节：官方直接看 HidD_GetFeature/SetFeature 的返回码
+         （反汇编里就是 cmp eax,1）。套用 4k 的状态机只会误判。 */
+      if (xm1) {
+        if (status === 0x01) { lastFail = false; return u8; }
+        lastFail = true;
+        log(`✗ XM1 cmd 0x${cmd.toString(16)} 未回状态字节 (buf[1]=0x${status.toString(16)})`);
+        throw new StatusError(status, "XM1 device error (no status byte)");
+      }
       if (status === 0x01) { lastFail = false; return u8; }
       if (status === 0x03) { log(`⋯ busy, retry #${attempt + 1}`); await sleep(200 * (attempt + 1)); continue; }
       lastFail = true;
@@ -72,8 +85,11 @@ async function transact(cmd, target = 0x00, payload = null, opt: any = {}) {
 class StatusError extends Error { code: any; constructor(code: any, msg: string) { super(msg); this.code = code; } }
 /* 探测/唤醒。0x0F 是**无线专属**唤醒（官方仅 0x22 路径唤醒，见 re/PROTOCOL_NOTES.md）：
    有线直连时发 0x0F 两个变体都会回状态 7，且会让后续写入被 ACK 后静默丢弃
-   （zexsso/OP1-WebAPP device.ts 真机验证）。有线直接走 0x0E 读鼠标信息。 */
+   （zexsso/OP1-WebAPP device.ts 真机验证）。有线直接走 0x0E 读鼠标信息。
+   XM1 的命令表只有 4 条（0x03/0x04/0x07/0x08），**没有 0x0E/0x0F**，
+   故 XM1 跳过探测直接读 blob。 */
 async function probe() {
+  if (xm1) return;                       // XM1 无探测命令
   if (!wired) {
     try { await transact(0x0F, 0x01, null, { pace: 120 }); return; } catch (e) { /* 试下一变体 */ }
     try { await transact(0x0F, 0x0F, null, { pace: 120 }); return; } catch (e) { /* 落到 0x0E */ }
@@ -85,18 +101,50 @@ async function guarded(cmd, target, payload: any = null, opt: any = {}) {
   return transact(cmd, target, payload, opt);
 }
 /* 读 1024B 配置 blob。两种响应格式（真机证据见 re/PROTOCOL_NOTES.md）：
-   v1: [0xA0][status@1][保留×14][blob@16]
-   v2: [0xA0][回显0xA1@1][status@2][保留×14][blob@17] —— v2 固件在 0xA0 报告里回显请求报告 ID，
-       导致 v1 格式在 [1] 读到 0xA1 而误判"未备好"（此前误诊为时序问题，重试无效）。 */
-function looksLikeBlob(b: Uint8Array) {
+     v1: [0xA0][status@1][保留×14][blob@16]
+     v2: [0xA0][回显0xA1@1][status@2][保留×14][blob@17] —— v2 固件在 0xA0 报告里回显请求报告 ID，
+         导致 v1 格式在 [1] 读到 0xA1 而误判"未备好"（此前误诊为时序问题，重试无效）。
+   XM1（2020 变体）用命令 0x08 而非 0x12 触发，且**无状态字节**，blob 同样在偏移 16
+   （官方函数 0x40FB90：mov dword [buf], 0x8A0 → 线上 A0 08 00 00，rep movsd 1024B）。
+   由于 XM1 的 blob 字段语义尚未逐字段核实（重排层 0x40FD60 待解），
+   这里只做宽松校验并把原始 blob 原样保留，便于真机比对。 */
+function looksLikeBlob(b: Uint8Array, isXm1Dev = false) {
+  if (isXm1Dev) {
+    // XM1 无已知语义锚点，只排除全 0 / 全 FF 这两类明显无效
+    let nonZero = 0, nonFF = 0;
+    for (let i = 0; i < b.length; i++) { if (b[i] !== 0) nonZero++; if (b[i] !== 0xFF) nonFF++; }
+    return nonZero > 16 && nonFF > 16;
+  }
   return (b[0x0E] >= 1 && b[0x0E] <= 4) && [0x02, 0x04, 0x08, 0x40, 0x80].includes(b[0x05]);
 }
 async function readBlob() {
   let lastDump = "";
+  const READ_CMD = xm1 ? 0x08 : 0x12;      // XM1 用 0x08 读 blob
   for (let round = 1; round <= 4; round++) {
-    await guarded(0x12, 0x00, null, { pace: 250 });
+    await guarded(READ_CMD, 0x00, null, { pace: xm1 ? 120 : 250 });
     for (let i = 0; i < 3; i++) {
-      const u8 = await rawReceive(RPT_BULK);
+      let u8;
+      try { u8 = await rawReceive(RPT_BULK); }
+      catch (e) { log(`✗ 读 0xA0 失败: ${e.message}`); await sleep(120); continue; }
+      if (xm1) {
+        /* XM1：无状态字节。官方流程是「发 0x08 → Sleep(80) → 再读一次 64B 状态报告」，
+           这里放宽为：只要 0xA0 报告够长且 blob 看起来有效即接受。 */
+        const off = 16;
+        if (u8.length >= off + 1024) {
+          const cand = u8.slice(off, off + 1024);
+          if (looksLikeBlob(cand, true)) {
+            blob = cand;
+            log(`✓ XM1 blob read OK (${blob.length} B @off ${off}, round ${round})  head: ${hex(blob, 24)}`);
+            return;
+          }
+          lastDump = hex(cand, 32);
+          log(`⋯ XM1 blob 校验未过, round ${round}, head: ${lastDump}`);
+          break;
+        }
+        lastDump = hex(u8, 32);
+        log(`⋯ XM1 0xA0 长度不足 (${u8.length} B, 需 ≥${off + 1024}), round ${round}, head: ${lastDump}`);
+        break;
+      }
       let status = u8[1], off = 16;
       if (u8[1] === 0xA1 && u8[2] === 0x01) { status = 0x01; off = 17; }  // v2 回显格式
       if (status === 0x01 && u8.length >= off + 1024) {
@@ -116,7 +164,7 @@ async function readBlob() {
       log(`⋯ 0xA0 not ready (status=0x${u8[1].toString(16)}), round ${round}, head: ${lastDump}`);
       break;
     }
-    await sleep(300);
+    await sleep(xm1 ? 200 : 300);
   }
   throw new Error(`blob read failed after 4 rounds; last head: ${lastDump}`);
 }
@@ -124,6 +172,20 @@ async function readBlob() {
 /* ================= blob 解析 / 编码 ================= */
 function parseBlob() {
   const b = blob; const s: any = newS();
+
+  /* XM1（VID 0x22D4）：blob 布局与 4k 族同构，但字段语义**尚未逐字节核实**
+     ——官方内部布局与线上布局之间还有一层重排（函数 0x40FD60，298 条搬运）。
+     因此这里只做「不猜」的解析：把原始字节整体带出，供界面显示与导出对照，
+     绝不按 4k 的偏移猜测并回写（写错会永久损坏鼠标配置）。 */
+  if (xm1) {
+    s.raw = b;
+    s.levels = XM1_MAX_STAGES;                 // XM1 只有 3 档（官方 UI 原文 "range from 1 to 3"）
+    s.active = 1;
+    s.unknown = true;                          // 标记：UI 应转为只读视图
+    stage = s;
+    return;
+  }
+
   s.angleTune = (b[0x01] << 24) >> 24;
   s.unk7 = b[0x07];                                 // 0x14 帧 p[0] 透传的未知标志（OP1-WebAPP: "carried by 0x14, unread by Basic tab"）
   s.deepSleep = b[0x03] & 0x7F; if (b[0x03] & 0x80) s.deepSleep = "off";
@@ -201,7 +263,55 @@ function fillSelect(sel, opts, val) {
   }
   sel.value = String(val);
 }
+
+/* XM1 只读视图：显示已读到的 blob 原始字节与关键区段，供真机比对。
+   故意不做字段解读——重排层 0x40FD60 尚未逐字节核实（re/XM1_NOTES.md 第 3 节）。 */
+function renderXm1Readonly() {
+  $("iModel").textContent = mouseName + (xm1 ? "" : "");
+  $("iMouseFw").textContent = "—";
+  $("iDongleFw").textContent = t("noDongleWired");
+  $("iBattery").textContent = "—";
+  $("iConn").textContent = t("wiredMode");
+  $("iGen").textContent = "2020 (XM1)";
+
+  const tb = $("cpiRows"); tb.innerHTML = "";
+  if (!blob || !blob.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="5" class="muted">${t("bRead")}</td>`;
+    tb.appendChild(tr);
+  } else {
+    const b = blob;
+    // 按 16 字节一行展示前 256 字节 + 关键区段摘要
+    for (let row = 0; row < 16; row++) {
+      const o = row * 16;
+      const cells = [];
+      for (let i = 0; i < 16; i++) cells.push(b[o + i].toString(16).padStart(2, "0"));
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="muted">0x${o.toString(16).padStart(3, "0")}</td>` +
+        `<td colspan="4" style="font-family:Consolas,monospace;font-size:11.5px">${cells.join(" ")}</td>`;
+      tb.appendChild(tr);
+    }
+    const tail = document.createElement("tr");
+    tail.innerHTML = `<td colspan="5" class="muted">${t("xm1BlobNote")}</td>`;
+    tb.appendChild(tail);
+  }
+
+  // 禁用所有写入控件
+  for (const id of ["btnApplySensor", "btnApplyPerf", "cpiLevels", "cpiActive", "lod", "glass",
+                    "angleSnap", "ripple", "ledLiftoff", "angleTune", "polling", "motionSync",
+                    "slamclick", "jitter", "maxFps", "multiclick", "powerSaving", "deepSleep",
+                    "btnReset", "btnLoad"]) {
+    const el = $(id); if (el) el.disabled = true;
+  }
+  // 导出仍然可用（备份当前 blob 无害）
+  const keep = $("btnSave"); if (keep) keep.disabled = false;
+}
 function render() {
+  /* XM1 只读视图：blob 字段语义尚未核实（官方内部布局与线上布局之间还有一层重排，
+     函数 0x40FD60 有 298 条搬运），按 4k 偏移猜测并回写会永久损坏鼠标配置。
+     所以这里只展示原始 blob 字节，禁用所有写入控件——等重排层核实后再开写入。 */
+  if (xm1) return renderXm1Readonly();
+
   $("iModel").textContent = mouseName;
   $("iMouseFw").textContent = mouseFw;
   $("iDongleFw").textContent = wired ? t("noDongleWired") : dongleFw;
@@ -352,6 +462,22 @@ async function refreshAll() {
   banner("warn", "");
   try {
     await probe();
+
+    /* XM1：命令表只有 4 条（0x03/0x04/0x07/0x08）——没有 0x0D 固件、0x0E 型号、
+       0xB4 电量，所以跳过这些查询，直接读 blob。型号由 VID/PID 已知。 */
+    if (xm1) {
+      mouseName = modelOf(VID_22D4, dev.productId);
+      gen = 0;
+      dongleFw = "—"; mouseFw = "—"; battery = null;
+      showCards();
+      await readBlob();
+      parseBlob();
+      render();
+      banner("ok", t("bReadOk"));
+      log(`✓ XM1 blob 已读取（字段语义待核实，仅只读展示）`);
+      return;
+    }
+
     try { const r = await guarded(0x0D, 0x00, null, { pace: 150 }); dongleFw = fwStr(r[16] | (r[17] << 8)); }
     catch (e) { if (e.code !== 0x07) throw e; dongleFw = "—"; }
     let mouseOk = false;
@@ -374,7 +500,9 @@ function showCards() { for (const id of ["cardInfo","cardSensor","cardPerf","car
 
 /* ================= 连接 ================= */
 async function openDevice(d) {
-  dev = d; wired = d.productId !== DONGLE_PID;
+  dev = d;
+  xm1 = isXm1(d.vendorId);
+  wired = xm1 || d.productId !== DONGLE_PID;
   await dev.open();
   dev.addEventListener("inputreport", e => {
     if (e.data.byteLength < 2) return;
@@ -396,11 +524,16 @@ $("btnConnect").onclick = async () => {
     banner("err", why); return;
   }
   try {
-    /* 两个协议族接口页不同（4k=0xFF01，2020 有线代=0xFF02），必须都试，否则会漏掉 XM2we。
-       顺序：4k 精确 → 有线代精确 → VID-only → 全量手选。 */
+    /* 三类接口都要试，缺一个就会漏设备：
+       ① VID 0x3367 + FF01:02 = 4k 无线族
+       ② VID 0x3367 + FF02:02 = XM2we（2020 有线/2.4G）
+       ③ VID 0x22D4 + FF01:02 = XM1（2020 有线变体，实测同 4k 帧格式）
+       最后再退到 VID-only 与全量手选。 */
     const attempts = [
       { vendorId: VID, usagePage: 0xFF01, usage: 0x02 },
+      { vendorId: VID_22D4, usagePage: 0xFF01, usage: 0x02 },
       { vendorId: VID, usagePage: 0xFF02, usage: 0x02 },
+      { vendorId: VID_22D4 },
       { vendorId: VID },
       {},
     ];
@@ -411,15 +544,14 @@ $("btnConnect").onclick = async () => {
     }
     if (!devs.length) return;
     for (const d of devs) {
-      const fam = isXm2weFamily(d.productId, d.collections) ? "XM2we/2020" : "4k";
-      const kind = fam === "XM2we/2020"
-        ? (d.productId === WE_DONGLE_PID ? "接收器" : "鼠标")
-        : (d.productId === DONGLE_PID ? "dongle" : (MOUSE_PIDS[d.productId] ? "鼠标" : "未知设备"));
-      log(`candidate: "${d.productName}" PID=0x${d.productId.toString(16)} [${fam} · ${kind}] collections=` +
+      const fam = isXm2weFamily(d.productId, d.collections) ? "XM2we/2020"
+                : isXm1(d.vendorId) ? "XM1/2020" : "4k";
+      log(`candidate: "${d.productName}" VID=0x${d.vendorId.toString(16)} PID=0x${d.productId.toString(16)} [${fam}] collections=` +
           (d.collections || []).map(c => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
     }
-    // XM2we 族优先（PID 明确），否则挑 vendor 用法页接口
+    // XM2we 族优先（PID 明确），其次 XM1（VID 明确），否则挑 vendor 用法页接口
     const pick = devs.find(d => isXm2weFamily(d.productId, d.collections))
+              || devs.find(d => isXm1(d.vendorId) && (d.collections || []).some(c => c.usagePage === 0xFF01))
               || devs.find(d => (d.collections || []).some(c => c.usagePage >= 0xFF00))
               || devs[0];
     if (isXm2weFamily(pick.productId, pick.collections)) {

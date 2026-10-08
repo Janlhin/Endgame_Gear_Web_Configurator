@@ -63,7 +63,8 @@ const I18N = {
     weSlot: "槽位", weSlot1Tag: "（生效中）", weBadRecord: "校验失败",
     weReadProgress: "读取 EEPROM…{0}/{1} 字节", weReadOk: "已读取 XM2we 配置。", weApplyOk: "已写入并回读校验通过。",
     weNoDevice: "尚未连接 XM2we 设备。", weWakeHint: "鼠标处于休眠：动一下鼠标再点「重新读取」。",
-    bWrongFamily: "当前连接的是 XM2we（2020 协议族），此操作属于 4k 族，已阻止以免写坏 EEPROM。"
+    bWrongFamily: "当前连接的是 XM2we（2020 协议族），此操作属于 4k 族，已阻止以免写坏 EEPROM。",
+    xm1BlobNote: "XM1：blob 字段语义尚未核实（官方内部布局与线上布局之间还有一层重排），因此本页只读展示原始字节、不提供写入。等重排层核实后再开放。",
   },
   "en": {
     appTitle: "Endgame Gear Web Configurator", notConnected: "Not connected", connectedWired: "Connected (wired)", connectedWireless: "Connected (wireless)",
@@ -126,7 +127,8 @@ const I18N = {
     weSlot: "Slot", weSlot1Tag: " (in use)", weBadRecord: "bad checksum",
     weReadProgress: "Reading EEPROM… {0}/{1} bytes", weReadOk: "XM2we configuration loaded.", weApplyOk: "Written and verified by read-back.",
     weNoDevice: "No XM2we device connected yet.", weWakeHint: "Mouse is asleep: move it, then click 'Reload'.",
-    bWrongFamily: "An XM2we device (2020 protocol family) is connected. This action belongs to the 4k family and was blocked to avoid corrupting the EEPROM."
+    bWrongFamily: "An XM2we device (2020 protocol family) is connected. This action belongs to the 4k family and was blocked to avoid corrupting the EEPROM.",
+    xm1BlobNote: "XM1: blob field semantics are not yet verified (the vendor applies an extra re-ordering layer between its internal and on-wire layouts), so this page shows the raw bytes read-only and offers no write. Writing will be enabled once that layer is confirmed.",
   }
 };
 
