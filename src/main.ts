@@ -20,8 +20,8 @@ let gen = null, mouseName = "—";
 let blob = null;
 let dongleFw = "—", mouseFw = "—", battery = null, wired = false;
 /* XM1（VID 0x22D4）是 2020 变体：帧格式与 4k 族相同，但
-   ① 无状态字节（成败看 HidD 返回码）② 无独立唤醒命令（0x0F 是 4k 无线专属）
-   ③ 只有 3 档 CPI ④ 写后 settle 80ms。证据见 re/XM1_NOTES.md 第 3 节。 */
+   ① 状态字节在 [1]（0x01 = 成功，与 4k 同）② 无独立唤醒命令（0x0F 是 4k 无线专属）
+   ③ 4 档 CPI ④ 写后 settle 80ms。证据见 re/XM1_NOTES.md 第 3 / 6.7 节。 */
 let xm1 = false;
 let stage: any = newS();
 
@@ -110,7 +110,7 @@ async function guarded(cmd, target, payload: any = null, opt: any = {}) {
      v1: [0xA0][status@1][保留×14][blob@16]
      v2: [0xA0][回显0xA1@1][status@2][保留×14][blob@17] —— v2 固件在 0xA0 报告里回显请求报告 ID，
          导致 v1 格式在 [1] 读到 0xA1 而误判"未备好"（此前误诊为时序问题，重试无效）。
-   XM1（2020 变体）用命令 0x08 而非 0x12 触发，且**无状态字节**，blob 同样在偏移 16
+   XM1（2020 变体）用命令 0x07 读 blob（4k 族用 0x12），状态字节在 [1]，blob 同样在偏移 16
    （官方函数 0x40FB90：mov dword [buf], 0x8A0 → 线上 A0 08 00 00，rep movsd 1024B）。
    由于 XM1 的 blob 字段语义尚未逐字段核实（重排层 0x40FD60 待解），
    这里只做宽松校验并把原始 blob 原样保留，便于真机比对。 */
@@ -339,7 +339,7 @@ function parseBlob() {
      绝不按 4k 的偏移猜测并回写（写错会永久损坏鼠标配置）。 */
   if (xm1) {
     s.raw = b;
-    s.levels = XM1_MAX_STAGES;                 // XM1 只有 3 档（官方 UI 原文 "range from 1 to 3"）
+    s.levels = XM1_MAX_STAGES;                 // XM1 为 4 档（官方 UI 有 4 张 CPI 卡片）
     s.active = 1;
     s.unknown = true;                          // 标记：UI 应转为只读视图
     stage = s;
