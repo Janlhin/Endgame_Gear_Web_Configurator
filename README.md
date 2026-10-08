@@ -81,6 +81,9 @@
 `index.html#layout=xm1`、`#layout=v1`、`#layout=v2`、`#layout=8k`、`#layout=ro`、`#layout=we`、`#layout=unsupported`。
 预览**只改变界面显示，不授予任何读写能力** —— 写入闸门只看是否真的连接了设备。
 
+再加上 `&simulate=lost` 可以演练**「设备丢失 → 复位到初始界面」**这条路径，例如
+`index.html#layout=v2&simulate=lost`（同样不碰任何设备，供无实机时预览与回归验证）。
+
 > **完整产品清单与版本对照**见 **[`docs/official-product-catalog.md`](docs/official-product-catalog.md)**
 > （2026-10-08 抓官网下载总页 + 在售商品页整理：16 款鼠标的固件/工具版本、官方 CDN 下载 URL、
 > 官方 GitHub 仓库对应关系）。2020 代产品（XM1/XM1r/XM2we/OP1we）**没有官方 GitHub 仓库**。
@@ -98,6 +101,8 @@
 - **电源**：省电超时、深度休眠（1–120 分钟或关闭）
 - **按键**：映射表与点击过滤展示；过滤值可编辑并写入；GX Safe/Speed 模式（左右键）
 - **工具**：配置导出/导入（JSON + 原始 1024B blob）、重新配对、恢复默认配对（0x71）、读取配对数据（0x72）、恢复出厂（双重确认）、hex 级通讯日志
+- **连接健壮性 —— 设备不在了就自动回到初始界面**：两条独立信号 —— ① 浏览器在设备上的 `disconnect` 事件（拔线/断电，立即）；② 定时清点 `navigator.hid.getDevices()`（连续两次落空才判定，容忍权限抖动；接口已被浏览器关闭则一次即判定）。命中后清空全部残留状态并把界面复位到未连接态，避免"界面显示已连接、写入却必然失败"的假象。
+  **刻意不用「发探测命令」判断在位**：`0x0F` 是无线唤醒命令，定时发会让鼠标永不深睡（费电）；而 `0x0E`/`0x07` 在鼠标休眠时回 unreachable，会把「睡着了」误判成「拔线了」。「无线链路断开」（`inputreport 0xB1`）= 接收器还在、鼠标只是睡了，**不**触发复位
 - **XM2we 族**：CPI 八槽（槽 1 即时生效）、回报率（125/250/500/1000 Hz one-hot 掩码）、点击去抖、按键矩阵（type 0x01 解码 + 其余原样展示）、EEPROM 导出（.txt / .json）；每次写入均回读校验
 - **i18n**：简体中文 / 繁體中文 / English / Deutsch / Français / Español / 日本語 / 한국어 共 8 种。**首次打开按浏览器语言自动选择**（`navigator.languages` 依次匹配，繁体按 `zh-TW/zh-HK/zh-Hant` 优先判定以免被吞成简体，认不出则用简体中文），之后右上角手动切换的选择存于 localStorage 并优先；日/韩/繁体自动切换 CJK 字体栈（`html:lang()`）避免汉字套用简体字形。词条按语言分文件放 `src/i18n/`，键名一致性由 `npm run check:i18n` 校验
 
@@ -108,7 +113,7 @@
 
 | 目录 | 内容 |
 |---|---|
-| `src/` | TypeScript（`main.ts` 入口、`protocol.ts`、`xm2we.ts`、`xm2we-ui.ts`、`i18n.ts`、`util.ts`） |
+| `src/` | TypeScript。依赖单向分层（下→上）：`state` / `transport` / `protocol` → `blob` / `verify` → `device-4k` / `device-8k` / `device-xm1` → `render` / `presence` → `session` → `connect` → `main`（入口只做装配与事件绑定）；`xm2we.ts` + `xm2we-ui.ts` 是完全独立的第二个协议族；`i18n.ts` + `i18n/*.ts` 是 8 语言词条 |
 | `scss/` | **样式唯一来源**（`_tokens.scss` 设计令牌 / `_mixins.scss` 混入 / `main.scss` 组件） |
 
 技术栈：**TypeScript 7**（Go 原生编译器，`tsc --noEmit` 类型检查）+ **esbuild** 打包 +
@@ -158,6 +163,8 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 | 有线时接收器固件显示 `—` | 正常，有线连接没有 dongle，cmd 0x0D 返回"不适用"(0x07) |
 | v1 当前档位改不动 | v1 硬件忽略软件切换，用鼠标底部 CPI 键 |
 | 有线回报率显示 1000 Hz | USB 全速帧限制，硬件上限；写入的存储值不受影响，回到无线自动恢复 |
+| 用着好好的自己回到初始界面，提示「设备已断开」 | 设备不在位（拔线 / 断电 / 接收器被移除）。复位是**刻意**的：断线后残留的旧数据会让写入看起来成功。重新点「连接设备」即可；判断依据是 `disconnect` 事件与设备清点，不依赖任何写入 |
+| 切到别的标签页再回来变成未连接 | 切到后台时会按安全策略**释放 WebHID 接口**（避免接口被长期独占），既然接口已释放，界面就同步复位而不是留一份用不了的旧数据。重新连接即可（同一页面只释放一次） |
 
 ## 协议速查（详见 vole 仓库 re/PROTOCOL.md 与本项目 re/PROTOCOL_NOTES.md）
 

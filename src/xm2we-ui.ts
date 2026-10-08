@@ -4,6 +4,8 @@
 import { $, sleep, log, banner } from "./util.js";
 import { t } from "./i18n.js";
 import { applyLayout } from "./layout.js";
+import { resetToInitial, watchDisconnect, watchPresence } from "./presence.js";
+import type { LostReason } from "./presence.js";
 import { Xm2weSession, WE_MOUSE_PID, POLLING_BY_MASK } from "./xm2we.js";
 
 const WE_POLL_OPTS = [125, 250, 500, 1000];
@@ -63,6 +65,8 @@ export async function openXm2we(d: any) {
   model = wired ? "XM2we (wired)" : "XM2we (2.4G dongle)";
   if (!(await openGuarded(d))) { dev = null; return; }
   sess = new Xm2weSession(d);
+  /* 拔线/断电时浏览器在该设备上触发 disconnect —— 走统一的复位路径 */
+  watchDisconnect(d, reason => { void onWeLost(reason); });
 
   // 0x03/0x04 由接收器缓存，即使鼠标睡了也能答；先电量后链路（插线瞬间链路会短暂断开）
   const bat = await sess.readBattery();
@@ -87,6 +91,17 @@ export async function closeXm2we() {
   }
   applyLayout("none");   // 断开后收起全部设备卡片
 }
+
+/** XM2we 侧的设备丢失：先拆掉会话（它持有 EEPROM 缓存与轮询定时器），
+ *  再走统一的复位路径回到初始界面。 */
+async function onWeLost(reason: LostReason) {
+  await closeXm2we();
+  resetToInitial(reason, model);
+}
+
+/* 清点用的「设备位」——4k / XM1 / 8k 那条在 connect.ts 里登记。
+   只有一条会真正存在设备，另一条自然一直为空。 */
+watchPresence("we", () => dev, reason => { void onWeLost(reason); });
 
 /* 页面切走/关闭时释放接口——WebHID 独占不释放会造成系统侧设备异常。
  * 与 main.ts 的 releaseAllDevices() 是同一道保险，两处都注册不冲突。 */

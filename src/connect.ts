@@ -13,6 +13,8 @@ import { setConn, render } from "./render.js";
 import { refreshAll } from "./session.js";
 import { closeXm2we, isXm2weOpen } from "./xm2we-ui.js";
 import { xm1WriteDisabled } from "./transport.js";
+import { resetToInitial, watchDisconnect, watchPresence } from "./presence.js";
+import type { LostReason } from "./presence.js";
 import { isXm1, is8k, isFamily4, USAGE_FAMILY4, DONGLE_PID,
          xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte } from "./protocol.js";
 
@@ -21,6 +23,22 @@ export async function releaseAllDevices() {
   if (S.dev && S.dev.opened) { try { await S.dev.close(); } catch (_) {} }
   S.dev = null;
 }
+
+/** 设备不在了 —— 唯一的一条复位路径。
+ *
+ *  一切「设备丢失」的信号（HIDDevice 的 disconnect 事件、定时清点、切后台主动释放）
+ *  都汇到这里：先释放接口，再把状态与界面复位到初始态。
+ *  ★ 只有一条路径是刻意的 —— 每个信号各自实现一遍「清状态」，
+ *    迟早会出现某条路径漏清一个量，那正是本项目最忌讳的状态残留。 */
+export async function onDeviceLost(reason: LostReason) {
+  const name = (S.mouseName && S.mouseName !== "—") ? S.mouseName : (S.dev?.productName ?? "?");
+  await releaseAllDevices();
+  resetToInitial(reason, name);
+}
+
+/* 定时清点用的「设备位」：4k / XM1 / 8k 这条通道的设备存在 S.dev。
+   XM2we 是另一个模块自己的设备，由 xm2we-ui.ts 单独登记 —— 两族不会同时打开。 */
+watchPresence("main", () => S.dev, reason => { void onDeviceLost(reason); });
 
 export function isSafeToOpen(d) {
   const cols = d.collections || [];
@@ -58,6 +76,9 @@ export async function openGuarded(d) {
 export async function openDevice(d) {
   if (!(await openGuarded(d))) return;
   S.dev = d;
+  /* 拔线/断电时浏览器会在该设备上触发 disconnect —— 比定时清点快得多。
+     两者共用 onDeviceLost()，重复触发也只是再复位一次（幂等）。 */
+  watchDisconnect(d, reason => { void onDeviceLost(reason); });
   S.xm1 = isXm1(d.vendorId);
   S.eightK = !S.xm1 && is8k(d.productId);
   S.family4 = !S.xm1 && !S.eightK && (isFamily4(d.productId)

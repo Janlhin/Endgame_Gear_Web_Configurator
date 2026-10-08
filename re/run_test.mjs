@@ -1,10 +1,12 @@
-// 把 TS 测试编译成 Node 可执行文件后运行（xm2we.ts / protocol.ts 均为无 DOM 依赖模块）
+// 把 TS 测试编译成 Node 可执行文件后运行
+// （protocol.ts 等为无 DOM 依赖模块；test_presence 自带 re/_domstub.ts 提供的 DOM 桩）
 import { build } from "esbuild";
 
 const ENTRIES = [
   ["re/test_xm2we.ts", "re/.test_xm2we.mjs"],
   ["re/test_xm1_write.ts", "re/.test_xm1_write.mjs"],
   ["re/test_8k_write.ts", "re/.test_8k_write.mjs"],
+  ["re/test_presence.ts", "re/.test_presence.mjs"],
 ];
 
 for (const [entry, out] of ENTRIES) {

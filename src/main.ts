@@ -20,7 +20,8 @@ import { readBlob8k, store8k, verifySensor8k, verifyPerf8k } from "./device-8k.j
 import { readBlob } from "./device-4k.js";
 import { render, renderXm1, renderInfoOnly, renderHelp } from "./render.js";
 import { refreshAll, applySensor, applyPerf, resetSettle, writeSettle } from "./session.js";
-import { releaseAllDevices, openDevice, guard4k } from "./connect.js";
+import { releaseAllDevices, onDeviceLost, openDevice, guard4k } from "./connect.js";
+import { resetToInitial } from "./presence.js";
 
 // —— 语言切换时重渲染（i18n.ts 通过事件解耦） ——
 /* 语言切换：applyI18n() 已在 i18n.ts 的 onchange 里跑过，这里补上
@@ -261,7 +262,10 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "hidden" || releasedOnHide) return;
   // 延迟一点再关：visibilitychange 早期关闭可能被 Chrome 拒绝
   releasedOnHide = true;
-  setTimeout(() => { releaseAllDevices(); }, 50);
+  /* ★ 释放接口之后必须同步复位界面：接口已经关了，读写在物理上不可能成功，
+     若界面还显示着「已连接 + 旧数据」，用户会以为改动生效了（比报错更糟）。
+     走 onDeviceLost 与「拔线」同一条路径，只是换成说明原因的文案。 */
+  setTimeout(() => { void onDeviceLost("devReleased"); }, 50);
 });
 
 /** 安全闸门：只允许打开厂商配置集合。
@@ -544,3 +548,12 @@ if (!("hid" in navigator))
     : "No WebHID here: embedded previews/iframes/Firefox are not supported. Download index.html and open it directly in Chrome or Edge.");
 else
   log("✓ WebHID available (" + navigator.userAgent.match(/(Edg|Chrome)\/[\d.]+/)?.[0] + ")");
+
+/* 预览 / 无头回归钩子：#simulate=lost 跑一遍「设备丢失 → 复位到初始界面」。
+   与 layout.ts 的 #layout= 同一套思路 —— 只影响界面，不授予任何设备能力
+   （本就不发报文），目的是让没有实机时也能验证这条路径。
+   典型用法 #layout=v2&simulate=lost：先套上型号布局，再演练丢失复位。 */
+if (/(?:^|[#&])simulate=lost\b/.test(location.hash || "")) {
+  log("ℹ #simulate=lost：演练设备丢失 → 复位到初始界面（预览 / 回归用）");
+  resetToInitial("devGone", "simulate");
+}
