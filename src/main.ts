@@ -524,23 +524,26 @@ $("btnConnect").onclick = async () => {
     banner("err", why); return;
   }
   try {
-    /* 三类接口都要试，缺一个就会漏设备：
-       ① VID 0x3367 + FF01:02 = 4k 无线族
-       ② VID 0x3367 + FF02:02 = XM2we（2020 有线/2.4G）
-       ③ VID 0x22D4 + FF01:02 = XM1（2020 有线变体，实测同 4k 帧格式）
-       最后再退到 VID-only 与全量手选。 */
-    const attempts = [
-      { vendorId: VID, usagePage: 0xFF01, usage: 0x02 },
-      { vendorId: VID_22D4, usagePage: 0xFF01, usage: 0x02 },
-      { vendorId: VID, usagePage: 0xFF02, usage: 0x02 },
-      { vendorId: VID_22D4 },
-      { vendorId: VID },
-      {},
+    /* ★ 必须**一次调用传全部 filter 数组**（WebHID 数组 = OR 语义）。
+       踩过的坑：曾写成「按 filter 逐个调用 requestDevice 直到有结果」——
+       Chrome 每次调用都会弹选择器，而第一个 filter 若匹配不到就直接弹
+       「找不到任何兼容设备」，整个流程中断，用户只看到一个空选择器。
+       （插着 XM1 时 VID 0x3367 必然匹配不到，就是这个现象。）
+       filter 内各字段之间是 AND，字段省略即通配。 */
+    const filters = [
+      { vendorId: VID,     usagePage: 0xFF01, usage: 0x02 },  // 4k 无线族
+      { vendorId: VID_22D4, usagePage: 0xFF01, usage: 0x02 },  // XM1 / XM1 RGB（2020 变体）
+      { vendorId: VID,     usagePage: 0xFF02, usage: 0x02 },  // XM2we / OP1we
+      { vendorId: VID_22D4 },                                 // XM1 其它集合兜底
+      { vendorId: VID },                                      // 4k/8k 其它集合兜底
     ];
-    let devs = [];
-    for (const f of attempts) {
-      devs = await (navigator as any).hid.requestDevice({ filters: [f] });
-      if (devs.length) break;
+    let devs = await (navigator as any).hid.requestDevice({ filters });
+    if (!devs.length) {
+      /* 精确 filter 全落空时，再让用户从全部 HID 设备里手选一次
+         （此时选择器会列出所有已连接设备，仍需用户主动点击"连接"）。 */
+      log("⚠ 精确 filter 未匹配到设备，回退到全量手选");
+      banner("warn", t("bFallbackAll"));
+      devs = await (navigator as any).hid.requestDevice({ filters: [] });
     }
     if (!devs.length) return;
     for (const d of devs) {
@@ -549,14 +552,27 @@ $("btnConnect").onclick = async () => {
       log(`candidate: "${d.productName}" VID=0x${d.vendorId.toString(16)} PID=0x${d.productId.toString(16)} [${fam}] collections=` +
           (d.collections || []).map(c => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
     }
-    // XM2we 族优先（PID 明确），其次 XM1（VID 明确），否则挑 vendor 用法页接口
+    /* 挑选优先级：
+       ① XM2we 族（PID 0x1960/0x1961 明确）
+       ② XM1 的**配置接口** VID 0x22D4 + FF01:02（实测该集合才是配置通道）
+       ③ 任意 vendor 用法页（>=0xFF00）接口
+       ④ 第一个
+       注意 XM1 同时暴露 FF02:01 / FF02:02 等集合（后者与 XM2we 同页），
+       所以不能只看"有没有 vendor 页"，要优先 FF01:02。 */
     const pick = devs.find(d => isXm2weFamily(d.productId, d.collections))
-              || devs.find(d => isXm1(d.vendorId) && (d.collections || []).some(c => c.usagePage === 0xFF01))
+              || devs.find(d => isXm1(d.vendorId) && (d.collections || []).some(c => c.usagePage === 0xFF01 && c.usage === 0x02))
+              || devs.find(d => isXm1(d.vendorId))
               || devs.find(d => (d.collections || []).some(c => c.usagePage >= 0xFF00))
               || devs[0];
     if (isXm2weFamily(pick.productId, pick.collections)) {
       await openXm2we(pick);
       return;
+    }
+    if (isXm1(pick.vendorId)) {
+      const cols = (pick.collections || []).map(c => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`);
+      log(`ℹ XM1 已打开所选集合 [${cols.join(", ")}]` +
+          (pick.collections || []).some(c => c.usagePage === 0xFF01 && c.usage === 0x02)
+            ? "" : " ⚠ 未选到 FF01:02 配置接口，若读取失败请改选同一设备的另一个集合");
     }
     if (pick.productId === DONGLE_PID)
       log("ℹ 已选择接收器。若鼠标此刻插着 USB 线，无线链路是断开的——请改选鼠标设备（或拔线后再连）。");

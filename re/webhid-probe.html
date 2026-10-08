@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>WebHID filter 测试 — XM1</title>
+<style>
+  body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; }
+  button { padding: 8px 14px; margin: 4px 4px 4px 0; font-size: 13px; cursor: pointer; }
+  pre { background: #10141c; color: #9fd0a0; padding: 12px; border-radius: 8px; font-size: 12px;
+        max-height: 340px; overflow: auto; white-space: pre-wrap; }
+  .row { margin: 10px 0; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; background: #eaf0fe; color: #2563eb; font-size: 12px; }
+</style>
+</head>
+<body>
+<h2>WebHID filter 组合测试（XM1 真机）</h2>
+<p>逐个点击按钮，观察 Chrome 选择器是否列出 XM1。<b>关键：不要在选择器弹空时反复点同一个按钮</b>。</p>
+<div class="row" id="btns"></div>
+<pre id="log">就绪。点击上方任一按钮开始测试。</pre>
+<script>
+const logEl = document.getElementById("log");
+function log(s) {
+  const t = new Date().toLocaleTimeString();
+  logEl.textContent += t + "  " + s + "\n";
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+const VID = 0x3367, VID22D4 = 0x22D4;
+const TESTS = [
+  ["1. VID-only 0x22D4",            { vendorId: VID22D4 }],
+  ["2. VID+page 0x22D4/FF01",       { vendorId: VID22D4, usagePage: 0xFF01 }],
+  ["3. VID+page+usage 0x22D4/FF01/2", { vendorId: VID22D4, usagePage: 0xFF01, usage: 0x02 }],
+  ["4. VID+page+usage 0x22D4/FF02/2", { vendorId: VID22D4, usagePage: 0xFF02, usage: 0x02 }],
+  ["5. page+usage FF01/2（无VID）",   { usagePage: 0xFF01, usage: 0x02 }],
+  ["6. VID 0x3367（4k族，应为空）",  { vendorId: VID }],
+  ["7. 全量 filters:[{}]",           {}],
+  ["8. 多 filter 合并（数组）",       [{ vendorId: VID22D4, usagePage: 0xFF01, usage: 0x02 },
+                                        { vendorId: VID, usagePage: 0xFF01, usage: 0x02 }]],
+];
+
+const btns = document.getElementById("btns");
+TESTS.forEach(([label, filter], i) => {
+  const b = document.createElement("button");
+  b.textContent = label;
+  b.onclick = async () => {
+    log("── 测试 " + (i + 1) + "：" + label);
+    log("   filter = " + JSON.stringify(filter));
+    try {
+      const filters = Array.isArray(filter) ? filter : [filter];
+      const devs = await navigator.hid.requestDevice({ filters });
+      log("   ✓ 返回 " + devs.length + " 个设备");
+      devs.forEach(d => {
+        log("     · " + d.productName + "  VID=" + hex4(d.vendorId) + " PID=" + hex4(d.productId));
+        const cols = (d.collections || []).map(c => "pg0x" + hex4(c.usagePage) + "/u0x" + hex4(c.usage)).join(", ");
+        log("       collections: " + (cols || "(无)"));
+      });
+      if (!devs.length) log("   ⚠ 选择器显示为空 —— 该 filter 不匹配任何设备");
+    } catch (e) {
+      log("   ✗ " + e.name + ": " + e.message);
+    }
+  };
+  btns.appendChild(b);
+});
+
+function hex4(v) { return "0x" + v.toString(16).padStart(4, "0").toUpperCase(); }
+
+log("navigator.hid = " + ("hid" in navigator));
+log("isSecureContext = " + window.isSecureContext);
+
+// 先列出已授权设备（若之前授权过）
+navigator.hid.getDevices().then(devs => {
+  log("已授权设备: " + devs.length + " 个");
+  devs.forEach(d => log("  · " + d.productName + " " + hex4(d.vendorId) + ":" + hex4(d.productId)));
+});
+</script>
+</body>
+</html>

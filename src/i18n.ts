@@ -65,6 +65,7 @@ const I18N = {
     weNoDevice: "尚未连接 XM2we 设备。", weWakeHint: "鼠标处于休眠：动一下鼠标再点「重新读取」。",
     bWrongFamily: "当前连接的是 XM2we（2020 协议族），此操作属于 4k 族，已阻止以免写坏 EEPROM。",
     xm1BlobNote: "XM1：blob 字段语义尚未核实（官方内部布局与线上布局之间还有一层重排），因此本页只读展示原始字节、不提供写入。等重排层核实后再开放。",
+    bFallbackAll: "精确过滤未匹配到设备，已回退到全量列表。请在选择器中挑选 Endgame Gear 设备（VID 0x22D4 = XM1，0x3367 = 4k/XM2we）。",
   },
   "en": {
     appTitle: "Endgame Gear Web Configurator", notConnected: "Not connected", connectedWired: "Connected (wired)", connectedWireless: "Connected (wireless)",
@@ -129,6 +130,7 @@ const I18N = {
     weNoDevice: "No XM2we device connected yet.", weWakeHint: "Mouse is asleep: move it, then click 'Reload'.",
     bWrongFamily: "An XM2we device (2020 protocol family) is connected. This action belongs to the 4k family and was blocked to avoid corrupting the EEPROM.",
     xm1BlobNote: "XM1: blob field semantics are not yet verified (the vendor applies an extra re-ordering layer between its internal and on-wire layouts), so this page shows the raw bytes read-only and offers no write. Writing will be enabled once that layer is confirmed.",
+    bFallbackAll: "Precise filters matched nothing, falling back to the full device list. Pick the Endgame Gear device in the chooser (VID 0x22D4 = XM1, 0x3367 = 4k/XM2we).",
   }
 };
 

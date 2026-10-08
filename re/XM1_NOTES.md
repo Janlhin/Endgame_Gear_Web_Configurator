@@ -187,33 +187,43 @@ cmp eax, ebx / sete al / inc al  ; 返回 1(成功) / 2(失败)
 需要改的只有：① VID/PID 与型号表 ② 命令码只取 4 条 ③ 去掉状态字节判定
 ④ CPI 档数改 3 ⑤ 加 blob↔内部布局的重排层。
 
-## 5. VID/PID 不硬编码（重要修正）
+## 5. VID/PID —— ★ 已从真机确认（2026-10-08）
 
-最初在二进制里找到 `22D4` / `1803` 两个值，一度以为是硬编码 VID/PID。**错**——
-它们位于 `ConfigData` / `DataPath` / `StartAP` 这批 **INI 键名区**（UTF-16），
-即配置文件项名，`22D4` 与 `22d4` 大小写各出现一次，说明是**运行时从配置读的键**。
+用户在 Windows 上插入 XM1 后枚举得到，静态逆向拿不到的那块拼图补上了：
 
-配置路径（UTF-16 字符串区 0x172A00–0x173100 完整键名）：
+| 项 | 实测值 |
+|---|---|
+| **VID : PID** | **`0x22D4` : `0x1803`** |
+| **REV（固件）** | **`0x0229`** = 固件 **2.29** ✓（README 要求软件 1.09 只配 2.29） |
+| 设备类 | Composite Device，`usbccgp` / `HidUsb` |
+| 复合结构 | MI_00 = 鼠标指针（`mouhid`，SubClass 01 Prot 02）；MI_01 = 厂商配置集合 |
 
-```
-UXM1 Configuration Software | ENDGAME GEAR XM1 GAMING MOUSE CONFIG
-C\Resources\Config.ini | Default Profile | \Profiles\pfList.dat
-\Endgame Gear\XM1 | AutoStartAP | ConfigData | DataPath | 22D4 | 22d4 | 1803
-Config Mouse | Exit Software | \Profiles | .profile | \pfList.dat
-```
+**有趣的巧合**：第一轮我在 UTF-16 键名区找到的 `22D4` / `1803`（当时判定为 INI 键名、
+"不是硬编码 VID/PID"）——**正是真实的 VID/PID**。厂商把同一组数字同时当作配置键名使用。
 
-→ **XM1 的配置另存为文件**（`.profile` / `pfList.dat` / `Config.ini`），
-UI 字符串还显示**最多 5 个配置档**（`Choose your profile. You can save max. 5 profiles`），
-但设备内的实际配置仍是 1024B blob（第 3 节实测）——文件是 PC 侧的档位备份。
+### 接口集合全图（MI_01 下 5 个集合）
 
-### ★ 枚举方式：纯 GUID 匹配，不筛 VID/PID（第二轮实测）
+| 集合 | Usage Page / Usage | 说明 |
+|---|---|---|
+| MI_00 Col00 | `0001/0002` | 标准鼠标指针 |
+| **MI_01 Col01** | **`FF01/0002`** | **★ 配置通道（与 4k 无线族同接口页）** |
+| MI_01 Col02 | `FF01/…` | 厂商定义（`HID_DEVICE_UP:FF01_U:0002` 记在 Col02） |
+| MI_01 Col03 | `000C/0001` | 消费者控制（`hidserv.inf`） |
+| MI_01 Col04 | `FF02/0001` | 厂商定义 |
+| MI_01 Col05 | `FF02/0002` | 厂商定义 ← **与 XM2we 同接口页** |
 
-`xm1_vidpid.py` 扫 `SetupDiEnumDeviceInterfaces` / `SetupDiGetClassDevsW` 调用点
-前后 ±200 字节，**没有任何 0x18xx/0x19xx/0x22D4 形式的 PID 常量**——
-工具靠 `HidD_GetHidGuid` 取 HID 类 GUID 做全量枚举。
+**关键结论**：XM1 的配置接口是 **`0xFF01` / `0x0002`**，与 4k 族完全相同——
+所以网页版的过滤器链只需再加一条 `{vendorId: 0x22D4, usagePage: 0xFF01, usage: 0x02}`。
 
-**所以 XM1 的 VID/PID 静态逆向拿不到**，只能从真机（设备管理器）取。
-`22D4` 仍是唯一线索：XM1 属 22D4 世代，与初代 OP1w 同 VID。
+⚠️ XM1 同时暴露了 `FF02:0001` 与 `FF02:0002` 两个集合（后者与 XM2we 的接口页相同），
+**别误选**——从官方 v1.09 的枚举方式（纯 GUID 匹配，不筛 usage page）看，
+工具是打开后按 report 描述符/长度区分的。网页版用 `FF01:02` 精确匹配即可避开歧义。
+
+### `22D4` 世代的归属（修正旧结论）
+
+第一轮我写"XM1 的 VID/PID 不硬编码，只能靠真机"，并推测 `22D4` 只是键名——**推测对了一半**：
+枚举确实不筛 PID（实测调用点附近无任何 PID 常量），但 `22D4`/`1803` 就是真实的 VID/PID。
+`0x22D4` 也是初代 OP1w 4k 的 VID，所以 XM1 属 **22D4 世代**。
 
 ## 5b. 三族协议对照（第二轮实测后更新）
 

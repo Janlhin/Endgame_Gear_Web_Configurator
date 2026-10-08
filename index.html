@@ -559,7 +559,8 @@ a {
       weNoDevice: "\u5C1A\u672A\u8FDE\u63A5 XM2we \u8BBE\u5907\u3002",
       weWakeHint: "\u9F20\u6807\u5904\u4E8E\u4F11\u7720\uFF1A\u52A8\u4E00\u4E0B\u9F20\u6807\u518D\u70B9\u300C\u91CD\u65B0\u8BFB\u53D6\u300D\u3002",
       bWrongFamily: "\u5F53\u524D\u8FDE\u63A5\u7684\u662F XM2we\uFF082020 \u534F\u8BAE\u65CF\uFF09\uFF0C\u6B64\u64CD\u4F5C\u5C5E\u4E8E 4k \u65CF\uFF0C\u5DF2\u963B\u6B62\u4EE5\u514D\u5199\u574F EEPROM\u3002",
-      xm1BlobNote: "XM1\uFF1Ablob \u5B57\u6BB5\u8BED\u4E49\u5C1A\u672A\u6838\u5B9E\uFF08\u5B98\u65B9\u5185\u90E8\u5E03\u5C40\u4E0E\u7EBF\u4E0A\u5E03\u5C40\u4E4B\u95F4\u8FD8\u6709\u4E00\u5C42\u91CD\u6392\uFF09\uFF0C\u56E0\u6B64\u672C\u9875\u53EA\u8BFB\u5C55\u793A\u539F\u59CB\u5B57\u8282\u3001\u4E0D\u63D0\u4F9B\u5199\u5165\u3002\u7B49\u91CD\u6392\u5C42\u6838\u5B9E\u540E\u518D\u5F00\u653E\u3002"
+      xm1BlobNote: "XM1\uFF1Ablob \u5B57\u6BB5\u8BED\u4E49\u5C1A\u672A\u6838\u5B9E\uFF08\u5B98\u65B9\u5185\u90E8\u5E03\u5C40\u4E0E\u7EBF\u4E0A\u5E03\u5C40\u4E4B\u95F4\u8FD8\u6709\u4E00\u5C42\u91CD\u6392\uFF09\uFF0C\u56E0\u6B64\u672C\u9875\u53EA\u8BFB\u5C55\u793A\u539F\u59CB\u5B57\u8282\u3001\u4E0D\u63D0\u4F9B\u5199\u5165\u3002\u7B49\u91CD\u6392\u5C42\u6838\u5B9E\u540E\u518D\u5F00\u653E\u3002",
+      bFallbackAll: "\u7CBE\u786E\u8FC7\u6EE4\u672A\u5339\u914D\u5230\u8BBE\u5907\uFF0C\u5DF2\u56DE\u9000\u5230\u5168\u91CF\u5217\u8868\u3002\u8BF7\u5728\u9009\u62E9\u5668\u4E2D\u6311\u9009 Endgame Gear \u8BBE\u5907\uFF08VID 0x22D4 = XM1\uFF0C0x3367 = 4k/XM2we\uFF09\u3002"
     },
     "en": {
       appTitle: "Endgame Gear Web Configurator",
@@ -700,7 +701,8 @@ a {
       weNoDevice: "No XM2we device connected yet.",
       weWakeHint: "Mouse is asleep: move it, then click 'Reload'.",
       bWrongFamily: "An XM2we device (2020 protocol family) is connected. This action belongs to the 4k family and was blocked to avoid corrupting the EEPROM.",
-      xm1BlobNote: "XM1: blob field semantics are not yet verified (the vendor applies an extra re-ordering layer between its internal and on-wire layouts), so this page shows the raw bytes read-only and offers no write. Writing will be enabled once that layer is confirmed."
+      xm1BlobNote: "XM1: blob field semantics are not yet verified (the vendor applies an extra re-ordering layer between its internal and on-wire layouts), so this page shows the raw bytes read-only and offers no write. Writing will be enabled once that layer is confirmed.",
+      bFallbackAll: "Precise filters matched nothing, falling back to the full device list. Pick the Endgame Gear device in the chooser (VID 0x22D4 = XM1, 0x3367 = 4k/XM2we)."
     }
   };
   var LANG = localStorage.getItem("xm2w-lang") || "zh-CN";
@@ -1915,28 +1917,37 @@ a {
       return;
     }
     try {
-      const attempts = [
+      const filters = [
         { vendorId: VID, usagePage: 65281, usage: 2 },
+        // 4k 无线族
         { vendorId: VID_22D4, usagePage: 65281, usage: 2 },
+        // XM1 / XM1 RGB（2020 变体）
         { vendorId: VID, usagePage: 65282, usage: 2 },
+        // XM2we / OP1we
         { vendorId: VID_22D4 },
-        { vendorId: VID },
-        {}
+        // XM1 其它集合兜底
+        { vendorId: VID }
+        // 4k/8k 其它集合兜底
       ];
-      let devs = [];
-      for (const f of attempts) {
-        devs = await navigator.hid.requestDevice({ filters: [f] });
-        if (devs.length) break;
+      let devs = await navigator.hid.requestDevice({ filters });
+      if (!devs.length) {
+        log("\u26A0 \u7CBE\u786E filter \u672A\u5339\u914D\u5230\u8BBE\u5907\uFF0C\u56DE\u9000\u5230\u5168\u91CF\u624B\u9009");
+        banner("warn", t("bFallbackAll"));
+        devs = await navigator.hid.requestDevice({ filters: [] });
       }
       if (!devs.length) return;
       for (const d of devs) {
         const fam = isXm2weFamily(d.productId, d.collections) ? "XM2we/2020" : isXm1(d.vendorId) ? "XM1/2020" : "4k";
         log(`candidate: "${d.productName}" VID=0x${d.vendorId.toString(16)} PID=0x${d.productId.toString(16)} [${fam}] collections=` + (d.collections || []).map((c) => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
       }
-      const pick = devs.find((d) => isXm2weFamily(d.productId, d.collections)) || devs.find((d) => isXm1(d.vendorId) && (d.collections || []).some((c) => c.usagePage === 65281)) || devs.find((d) => (d.collections || []).some((c) => c.usagePage >= 65280)) || devs[0];
+      const pick = devs.find((d) => isXm2weFamily(d.productId, d.collections)) || devs.find((d) => isXm1(d.vendorId) && (d.collections || []).some((c) => c.usagePage === 65281 && c.usage === 2)) || devs.find((d) => isXm1(d.vendorId)) || devs.find((d) => (d.collections || []).some((c) => c.usagePage >= 65280)) || devs[0];
       if (isXm2weFamily(pick.productId, pick.collections)) {
         await openXm2we(pick);
         return;
+      }
+      if (isXm1(pick.vendorId)) {
+        const cols = (pick.collections || []).map((c) => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`);
+        log(`\u2139 XM1 \u5DF2\u6253\u5F00\u6240\u9009\u96C6\u5408 [${cols.join(", ")}]` + (pick.collections || []).some((c) => c.usagePage === 65281 && c.usage === 2) ? "" : " \u26A0 \u672A\u9009\u5230 FF01:02 \u914D\u7F6E\u63A5\u53E3\uFF0C\u82E5\u8BFB\u53D6\u5931\u8D25\u8BF7\u6539\u9009\u540C\u4E00\u8BBE\u5907\u7684\u53E6\u4E00\u4E2A\u96C6\u5408");
       }
       if (pick.productId === DONGLE_PID)
         log("\u2139 \u5DF2\u9009\u62E9\u63A5\u6536\u5668\u3002\u82E5\u9F20\u6807\u6B64\u523B\u63D2\u7740 USB \u7EBF\uFF0C\u65E0\u7EBF\u94FE\u8DEF\u662F\u65AD\u5F00\u7684\u2014\u2014\u8BF7\u6539\u9009\u9F20\u6807\u8BBE\u5907\uFF08\u6216\u62D4\u7EBF\u540E\u518D\u8FDE\uFF09\u3002");
