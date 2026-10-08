@@ -20,3 +20,9 @@ re/upstream/*.log
 re/upstream/Tool8k_v1.12.exe
 re/upstream/site_*.html
 re/upstream/dl_index.html
+re/upstream/xm1_main.exe
+re/upstream/o_fd60.txt
+re/upstream/o_*.txt
+re/upstream/xm1_funcs/
+re/upstream/xm1_proto/
+re/upstream/xm1_strings_*.txt
