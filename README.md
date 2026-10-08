@@ -27,13 +27,21 @@
 
 ## 本地运行 / 部署到 GitHub Pages
 
-整个项目就是这一个 `index.html`，无需构建。
+源码在 `src/`（TypeScript），构建脚本把打包结果同时写到 `dist/index.html` 和根目录 `index.html`——两者都是零依赖单文件，**直接双击即可用，无需服务器**。
 
-**本地**：直接双击打开即可（`file://` 是安全上下文，WebHID 可用）。若浏览器策略拦截，任意静态服务器也行：
+**本地**：双击打开 `index.html`（`file://` 是安全上下文，WebHID 可用）。若浏览器策略拦截，任意静态服务器也行：
 
 ```bash
 python -m http.server 8080
 # 访问 http://localhost:8080
+```
+
+**从源码构建**（改 `src/` 后执行；产物会同步根目录 `index.html`）：
+
+```bash
+npm install
+npm run build     # esbuild 打包 -> dist/index.html + index.html
+npm run check     # tsc --noEmit 类型检查
 ```
 
 **GitHub Pages**：
@@ -56,12 +64,19 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 | v1 当前档位改不动 | v1 硬件忽略软件切换，用鼠标底部 CPI 键 |
 | 有线回报率显示 1000 Hz | USB 全速帧限制，硬件上限；写入的存储值不受影响，回到无线自动恢复 |
 
-## 协议速查（详见 vole 仓库 re/PROTOCOL.md）
+## 协议速查（详见 vole 仓库 re/PROTOCOL.md 与本项目 re/PROTOCOL_NOTES.md）
 
 - 通道：feature report `0xA1`(64B 命令/响应，负载始于偏移 16)、`0xA0`(1041B，承载 1024B 配置 blob)
-- 命令：`0x0F` 探测 · `0x0D/0x0E` 固件信息 · `0xB4` 电量 · `0x12` 读 blob · `0x13` 出厂 · `0x14` 传感器块 · `0x15` 性能块（声明 10 字节实发 11）· `0x16` 按键块×2 · `0x70` 配对
+- 命令：`0x0F` 探测 · `0x0D/0x0E` 固件信息 · `0xB4` 电量 · `0x12` 读 blob · `0x13` 出厂 · `0x14` 传感器块 · `0x15` 性能块（声明 10 字节实发 11）· `0x16` 按键块×2 · `0x70` 配对 · `0x71` 默认配对 · `0x72` 配对数据
 - 写入即持久化；状态码 `0x01` OK / `0x03` busy 重试 / `0x07` 该连接不适用 / `0x08,0x11` 鼠标休眠
 - 失败后必须重发 `0x0F` 探测，否则设备"楔死"直到下一条探测成功
+
+## 逆向验证（v1.2）
+
+协议实现已对照官方 `Endgame Gear XM2w 4k v2 Configuration Tool v1.02` 二进制逐字节核验：
+命令表/目标/长度、0x16 双块写入、blob 布局（CPI 档 `0x23+5n`、按键 `0x37+7n`、玻璃模式 `0x6F`）、
+busy 重试与发送错误码重试策略全部一致。完整证据链（反汇编脚本 + 中间产物）见 `re/`。
+LED 页签与 Surface Calibration 在官方 v1.02 中未发现协议实现路径（模板遗留 UI），故未实现。
 
 ## 致谢
 

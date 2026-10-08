@@ -146,6 +146,8 @@
     </div>
     <div class="row">
       <button id="btnPair" class="ghost" data-i18n="pair">重新配对接收器</button>
+      <button id="btnPairDefault" class="ghost" data-i18n="pairDefault">恢复默认配对</button>
+      <button id="btnPairData" class="ghost" data-i18n="getPairData">读取配对数据</button>
       <button id="btnReset" class="danger" data-i18n="factoryReset">恢复出厂设置</button>
     </div>
     <div class="row"><button id="btnLog" class="ghost" style="background:#eef0f3;color:var(--sub)" data-i18n="toggleLog">显示/隐藏通讯日志</button></div>
@@ -174,6 +176,7 @@
       <li data-i18n="noteSleep">鼠标深度休眠后读不到配置：动一下鼠标再点“重新读取”。软件会自动发探测命令恢复通道。</li>
       <li data-i18n="noteWired">有线连接时 0x0D（接收器固件）会返回“不适用”；有线回报率硬件上限 1000 Hz。</li>
       <li data-i18n="noteV1Stage">v1 的“当前档位”只能用鼠标底部的 CPI 键切换，软件改了也无效（硬件忽略）。</li>
+      <li data-i18n="noteRe">协议已对照官方 v1.02 配置工具二进制逐字节验证：命令表、负载长度、blob 布局、双块写入与重试时序全部一致；0x71/0x72（默认配对/配对数据）为官方工具新增命令，本页已同步实现。</li>
     </ul>
   </section>
 </main>

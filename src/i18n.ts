@@ -16,6 +16,9 @@ const I18N = {
     btnReadonly: "按键重映射（0x16 双块写）已在协议层实现，暂未开放编辑；点击过滤可单独调整后随“应用性能/电源”下发。",
     secTools: "配置备份 / 恢复 / 工具", exportCfg: "导出配置 (.json)", importCfg: "导入配置并写入", exportBlob: "导出原始 1024B blob (.bin)",
     pair: "重新配对接收器", factoryReset: "恢复出厂设置", toggleLog: "显示/隐藏通讯日志",
+    pairDefault: "恢复默认配对", getPairData: "读取配对数据",
+    cfPairDefault: "恢复默认配对会把鼠标与接收器的配对关系重置为出厂默认，需要重新配对吗？",
+    bPairDefaultOk: "默认配对命令已发送。", bPairDataOk: "配对数据：",
     persistNote: "写入立即持久化（无需保存操作）；0x13 是恢复出厂而非保存，慎用。",
     secCredits: "致谢与参考", secNotes: "说明与已知限制",
     minutes: "分钟", charging: "充电中（约 {0}%）", wiredMode: "有线 (USB-C)", wirelessMode: "无线 (4k 接收器)",
@@ -43,7 +46,8 @@ const I18N = {
     noteWiredOnly: "有线专用型号（XM2we、XM1 系列等）使用另一套未公开协议，暂不支持。",
     noteSleep: "鼠标深度休眠后读不到配置：动一下鼠标再点“重新读取”。软件会自动发探测命令恢复通道。",
     noteWired: "有线连接时 0x0D（接收器固件）会返回“不适用”；有线回报率硬件上限 1000 Hz。",
-    noteV1Stage: "v1 的“当前档位”只能用鼠标底部的 CPI 键切换，软件改了也无效（硬件忽略）。"
+    noteV1Stage: "v1 的“当前档位”只能用鼠标底部的 CPI 键切换，软件改了也无效（硬件忽略）。",
+    noteRe: "协议已对照官方 v1.02 配置工具二进制逐字节验证：命令表、负载长度、blob 布局、双块写入与重试时序全部一致；0x71/0x72（默认配对/配对数据）为官方工具新增命令，本页已同步实现。"
   },
   "en": {
     appTitle: "Endgame Gear Web Configurator", notConnected: "Not connected", connectedWired: "Connected (wired)", connectedWireless: "Connected (wireless)",
@@ -59,6 +63,9 @@ const I18N = {
     btnReadonly: "Button remapping (0x16 two-chunk write) is implemented at protocol level but not editable yet; click filters below are applied with 'Apply performance/power'.",
     secTools: "Backup / Restore / Tools", exportCfg: "Export config (.json)", importCfg: "Import config & write", exportBlob: "Export raw 1024B blob (.bin)",
     pair: "Re-pair dongle", factoryReset: "Factory reset", toggleLog: "Toggle communication log",
+    pairDefault: "Pair default", getPairData: "Get pair data",
+    cfPairDefault: "Pair-default resets the mouse↔dongle link to the factory default pairing. Continue?",
+    bPairDefaultOk: "Pair-default command sent.", bPairDataOk: "Pair data: ",
     persistNote: "Writes persist immediately (no commit step); 0x13 is factory reset, not save — use with care.",
     secCredits: "Credits & References", secNotes: "Notes & Known Limitations",
     minutes: "min", charging: "Charging (≈ {0}%)", wiredMode: "Wired (USB-C)", wirelessMode: "Wireless (4k dongle)",
@@ -86,7 +93,8 @@ const I18N = {
     noteWiredOnly: "Wired-only models (XM2we, XM1 series) use a different undocumented protocol and are not supported yet.",
     noteSleep: "Deep-sleeping mice can't be read: move the mouse, then click 'Reload'. The app sends probe commands to reopen the channel automatically.",
     noteWired: "On cable, 0x0D (dongle firmware) reports 'not applicable'; wired polling rate is hardware-capped at 1000 Hz.",
-    noteV1Stage: "On v1 the active stage can only be switched with the CPI button under the mouse — software changes are ignored by hardware."
+    noteV1Stage: "On v1 the active stage can only be switched with the CPI button under the mouse — software changes are ignored by hardware.",
+    noteRe: "The protocol was byte-verified against the official v1.02 configuration tool binary: command table, payload lengths, blob layout, two-chunk writes and retry timing all match; 0x71/0x72 (pair default / pair data) are new official commands, implemented here as well."
   }
 };
 

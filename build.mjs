@@ -18,4 +18,7 @@ const js = result.outputFiles[0].text;
 const template = readFileSync("index.template.html", "utf-8");
 const html = template.replace("/*__BUNDLE__*/", () => js);
 writeFileSync("dist/index.html", html);
-console.log("dist/index.html written,", (html.length / 1024).toFixed(1), "KB");
+// 同步写根目录 index.html：保持"双击即用 + GitHub Pages 指向仓库根"的工作流，
+// 并避免根目录副本与 src/ 脱节（v1.2 曾因此丢过 0x71/0x72 功能）。
+writeFileSync("index.html", html);
+console.log("dist/index.html + index.html written,", (html.length / 1024).toFixed(1), "KB");

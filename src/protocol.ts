@@ -2,7 +2,10 @@
 /* ================= 协议常量（依据 vole re/PROTOCOL.md） ================= */
 const VID = 0x3367;
 const DONGLE_PID = 0x1970;
-const MOUSE_PIDS = { 0x1968: ["XM2w 4k", 1], 0x1972: ["OP1w 4k", 1], 0x1982: ["XM2w 4k v2", 2], 0x1984: ["OP1w 4k v2", 2] };
+/* PID 表已对照官方 v1.02 工具二进制（0x17200 处的设备表：0x1982/0x1981 鼠标、0x1970/0x1969 接收器族，
+   见 re/PROTOCOL_NOTES.md）；0x1968/0x1972/0x1984 来自 vole 社区逆向。 */
+const MOUSE_PIDS = { 0x1968: ["XM2w 4k", 1], 0x1972: ["OP1w 4k", 1], 0x1969: ["XM2w 4k (变体)", 1],
+                     0x1982: ["XM2w 4k v2", 2], 0x1984: ["OP1w 4k v2", 2], 0x1981: ["XM2w 4k v2 (变体)", 2] };
 const RPT_CMD = 0xA1, RPT_BULK = 0xA0;
 const POLLING_LABELS = { 0x02: "4000 Hz", 0x04: "2000 Hz", 0x08: "1000 Hz", 0x40: "125 Hz", 0x80: "1000 Hz" };
 
