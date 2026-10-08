@@ -1535,9 +1535,9 @@ a {
     }
     throw new Error(`blob read failed after 4 rounds; last head: ${lastDump}`);
   }
-  var XM1_READ_REQ = new Uint8Array(64);
-  XM1_READ_REQ[0] = 161;
-  XM1_READ_REQ[1] = 7;
+  var XM1_READ_REQ = new Uint8Array(63);
+  XM1_READ_REQ[0] = 7;
+  XM1_READ_REQ[1] = 0;
   async function readBlobXm1() {
     let lastDump = "";
     for (let round = 1; round <= 4; round++) {
@@ -2049,7 +2049,7 @@ a {
     if (xm1) {
       const realSend = d.sendFeatureReport.bind(d);
       d.sendFeatureReport = async (reportId, data) => {
-        const isSafeReadReq = reportId === RPT_CMD && data instanceof Uint8Array && data.length === 64 && data[0] === 161 && data[1] === 7 && data.every((b, i) => i < 2 ? true : b === 0);
+        const isSafeReadReq = reportId === RPT_CMD && data instanceof Uint8Array && data.length === 63 && data[0] === 7 && data.every((b, i) => i < 1 ? true : b === 0);
         if (!isSafeReadReq) {
           log(`\u2717 XM1 \u62E6\u622A\uFF1A\u975E\u5E38\u89C4\u53D1\u9001\uFF08reportId=${reportId}, len=${data == null ? void 0 : data.length}\uFF09`);
           xm1WriteDisabled();

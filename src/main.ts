@@ -179,6 +179,7 @@ async function readBlob() {
  *   ① memset(64B, 0) / buf = 0x7A1 (线上 A1 07 00 00) / 参数区清零
  *      ebx=0，所以 `mov dword [ebp-0x40], ebx` 只是清零参数区，
  *      **不含任何配置数据** ← 这是我上次误读成"负载"的地方
+ *      ★ WebHID 侧对应：reportId=0xA1，data=buf[1..] 的 63 字节
  *   ② SetFeature(64B) → Sleep(80)          ← 空请求：只说"给我配置"
  *   ③ memset(1041B, 0) / buf[0] = 0xA1      ← ★ GetFeature 的 reportId 取自首字节
  *   ④ GetFeature(0xA1, 1041)                ← ★ 设备在此回送现有 1024B 配置
@@ -196,10 +197,20 @@ async function readBlob() {
  *   2. 写路径（0x40FB90）继续永久停用，直到 0x4103D0/0x40FD60 重排层逐字节核实。
  *   3. 若 GetFeature 返回长度异常或状态非 1，一律放弃重试，不做任何"补救性"发送。
  */
-const XM1_READ_REQ = new Uint8Array(64);
-XM1_READ_REQ[0] = 0xA1;            // 报告 ID
-XM1_READ_REQ[1] = 0x07;            // 官方 0x7A1 → 线上 A1 07 00 00
-// 余下全 0：这是空请求，不携带配置，设备只会回送现有配置
+/* 官方 0x40FC80 构造的 64 字节报告（Windows API 视角，buf[0] 是 reportId）：
+     A1 07 00 00 + 其余全 0
+ *
+ * ★ WebHID 的 sendFeatureReport(reportId, data) 里 **data 不含 reportId**，
+ *   reportId 由第一个参数单独传。所以正确的对应是：
+ *     reportId = 0xA1
+ *     data     = buf[1..] 的 63 字节 → 即 [0x07, 0x00, 0x00, ... 共 63 字节]
+ *   我此前误把 64 字节原样传进 data（等于在负载最前面多塞了一个 0xA1），
+ *   设备回显 `a1 a0 07 00 ...` 就是这个错位。
+ */
+const XM1_READ_REQ = new Uint8Array(63);   // 64 字节报告去掉 reportId 后的长度
+XM1_READ_REQ[0] = 0x07;                    // 命令码（官方 buf[1]）
+XM1_READ_REQ[1] = 0x00;
+// 其余全 0：空请求，不携带任何配置，设备只会回送现有配置
 
 async function readBlobXm1() {
   let lastDump = "";
@@ -692,9 +703,9 @@ async function openDevice(d) {
     const realSend = d.sendFeatureReport.bind(d);
     d.sendFeatureReport = async (reportId: number, data: any) => {
       const isSafeReadReq = reportId === RPT_CMD
-        && data instanceof Uint8Array && data.length === 64
-        && data[0] === 0xA1 && data[1] === 0x07
-        && data.every((b, i) => i < 2 ? true : b === 0);   // 除头两字节外全零
+        && data instanceof Uint8Array && data.length === 63
+        && data[0] === 0x07
+        && data.every((b, i) => i < 1 ? true : b === 0);   // 除命令码外全零
       if (!isSafeReadReq) {
         log(`✗ XM1 拦截：非常规发送（reportId=${reportId}, len=${data?.length}）`);
         xm1WriteDisabled();
