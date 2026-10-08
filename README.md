@@ -154,6 +154,15 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 
 之后访问 `https://<你的用户名>.github.io/egg-web-configurator/`。GitHub Pages 自动是 HTTPS，满足 WebHID 的安全上下文要求。
 
+> **部署要点**（本项目已逐项核对过，详见 [`docs/ui-port-feasibility.md`](docs/ui-port-feasibility.md)）：
+> - 产物**没有任何绝对路径**（也没有 `<base>`），所以放在项目页子路径 `…/egg-web-configurator/` 下不会破。
+>   对照：同类站点 `op1w.vercel.app` 用的是 `/assets/…` 绝对路径，同一份构建搬到项目页子路径会 404。
+> - 仓库根已有 **`.nojekyll`**：分支发布默认会跑 Jekyll，而它会排除 `_` 开头的文件（如 `scss/_tokens.scss`），
+>   更糟的是**一旦 Jekyll 构建失败，整站 404**。本项目只需要托管两个构建好的 HTML。
+> - Pages 给静态资源 `Cache-Control: max-age=600` —— 推送后旧版本可能还挂着 10 分钟，验证时用硬刷新。
+> - 从仓库根发布会把**整个仓库**公开托管。已确认没有厂商二进制入库（`.gitignore` 覆盖 `*.exe` 与真机 blob）；
+>   若只想公开产物，可另建一个 `gh-pages` 分支只放 `index.html` 与 `tools/blob-studio.html`。
+
 ## 故障排查
 
 | 现象 | 原因与处理 |

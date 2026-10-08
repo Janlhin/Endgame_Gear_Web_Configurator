@@ -62,6 +62,7 @@ export default {
   cfPairDefault: "Die Standardkopplung setzt die Verbindung Maus↔Empfänger auf die Werkseinstellung zurück. Fortfahren?",
   bPairDefaultOk: "Befehl für Standardkopplung gesendet.", bPairDataOk: "Kopplungsdaten: ",
   persistNote: "Schreibvorgänge werden sofort dauerhaft gespeichert (kein Speicherschritt); 0x13 ist ein Werksreset, kein Speichern – mit Vorsicht verwenden.",
+  studioLink: "Offline-Blob-Analysator (tools/blob-studio.html): Hex oder exportiertes JSON einfügen, um die Feldtabelle zu sehen; zwei Einfügungen werden verglichen. Kein Gerät nötig.",
   secCredits: "Dank und Quellen", secNotes: "Hinweise und bekannte Einschränkungen",
   minutes: "min", charging: "Lädt (≈ {0} %)", wiredMode: "Kabel (USB-C)", wirelessMode: "Funk (4k-Empfänger)",
   noDongleWired: "– (am Kabel kein Empfänger)", current: " (aktuell)",

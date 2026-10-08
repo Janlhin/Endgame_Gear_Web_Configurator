@@ -61,6 +61,7 @@ export default {
   cfPairDefault: "回復預設配對會把滑鼠與接收器的配對關係重設為出廠預設，需要重新配對嗎？",
   bPairDefaultOk: "預設配對命令已送出。", bPairDataOk: "配對資料：",
   persistNote: "寫入立即永久保存（無需儲存動作）；0x13 是回復原廠而非儲存，請謹慎使用。",
+  studioLink: "離線 blob 分析器（tools/blob-studio.html）：貼上 hex 或匯出的 JSON 解析成欄位表，貼兩份自動差異比對 —— 不需要連接裝置。",
   secCredits: "致謝與參考", secNotes: "說明與已知限制",
   minutes: "分鐘", charging: "充電中（約 {0}%）", wiredMode: "有線 (USB-C)", wirelessMode: "無線 (4k 接收器)",
   noDongleWired: "—（有線連線無接收器）", current: "（目前）",

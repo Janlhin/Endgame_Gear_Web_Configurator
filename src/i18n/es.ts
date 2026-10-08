@@ -62,6 +62,7 @@ export default {
   cfPairDefault: "El emparejamiento predeterminado restablece el enlace ratón↔receptor al valor de fábrica. ¿Continuar?",
   bPairDefaultOk: "Comando de emparejamiento predeterminado enviado.", bPairDataOk: "Datos de emparejamiento: ",
   persistNote: "Las escrituras se guardan de inmediato (sin paso de guardado); 0x13 es un restablecimiento de fábrica, no un guardado — úsalo con cuidado.",
+  studioLink: "Analizador de blob sin conexión (tools/blob-studio.html): pega hex o un JSON exportado para ver la tabla de campos; con dos se calcula el diff. No hace falta el dispositivo.",
   secCredits: "Créditos y referencias", secNotes: "Notas y limitaciones conocidas",
   minutes: "min", charging: "Cargando (≈ {0} %)", wiredMode: "Cable (USB-C)", wirelessMode: "Inalámbrico (receptor 4k)",
   noDongleWired: "— (sin receptor por cable)", current: " (actual)",

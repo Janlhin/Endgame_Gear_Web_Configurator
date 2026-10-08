@@ -62,6 +62,7 @@ export default {
   cfPairDefault: "기본 페어링은 마우스↔리시버 연결을 출하 시 기본값으로 되돌립니다. 계속할까요?",
   bPairDefaultOk: "기본 페어링 명령을 보냈습니다.", bPairDataOk: "페어링 데이터:",
   persistNote: "쓰기는 즉시 영구 저장됩니다(저장 동작 불필요). 0x13은 저장이 아니라 공장 초기화입니다 —— 주의하세요.",
+  studioLink: "오프라인 blob 분석기(tools/blob-studio.html): hex 또는 내보낸 JSON을 붙여 넣으면 필드 표가 나오고, 두 개를 붙이면 차이를 비교합니다. 장치가 필요 없습니다.",
   secCredits: "감사의 글 및 참고", secNotes: "설명 및 알려진 제한",
   minutes: "분", charging: "충전 중 (약 {0}%)", wiredMode: "유선 (USB-C)", wirelessMode: "무선 (4k 리시버)",
   noDongleWired: "—(유선 연결에는 리시버 없음)", current: "(현재)",

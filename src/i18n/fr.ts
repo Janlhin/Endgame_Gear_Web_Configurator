@@ -62,6 +62,7 @@ export default {
   cfPairDefault: "L’appairage par défaut réinitialise la liaison souris↔récepteur à la valeur d’usine. Continuer ?",
   bPairDefaultOk: "Commande d’appairage par défaut envoyée.", bPairDataOk: "Données d’appairage : ",
   persistNote: "Les écritures sont enregistrées immédiatement (aucune étape de sauvegarde) ; 0x13 est une réinitialisation d’usine, pas une sauvegarde — à utiliser avec prudence.",
+  studioLink: "Analyseur de blob hors ligne (tools/blob-studio.html) : collez du hex ou un JSON exporté pour obtenir le tableau des champs ; deux collages donnent un diff. Aucun appareil requis.",
   secCredits: "Remerciements et références", secNotes: "Remarques et limitations connues",
   minutes: "min", charging: "En charge (≈ {0} %)", wiredMode: "Filaire (USB-C)", wirelessMode: "Sans fil (récepteur 4k)",
   noDongleWired: "— (pas de récepteur en filaire)", current: " (actuel)",

@@ -76,8 +76,11 @@ writeFileSync("dist/index.html", html);
 // 并避免根目录副本与 src/ 脱节（v1.2 曾因此丢过 0x71/0x72 功能）。
 writeFileSync("index.html", html);
 
-const kb = (n) => (n / 1024).toFixed(1);
-console.log(`dist/index.html + index.html written, ${kb(html.length)} KB  (js ${kb(js.length)} KB, css ${kb(css.length)} KB)`);
+/* 体积按**真实字节数**（UTF-8）报，而不是字符串的 .length ——
+   含中文的产物按 .length 算会少报约 20%（中文在 UTF-16 里算 1 个码元、
+   在磁盘上占 3 字节），曾把 253 KB 报成 207 KB。 */
+const kb = (s) => (Buffer.byteLength(s, "utf8") / 1024).toFixed(1);
+console.log(`dist/index.html + index.html written, ${kb(html)} KB  (js ${kb(js)} KB, css ${kb(css)} KB)`);
 
 // ---------- 4. 独立工具页：离线 blob 分析 / 对比 ----------
 // 与主程序同源：共用 scss/ 令牌（因此深浅主题一致），产物同样是零依赖单文件，
@@ -93,4 +96,4 @@ const studioHtml = studioTpl.replace("/*__STYLES__*/", () => studioCss);
 
 assertNoDevComments(studioHtml, "tools/blob-studio.html");
 writeFileSync("tools/blob-studio.html", studioHtml);
-console.log(`tools/blob-studio.html written, ${kb(studioHtml.length)} KB  (css ${kb(studioCss.length)} KB)`);
+console.log(`tools/blob-studio.html written, ${kb(studioHtml)} KB  (css ${kb(studioCss)} KB)`);

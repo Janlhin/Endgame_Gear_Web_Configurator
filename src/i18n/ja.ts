@@ -62,6 +62,7 @@ export default {
   cfPairDefault: "既定のペアリングはマウス↔レシーバーの接続を出荷時の既定に戻します。続行しますか？",
   bPairDefaultOk: "既定ペアリングのコマンドを送信しました。", bPairDataOk: "ペアリングデータ：",
   persistNote: "書き込みは即座に永続化されます（保存操作は不要）。0x13 は保存ではなく工場出荷状態への復元です —— ご注意ください。",
+  studioLink: "オフライン blob アナライザー（tools/blob-studio.html）：hex または書き出した JSON を貼るとフィールド表になり、2 つ貼れば差分比較ができます。デバイスは不要です。",
   secCredits: "謝辞と参考文献", secNotes: "注意事項と既知の制限",
   minutes: "分", charging: "充電中（約 {0}%）", wiredMode: "有線 (USB-C)", wirelessMode: "ワイヤレス (4k レシーバー)",
   noDongleWired: "—（有線接続ではレシーバー無し）", current: "（現在）",
