@@ -60,5 +60,79 @@ function modelOf(vendorId: number, productId: number): string {
   return (MOUSE_PIDS[productId] || ["未知型号", 1])[0];
 }
 
+/* ---- XM1 写入报文的构造与校验（同一个源头，避免两处偏移写不一致）----
+ *
+ * 官方写 blob（0x40FB90）逐指令确证的几何关系：
+ *   报告长度 0x411 = 1041 字节（Windows 约定 buf[0] 是 reportId）
+ *     report[0]        = 0xA0        reportId
+ *     report[1]        = 0x08        命令码
+ *     report[2..3]     = 0
+ *     report[4]        = 0
+ *     report[5]        = 入参 = blob[0]（解析器 0x40E550 把缓冲区第 0 字节写进 obj+4）
+ *     report[6..7]     = 0
+ *     report[16..1039] = 1024B 载荷（16 + 1024 = 1040）
+ *     report[1040]     = 0           memset 留下的尾巴
+ *   WebHID 的 sendFeatureReport(reportId, data) 中 **data 不含 reportId**，
+ *   故 data = report[1..1040]，长度 1040，且 data[i] === report[i + 1]：
+ *     data[0]=0x08  data[1..2]=0  data[3]=0  data[4]=blob[0]  data[5..6]=0
+ *     载荷落在 data[15..1038]（1024 字节），data[1039] = 0
+ *   ★ 我曾在校验里写 `data.subarray(15)`（= data[15..1039]，1025 字节），
+ *     比载荷多出一位，恒判失败 —— 所以这里把两者做成一对函数并配单元测试。
+ */
+const XM1_BLOB_DATA_LEN = 1040;              // WebHID 载荷长度（报告 1041 − reportId）
+const XM1_PAYLOAD_OFF_IN_DATA = 15;          // 载荷在 data 中的起点（= 报告偏移 16 − 1）
+
+/** 构造 XM1「写 blob」的 WebHID 载荷（1040 字节，不含 reportId）。 */
+function buildXm1BlobReport(payload: Uint8Array): Uint8Array {
+  if (payload.length !== 1024) throw new Error("XM1 载荷必须是 1024 字节");
+  const data = new Uint8Array(XM1_BLOB_DATA_LEN);   // 全零，与官方 memset 后一致
+  data[0] = 0x08;                                   // 命令码
+  data[4] = payload[0];                             // buf[5] = blob[0]
+  data.set(payload, XM1_PAYLOAD_OFF_IN_DATA);       // data[15..1038]
+  return data;
+}
+
+/** 构造 XM1「写单字节」的 WebHID 载荷（63 字节，不含 reportId）。 */
+function buildXm1ByteReport(value: number): Uint8Array {
+  const b = new Uint8Array(63);
+  b[0] = 0x04;            // 命令码
+  b[3] = 0x00;            // buf[4]
+  b[4] = value & 0xFF;    // buf[5] = 值
+  return b;
+}
+
+/** 无负载查询（cmd 0x03 读字节 / cmd 0x07 读 blob）：63B，除命令码外全零。 */
+function xm1GuardQuery(reportId: number, data: unknown): boolean {
+  return reportId === RPT_CMD && data instanceof Uint8Array && data.length === 63
+    && (data[0] === 0x03 || data[0] === 0x07)
+    && data.every((b, i) => (i < 1 ? true : b === 0));
+}
+
+/** 回声写 blob：载荷必须**逐字节等于**刚读回的那 1024B（含长度与尾巴校验）。 */
+function xm1GuardEchoBlob(reportId: number, data: unknown, ref: Uint8Array | null): boolean {
+  if (reportId !== RPT_BULK || !(data instanceof Uint8Array) || !ref) return false;
+  if (data.length !== XM1_BLOB_DATA_LEN || ref.length !== 1024) return false;
+  if (data[0] !== 0x08) return false;                                // 命令码必须是 08（★ 曾被漏掉）
+  if (data[1] !== 0 || data[2] !== 0 || data[3] !== 0) return false;   // buf[2..4] 必须为 0
+  if (data[5] !== 0 || data[6] !== 0) return false;                   // buf[6..7] 必须为 0
+  if (data[4] !== ref[0]) return false;                              // buf[5] = blob[0]
+  if (data[1039] !== 0) return false;                                // memset 尾巴
+  for (let i = 0; i < 1024; i++) {
+    if (data[XM1_PAYLOAD_OFF_IN_DATA + i] !== ref[i]) return false;   // 逐字节回声
+  }
+  return true;
+}
+
+/** 回声写单字节：值必须等于刚读回 blob 的第 0 字节。 */
+function xm1GuardEchoByte(reportId: number, data: unknown, ref: Uint8Array | null): boolean {
+  if (reportId !== RPT_CMD || !(data instanceof Uint8Array) || !ref) return false;
+  if (data.length !== 63 || data[0] !== 0x04) return false;
+  if (data[3] !== 0 || data[4] !== ref[0]) return false;
+  return data.every((b, i) => (i === 0 || i === 4 ? true : b === 0));
+}
+
 export { VIDS, VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, XM1_PIDS, RPT_CMD, RPT_BULK, POLLING_LABELS,
-         XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf };
+         XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,
+         XM1_BLOB_DATA_LEN, XM1_PAYLOAD_OFF_IN_DATA,
+         buildXm1BlobReport, buildXm1ByteReport,
+         xm1GuardQuery, xm1GuardEchoBlob, xm1GuardEchoByte };

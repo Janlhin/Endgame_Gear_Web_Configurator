@@ -1,9 +1,16 @@
-// 把 TS 测试编译成 Node 可执行文件后运行（xm2we.ts 是浏览器模块，无 process 依赖问题）
+// 把 TS 测试编译成 Node 可执行文件后运行（xm2we.ts / protocol.ts 均为无 DOM 依赖模块）
 import { build } from "esbuild";
-import { writeFileSync } from "fs";
-await build({
-  entryPoints: ["re/test_xm2we.ts"],
-  bundle: true, format: "esm", platform: "node", target: "node20",
-  outfile: "re/.test_xm2we.mjs", logLevel: "warning",
-});
-const mod = await import("../re/.test_xm2we.mjs?" + Date.now());
+
+const ENTRIES = [
+  ["re/test_xm2we.ts", "re/.test_xm2we.mjs"],
+  ["re/test_xm1_write.ts", "re/.test_xm1_write.mjs"],
+];
+
+for (const [entry, out] of ENTRIES) {
+  await build({
+    entryPoints: [entry],
+    bundle: true, format: "esm", platform: "node", target: "node20",
+    outfile: out, logLevel: "warning",
+  });
+  await import("../" + out + "?" + Date.now());
+}

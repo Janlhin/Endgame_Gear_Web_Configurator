@@ -2,7 +2,9 @@
 import { $, sleep, hex, log, banner } from "./util.js";
 import { I18N, LANG, t, applyI18n } from "./i18n.js";
 import { VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK, POLLING_LABELS,
-         XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf } from "./protocol.js";
+         XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,
+         buildXm1BlobReport, buildXm1ByteReport,
+         xm1GuardQuery, xm1GuardEchoBlob, xm1GuardEchoByte } from "./protocol.js";
 import { isXm2weFamily, WE_MOUSE_PID, WE_DONGLE_PID } from "./xm2we.js";
 import { openXm2we, closeXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
 
@@ -332,7 +334,7 @@ async function readBlobXm1() {
 /** XM1 写入仍未实现：0x4103D0 重排层未逐字节核实，保持永久停用。 */
 function xm1WriteDisabled(): never {
   banner("warn", t("xm1WriteOff"));
-  throw new Error("XM1 write path disabled (blob re-ordering layer unverified) - see re/XM1_NOTES.md 6.5");
+  throw new Error(t("xm1Blocked") + " (re/XM1_NOTES.md 6.5 / 6.13)");
 }
 
 /* ================= blob 解析 / 编码 ================= */
@@ -496,19 +498,13 @@ async function writeBlobXm1Echo() {
 
   await xm1QueryByte();                                   // ① 握手（空载荷）
 
-  const data = new Uint8Array(1040);                      // ② 写 blob（data 不含 reportId）
-  data[0] = 0x08;                                         //    buf[1]
-  data[3] = 0x00;                                         //    buf[4]
-  data[4] = ref[0];                                       //    buf[5] = blob[0]（官方传 obj[4]）
-  data.set(ref, 15);                                      //    报告偏移 16 ← data 偏移 15
+  const data = buildXm1BlobReport(ref);                   // ② 写 blob（构造与校验同源）
   xm1Armed = true;
   try {
     await dev.sendFeatureReport(RPT_BULK, data);
     await sleep(XM1_SETTLE_MS);
     try { await rawReceive(RPT_CMD); } catch (e) { /* 官方的 64B 确认读，失败不致命 */ }
-    const b = xm1QueryReq(0x04);                          // ③ 写单字节（值 = blob[0]）
-    b[4] = ref[0];
-    await dev.sendFeatureReport(RPT_CMD, b);
+    await dev.sendFeatureReport(RPT_CMD, buildXm1ByteReport(ref[0]));   // ③ 写单字节 = blob[0]
     await sleep(XM1_SETTLE_MS);
   } finally {
     xm1Armed = false;                                     // 无论成败，立刻解除武装
@@ -886,20 +882,11 @@ async function openDevice(d) {
     const echo = () => xm1LastRead;
     d.sendFeatureReport = async (reportId: number, data: any) => {
       const u8 = data instanceof Uint8Array ? data : null;
-      // ① 常驻：无负载查询
-      const isQuery = !!u8 && reportId === RPT_CMD && u8.length === 63
-        && (u8[0] === 0x03 || u8[0] === 0x07)
-        && u8.every((b, i) => i < 1 ? true : b === 0);
-      // ② arm 时：回声写 blob（1041B 报告 → data 1040B，不含 reportId）
+      // 校验全部来自 protocol.ts（与构造函数同一源头，并有单元测试覆盖）
       const ref = echo();
-      const isEchoBlob = xm1Armed && !!ref && !!u8 && reportId === RPT_BULK && u8.length === 1040
-        && u8[0] === 0x08 && u8[1] === 0 && u8[2] === 0 && u8[3] === 0
-        && u8[4] === ref[0] && u8[5] === 0 && u8[6] === 0
-        && u8.subarray(15).every((b, i) => b === ref[i]);
-      // ③ arm 时：回声写单字节（值必须等于 blob[0]）
-      const isEchoByte = xm1Armed && !!ref && !!u8 && reportId === RPT_CMD && u8.length === 63
-        && u8[0] === 0x04 && u8[3] === 0 && u8[4] === ref[0]
-        && u8.every((b, i) => (i === 0 || i === 4) ? true : b === 0);
+      const isQuery = xm1GuardQuery(reportId, u8);                       // ① 无负载查询，常驻
+      const isEchoBlob = xm1Armed && xm1GuardEchoBlob(reportId, u8, ref); // ② 回声写 blob
+      const isEchoByte = xm1Armed && xm1GuardEchoByte(reportId, u8, ref); // ③ 回声写单字节
       if (!isQuery && !isEchoBlob && !isEchoByte) {
         log(`✗ XM1 拦截：非常规发送（reportId=${reportId}, len=${u8?.length}, cmd=${u8?.[0] ?? "?"}, armed=${xm1Armed}）`);
         xm1Armed = false;
