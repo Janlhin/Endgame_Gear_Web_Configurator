@@ -375,6 +375,7 @@ a {
     <h2 data-i18n="secNotes">说明与已知限制</h2>
     <ul class="muted" style="line-height:1.9; padding-left:18px; margin:0">
       <li data-i18n="noteWebhid">需要 Chrome / Edge 89+（WebHID）。本页通过 HID 特征报告直连设备，不装任何驱动。</li>
+      <li data-i18n="noteRelease">⚠ 若连接后鼠标突然失灵：立刻关闭本页面/浏览器窗口即可恢复（WebHID 会独占所选接口，关闭即释放；插拔 USB 无效）。本页只打开厂商定义接口，不会碰鼠标指针接口。</li>
       <li data-i18n="noteModels">支持全部四个无线型号：XM2w 4k / XM2w 4k v2 / OP1w 4k / OP1w 4k v2，有线（USB-C）与无线（4k 接收器）均可。型号由 cmd 0x0E 返回的鼠标 PID 自动识别。</li>
       <li data-i18n="noteWiredOnly">有线专用型号（XM2we、XM1 系列等）使用另一套未公开协议，暂不支持。</li>
       <li data-i18n="noteSleep">鼠标深度休眠后读不到配置：动一下鼠标再点“重新读取”。软件会自动发探测命令恢复通道。</li>
@@ -526,6 +527,7 @@ a {
       crVendor: "\u786C\u4EF6\u672C\u8EAB\uFF0C\u4EE5\u53CA\u672A\u6DF7\u6DC6\u3001\u53EF\u5206\u6790\u7684\u5B98\u65B9\u5DE5\u5177\u3002",
       crDisclaimer: "\u672C\u9879\u76EE\u4E3A\u72EC\u7ACB\u5F00\u6E90\u5DE5\u5177\uFF0C\u4E0E Endgame Gear / Pro Gamersware GmbH \u65E0\u96B6\u5C5E\u5173\u7CFB\uFF1B\u4E0D\u4FEE\u6539\u56FA\u4EF6\uFF0C\u4EC5\u8BFB\u5199\u7528\u6237\u914D\u7F6E\u3002",
       noteWebhid: "\u9700\u8981 Chrome / Edge 89+\uFF08WebHID\uFF09\u3002\u672C\u9875\u901A\u8FC7 HID \u7279\u5F81\u62A5\u544A\u76F4\u8FDE\u8BBE\u5907\uFF0C\u4E0D\u88C5\u4EFB\u4F55\u9A71\u52A8\u3002",
+      noteRelease: "\u26A0 \u82E5\u8FDE\u63A5\u540E\u9F20\u6807\u7A81\u7136\u5931\u7075\uFF1A\u7ACB\u523B\u5173\u95ED\u672C\u9875\u9762/\u6D4F\u89C8\u5668\u7A97\u53E3\u5373\u53EF\u6062\u590D\uFF08WebHID \u4F1A\u72EC\u5360\u6240\u9009\u63A5\u53E3\uFF0C\u5173\u95ED\u5373\u91CA\u653E\uFF1B\u63D2\u62D4 USB \u65E0\u6548\uFF09\u3002\u672C\u9875\u53EA\u6253\u5F00\u5382\u5546\u5B9A\u4E49\u63A5\u53E3\uFF0C\u4E0D\u4F1A\u78B0\u9F20\u6807\u6307\u9488\u63A5\u53E3\u3002",
       noteModels: "\u652F\u6301\u5168\u90E8\u56DB\u4E2A\u65E0\u7EBF\u578B\u53F7\uFF1AXM2w 4k / XM2w 4k v2 / OP1w 4k / OP1w 4k v2\uFF0C\u6709\u7EBF\uFF08USB-C\uFF09\u4E0E\u65E0\u7EBF\uFF084k \u63A5\u6536\u5668\uFF09\u5747\u53EF\u3002\u578B\u53F7\u7531 cmd 0x0E \u8FD4\u56DE\u7684\u9F20\u6807 PID \u81EA\u52A8\u8BC6\u522B\u3002",
       noteWiredOnly: "\u6709\u7EBF\u4E13\u7528\u578B\u53F7\uFF08XM1 \u7B49 2020 \u4EE3\uFF09\u4F7F\u7528\u53E6\u4E00\u5957\u534F\u8BAE\u65CF\uFF08\u62A5\u544A 0x08/0x09 + 0x55 \u6821\u9A8C\u5E27 + EEPROM\uFF09\uFF0C\u5C1A\u672A\u652F\u6301\uFF1BXM2we \u5DF2\u652F\u6301\u3002",
       noteWeSleep: "XM2we \u9F20\u6807\u7A7A\u95F2\u7EA6 4 \u79D2\u5373\u4F11\u7720\uFF0C\u6B64\u65F6 EEPROM \u8BFB\u5199\u4E0D\u56DE\u5E94\u2014\u2014\u52A8\u4E00\u4E0B\u9F20\u6807\u518D\u8BFB\u53D6\u3002\u7535\u91CF\u4E0E\u94FE\u8DEF\u7531\u63A5\u6536\u5668\u7F13\u5B58\uFF0C\u4F11\u7720\u65F6\u4ECD\u80FD\u8BFB\u5230\u3002",
@@ -671,6 +673,7 @@ a {
       crVendor: "The hardware itself, plus official tools shipped unobfuscated and analyzable.",
       crDisclaimer: "Independent open-source project, not affiliated with Endgame Gear / Pro Gamersware GmbH; firmware is never modified \u2014 user configuration only.",
       noteWebhid: "Requires Chrome / Edge 89+ (WebHID). This page talks to the device directly via HID feature reports \u2014 no drivers installed.",
+      noteRelease: "\u26A0 If the mouse stops responding right after connecting: close this page or the browser window immediately to restore it (WebHID holds exclusive access to the opened interface; closing releases it \u2014 replugging USB does NOT help). This page only opens vendor-defined interfaces and never touches the mouse pointer interface.",
       noteModels: "All four wireless models supported: XM2w 4k / XM2w 4k v2 / OP1w 4k / OP1w 4k v2, wired (USB-C) or wireless (4k dongle). The model is auto-detected from the mouse PID returned by cmd 0x0E.",
       noteWiredOnly: "Wired-only models from the 2020 generation (XM1 etc.) use a different protocol family (reports 0x08/0x09 with 0x55 checksum frames + EEPROM) and are not supported yet; XM2we is supported.",
       noteWeSleep: "The XM2we mouse sleeps after ~4 s idle and then stops answering EEPROM accesses \u2014 move it and reload. Battery and link state are cached by the receiver and still readable.",
@@ -1105,18 +1108,35 @@ a {
     if (!cols.some((c) => c.usagePage >= 65280)) return { ok: false, why: t("bNotVendor") };
     return { ok: true };
   }
-  async function openXm2we(d) {
+  async function openGuarded(d) {
     const guard = isSafeToOpen(d);
     if (!guard.ok) {
       log("\u2717 \u62D2\u7EDD\u6253\u5F00\uFF1A" + guard.why);
       banner("err", guard.why);
-      return;
+      return false;
     }
+    await d.open();
+    const after = isSafeToOpen(d);
+    if (!after.ok) {
+      log("\u2717 \u6253\u5F00\u540E\u53D1\u73B0\u662F\u7CFB\u7EDF\u96C6\u5408\uFF0C\u7ACB\u5373\u5173\u95ED\uFF1A" + after.why);
+      try {
+        await d.close();
+      } catch (_) {
+      }
+      banner("err", after.why);
+      return false;
+    }
+    return true;
+  }
+  async function openXm2we(d) {
     await closeXm2we();
     dev = d;
     wired = d.productId === WE_MOUSE_PID;
     model = wired ? "XM2we (wired)" : "XM2we (2.4G dongle)";
-    await d.open();
+    if (!await openGuarded(d)) {
+      dev = null;
+      return;
+    }
     sess = new Xm2weSession(d);
     const bat = await sess.readBattery();
     await sess.readLink();
@@ -1935,26 +1955,46 @@ a {
   function showCards2() {
     for (const id of ["cardInfo", "cardSensor", "cardPerf", "cardBtns", "cardTools"]) $(id).style.display = "";
   }
+  var POINTER_PAGE = 1;
+  var POINTER_USAGE = 2;
+  var VENDOR_PAGE_MIN = 65280;
   function isSafeToOpen2(d) {
     const cols = d.collections || [];
     if (!cols.length) return { ok: false, why: t("bNoCollections") };
-    const isPointer = cols.some((c) => c.usagePage === 1 && c.usage === 2);
-    if (isPointer) return { ok: false, why: t("bRefusePointer") };
-    const isVendor = cols.some((c) => c.usagePage >= 65280);
-    if (!isVendor) return { ok: false, why: t("bNotVendor") };
+    const bad = cols.find((c) => c.usagePage < VENDOR_PAGE_MIN);
+    if (bad) {
+      return {
+        ok: false,
+        why: bad.usagePage === POINTER_PAGE && bad.usage === POINTER_USAGE ? t("bRefusePointer") : t("bNotVendor")
+      };
+    }
     return { ok: true };
   }
-  async function openDevice(d) {
+  async function openGuarded2(d) {
     const guard = isSafeToOpen2(d);
     if (!guard.ok) {
       log("\u2717 \u62D2\u7EDD\u6253\u5F00\uFF1A" + guard.why);
       banner("err", guard.why);
-      return;
+      return false;
     }
+    await d.open();
+    const after = isSafeToOpen2(d);
+    if (!after.ok) {
+      log("\u2717 \u6253\u5F00\u540E\u53D1\u73B0\u662F\u7CFB\u7EDF\u96C6\u5408\uFF0C\u7ACB\u5373\u5173\u95ED\uFF1A" + after.why);
+      try {
+        await d.close();
+      } catch (_) {
+      }
+      banner("err", after.why);
+      return false;
+    }
+    return true;
+  }
+  async function openDevice(d) {
+    if (!await openGuarded2(d)) return;
     dev2 = d;
     xm1 = isXm1(d.vendorId);
     wired2 = xm1 || d.productId !== DONGLE_PID;
-    await dev2.open();
     dev2.addEventListener("inputreport", (e) => {
       if (e.data.byteLength < 2) return;
       const code = e.data.getUint8(0), v = e.data.getUint8(1);

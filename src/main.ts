@@ -548,29 +548,50 @@ function showCards() { for (const id of ["cardInfo","cardSensor","cardPerf","car
 /* ================= 连接 ================= */
 /** 安全闸门：只允许打开厂商配置集合。
  *  绝不能打开系统鼠标指针集合（UP:0001/0002）——WebHID 打开即独占该接口，
- *  Windows HID 驱动会失去访问权，导致**鼠标无法移动**（实测发生过）。 */
+ *  Windows HID 驱动会失去访问权，导致**鼠标无法移动**（实测发生过：
+ *  用户插拔无反应，必须关闭浏览器窗口才释放）。
+ *  规则：宁可拒绝连接，也绝不能猜错接口。 */
+const POINTER_PAGE = 0x0001, POINTER_USAGE = 0x0002, VENDOR_PAGE_MIN = 0xFF00;
 function isSafeToOpen(d) {
   const cols = d.collections || [];
-  // 没有 collections 信息时无法判断 → 拒绝，宁可不连也不能弄坏用户的鼠标
   if (!cols.length) return { ok: false, why: t("bNoCollections") };
-  const isPointer = cols.some(c => c.usagePage === 0x0001 && c.usage === 0x0002);
-  if (isPointer) return { ok: false, why: t("bRefusePointer") };
-  const isVendor = cols.some(c => c.usagePage >= 0xFF00);
-  if (!isVendor) return { ok: false, why: t("bNotVendor") };
+  // 指针 / 键盘 / 消费者控制等系统集合一律拒绝
+  const bad = cols.find(c => c.usagePage < VENDOR_PAGE_MIN);
+  if (bad) {
+    return { ok: false,
+      why: (bad.usagePage === POINTER_PAGE && bad.usage === POINTER_USAGE)
+        ? t("bRefusePointer") : t("bNotVendor") };
+  }
   return { ok: true };
 }
 
-async function openDevice(d) {
+/** 保险丝：open() 之后再复验一次 collections，若判定危险则立即 close()。
+ *  即使未来有人误加了宽泛 filter，这条也能兜住（浏览器仍可能短暂独占接口，
+ *  所以必须尽快释放）。 */
+async function openGuarded(d) {
   const guard = isSafeToOpen(d);
   if (!guard.ok) {
     log("✗ 拒绝打开：" + guard.why);
     banner("err", guard.why);
-    return;
+    return false;
   }
+  await d.open();
+  // open 后复验：接口集合在拿到权限后更完整，此时判断更准
+  const after = isSafeToOpen(d);
+  if (!after.ok) {
+    log("✗ 打开后发现是系统集合，立即关闭：" + after.why);
+    try { await d.close(); } catch (_) {}
+    banner("err", after.why);
+    return false;
+  }
+  return true;
+}
+
+async function openDevice(d) {
+  if (!(await openGuarded(d))) return;
   dev = d;
   xm1 = isXm1(d.vendorId);
   wired = xm1 || d.productId !== DONGLE_PID;
-  await dev.open();
   dev.addEventListener("inputreport", e => {
     if (e.data.byteLength < 2) return;
     const code = e.data.getUint8(0), v = e.data.getUint8(1);

@@ -193,6 +193,7 @@
     <h2 data-i18n="secNotes">说明与已知限制</h2>
     <ul class="muted" style="line-height:1.9; padding-left:18px; margin:0">
       <li data-i18n="noteWebhid">需要 Chrome / Edge 89+（WebHID）。本页通过 HID 特征报告直连设备，不装任何驱动。</li>
+      <li data-i18n="noteRelease">⚠ 若连接后鼠标突然失灵：立刻关闭本页面/浏览器窗口即可恢复（WebHID 会独占所选接口，关闭即释放；插拔 USB 无效）。本页只打开厂商定义接口，不会碰鼠标指针接口。</li>
       <li data-i18n="noteModels">支持全部四个无线型号：XM2w 4k / XM2w 4k v2 / OP1w 4k / OP1w 4k v2，有线（USB-C）与无线（4k 接收器）均可。型号由 cmd 0x0E 返回的鼠标 PID 自动识别。</li>
       <li data-i18n="noteWiredOnly">有线专用型号（XM2we、XM1 系列等）使用另一套未公开协议，暂不支持。</li>
       <li data-i18n="noteSleep">鼠标深度休眠后读不到配置：动一下鼠标再点“重新读取”。软件会自动发探测命令恢复通道。</li>

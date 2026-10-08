@@ -37,19 +37,33 @@ function isSafeToOpen(d): { ok: boolean; why?: string } {
   return { ok: true };
 }
 
-/** 打开设备并进入 XM2we 模式。会关闭既有会话，避免两族混用同一 device。 */
-export async function openXm2we(d: any) {
+/** 保险丝：open() 后复验，判定为系统集合则立即 close()。
+ *  与 main.ts 的 openGuarded 同理——防止将来任何 filter 改动导致误开鼠标指针接口。 */
+async function openGuarded(d: any): Promise<boolean> {
   const guard = isSafeToOpen(d);
   if (!guard.ok) {
     log("✗ 拒绝打开：" + guard.why);
     banner("err", guard.why);
-    return;
+    return false;
   }
+  await d.open();
+  const after = isSafeToOpen(d);
+  if (!after.ok) {
+    log("✗ 打开后发现是系统集合，立即关闭：" + after.why);
+    try { await d.close(); } catch (_) {}
+    banner("err", after.why);
+    return false;
+  }
+  return true;
+}
+
+/** 打开设备并进入 XM2we 模式。会关闭既有会话，避免两族混用同一 device。 */
+export async function openXm2we(d: any) {
   await closeXm2we();
   dev = d;
   wired = d.productId === WE_MOUSE_PID;
   model = wired ? "XM2we (wired)" : "XM2we (2.4G dongle)";
-  await d.open();
+  if (!(await openGuarded(d))) { dev = null; return; }
   sess = new Xm2weSession(d);
 
   // 0x03/0x04 由接收器缓存，即使鼠标睡了也能答；先电量后链路（插线瞬间链路会短暂断开）
