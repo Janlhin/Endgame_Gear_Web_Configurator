@@ -13,7 +13,7 @@ import { isXm2weFamily } from "./xm2we.js";
 import { buildDiag } from "./diag.js";
 import { applyLayout, applyLayoutFromHash, reapplyLayout } from "./layout.js";
 import { openXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
-import { S } from "./state.js";
+import { S, blob } from "./state.js";
 import { guarded } from "./transport.js";
 import { snapSensor, verifySensor, snapPerf, verifyPerf, snapButtons, verifyButtons, reportVerify } from "./verify.js";
 import { parseBlob, buildSensorPayload, buildPowerPayload, xm1Parse } from "./blob.js";
@@ -422,7 +422,7 @@ $el("btnXm1Undo").onclick = async () => {
   try {
     await writeBlobXm1(prev.blob);
     await readBlob();
-    S.xm1Edit = xm1Parse(S.blob);
+    S.xm1Edit = xm1Parse(blob());
     render();
     S.xm1Snaps.pop();                        // 丢弃"当前"这一份，回到上一份
     banner("ok", t("xm1UndoOk"));
@@ -469,7 +469,7 @@ $el("btnXm1Echo").onclick = async () => {
   }
 };
 
-$el("btnBlob").onclick = () => { if (S.blob) download(new Blob([S.blob]), `egg-mouse-blob-${Date.now()}.bin`); };
+$el("btnBlob").onclick = () => { if (S.blob) download(new Blob([S.blob as BlobPart]), `egg-mouse-blob-${Date.now()}.bin`); };
 /* 测试数据包：型号 / PID / 固件 / 接口集合 / 完整 blob / 通讯日志一次带走，
    外加一份回报模板。给远程志愿者用 —— 他们手里正是我们没有的型号。 */
 $el("btnDiag").onclick = () => {

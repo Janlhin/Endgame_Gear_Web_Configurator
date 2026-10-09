@@ -11,8 +11,8 @@ import { errMsg } from "./err.js";
  */
 import { $el, sleep, hex, log, banner } from "./util.js";
 import { t } from "./i18n.js";
-import { S, type Xm1Edit } from "./state.js";
-import { rawReceive } from "./transport.js";
+import { S, blob, type Xm1Edit } from "./state.js";
+import { dev, rawReceive } from "./transport.js";
 // xm1GuardEchoByte 由 connect.ts 的发送闸门调用（它在包裹 sendFeatureReport），
   // 本文件不需要它。2026-10-09 清理此前残留的导入。
   import { RPT_CMD, RPT_BULK, XM1_SETTLE_MS, buildXm1BlobReport, buildXm1ByteReport } from "./protocol.js";
@@ -26,7 +26,7 @@ export function xm1QueryReq(cmd: number) {
 
 export async function xm1QueryByte() {
   try {
-    await S.dev.sendFeatureReport(RPT_CMD, xm1QueryReq(0x03));
+    await dev().sendFeatureReport(RPT_CMD, xm1QueryReq(0x03));
   } catch (e) {
     log(`✗ XM1 cmd 0x03 发送失败: ${errMsg(e)}`);
     return null;
@@ -51,7 +51,7 @@ export async function readBlobXm1() {
   for (let round = 1; round <= 4; round++) {
     // ① 发 64B 空请求（无负载，不改动鼠标任何配置）
     try {
-      await S.dev.sendFeatureReport(RPT_CMD, XM1_READ_REQ);
+      await dev().sendFeatureReport(RPT_CMD, XM1_READ_REQ);
     } catch (e) {
       log(`✗ XM1 空请求失败 (round ${round}): ${errMsg(e)}`);
       lastDump = "send:" + errMsg(e);
@@ -135,10 +135,10 @@ export async function writeBlobXm1(payloadIn?: Uint8Array) {
   const data = buildXm1BlobReport(payloadIn || ref);      // ② 写 blob（构造与校验同源）
   S.xm1Armed = true;
   try {
-    await S.dev.sendFeatureReport(RPT_BULK, data);
+    await dev().sendFeatureReport(RPT_BULK, data);
     await sleep(XM1_SETTLE_MS);
     try { await rawReceive(RPT_CMD); } catch (e) { /* 官方的 64B 确认读，失败不致命 */ }
-    await S.dev.sendFeatureReport(RPT_CMD, buildXm1ByteReport(ref[0]));   // ③ 写单字节 = blob[0]
+    await dev().sendFeatureReport(RPT_CMD, buildXm1ByteReport(ref[0]));   // ③ 写单字节 = blob[0]
     await sleep(XM1_SETTLE_MS);
   } finally {
     S.xm1Armed = false;                                     // 无论成败，立刻解除武装
@@ -195,13 +195,16 @@ export function xm1FieldName(off: number): string {
 
 export async function xm1Apply() {
   if (!S.xm1LastRead || !S.xm1Edit) return banner("err", t("bRead"));
-  const next = xm1PatchEdit(S.xm1LastRead, S.xm1Edit);
+  // 提取局部别名：入口已判空，但判空结果不会传进下面的 map 闭包——
+  // 闭包里再写 S.xm1LastRead 会报 TS18047（收敛 S 时暴露）。
+  const ref = S.xm1LastRead;
+  const next = xm1PatchEdit(ref, S.xm1Edit);
   const diffs: number[] = [];
-  for (let i = 0; i < 1024; i++) if (next[i] !== S.xm1LastRead[i]) diffs.push(i);
+  for (let i = 0; i < 1024; i++) if (next[i] !== ref[i]) diffs.push(i);
   if (!diffs.length) return banner("warn", t("xm1NoChange"));
 
   const lines = diffs.map(o => "  0x" + o.toString(16).padStart(3, "0") + "  " +
-    xm1FieldName(o) + "   " + S.xm1LastRead[o].toString(16).padStart(2, "0") + " → " +
+    xm1FieldName(o) + "   " + ref[o].toString(16).padStart(2, "0") + " → " +
     next[o].toString(16).padStart(2, "0")).join("\n");
   if (!window.confirm(t("xm1ApplyConfirm").replace("{0}", String(diffs.length)) + "\n\n" + lines)) return;
 
@@ -213,7 +216,7 @@ export async function xm1Apply() {
        但这样本模块就不需要反向依赖 device-4k，避免模块间成环。 */
     await readBlobXm1();
     // 回读校验：把读回的数据按编辑状态再解一次，逐项比对
-    const p = xm1Parse(S.blob);
+    const p = xm1Parse(blob());
     const want = S.xm1Edit;
     const bad: string[] = [];
     if (p.active !== (want.active | 0)) bad.push(t("xm1FActive"));

@@ -17,6 +17,21 @@ export class StatusError extends Error {
   constructor(code: any, msg: string) { super(msg); this.code = code; }
 }
 
+/** 取当前设备，**未连接即抛**。
+ *
+ *  所有报文都经本模块下发，故把「设备必须已连接」这个契约收在这里——
+ *  调用方不必各自 `if (!S.dev) return`，也不可能忘记。
+ *
+ *  ★ 为什么用抛而不用 `?.` / `if` 静默返回：
+ *  设备未连接时发出报文是**编程错误**（调用顺序错了），不是可恢复的运行时状态。
+ *  静默跳过会让人以为「发出去了」，而实际上什么都没发生——
+ *  这正是 2026-10-09 那次「点了没反应」的成因。
+ *  抛出来则会被上层的 try/catch 捕获并显示成明确的错误信息。 */
+export function dev(): HIDDevice {
+  if (!S.dev) throw new Error("设备未连接");
+  return S.dev;
+}
+
 /** XM1 写入的兜底闸门：任何下发给 XM1 的命令报文都会撞上它。
  *  XM1 的写入只能走「回声」路径（见 device-xm1 的 writeBlobXm1Echo），
  *  绝不允许经由这条通用命令通道 —— 2026-10-09 曾因下发 1041B 全零 blob
@@ -38,8 +53,8 @@ export async function rawReceive(reportId: number, size?: number) {
        即 GetFeature 的 reportId 取自**缓冲区首字节** = 0xA1。
        （曾误传 0xA0 → 设备把空请求原样回显，日志里全是 0x00。）
      size：某些实现需要显式长度，XM1 走 1041B 时传它。 */
-  const d = size !== undefined ? await S.dev.receiveFeatureReport(reportId, size)
-                               : await S.dev.receiveFeatureReport(reportId);
+  const d = size !== undefined ? await dev().receiveFeatureReport(reportId, size)
+                               : await dev().receiveFeatureReport(reportId);
   let u8 = new Uint8Array(d.buffer);
   if (u8.length && u8[0] === 0x00) u8 = u8.slice(1);              // 零占位 → 丢弃
   if (u8.length && u8[0] === reportId) return u8;                 // 已含 reportId
@@ -61,7 +76,7 @@ export async function transact(cmd: number, target = 0x00, payload: number[] | n
     if (opt.chunk) buf[6] = opt.chunk;
     if (payload) buf.set(payload, 15);               // 报告内偏移 16 = 去掉 ID 后的 15
     for (let attempt = 0; attempt < 4; attempt++) {
-      try { await S.dev.sendFeatureReport(RPT_CMD, buf); }
+      try { await dev().sendFeatureReport(RPT_CMD, buf); }
       catch (e) { log(`✗ SET fail (cmd 0x${cmd.toString(16)}): ${errMsg(e)}`); if (attempt === 3) throw e; await sleep(60); continue; }
       await sleep(opt.pace || 170);
       let u8;
@@ -77,8 +92,12 @@ export async function transact(cmd: number, target = 0x00, payload: number[] | n
     }
     throw new StatusError(0x03, "device stays busy");
   };
-  const p = S.queue.then(run, run);
-  S.queue = p.catch(() => {});
+  // p 的类型是 transact 的返回值（Uint8Array），但队列只需要「排一次执行」——
+  // S.queue 的类型是 Promise<void>，故显式把结果吞掉。
+  // 用 .then(run, run) 而非 .then(() => run())：onRejected 也要走同一个 run，
+  // 前一个事务失败不能卡死队列。
+  const p: Promise<Uint8Array> = S.queue.then(run, run);
+  S.queue = p.then(() => {}, () => {});
   return p;
 }
 

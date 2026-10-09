@@ -31,7 +31,16 @@ interface HIDDevice extends EventTarget {
   open(): Promise<void>;
   close(): Promise<void>;
   forget(): Promise<void>;
-  sendFeatureReport(reportId: number, data: BufferSource): Promise<void>;
+  /* ⚠️ 这里刻意放宽到 `ArrayBufferView<ArrayBufferLike>`，不用 DOM lib 的
+     `BufferSource`。原因：TS 5.7 起Uint8Array 泛型化了，
+     `new Uint8Array(n)` 推断为 Uint8Array<ArrayBufferLike>，
+     而 BufferSource 要求 ArrayBufferView<ArrayBuffer> —— 于是本项目所有
+     构造出来的报文都会被判为「类型不兼容」（实测 8 处）。
+
+     WebHID 规范说的是「BufferSource」，但运行时只要求是 ArrayBuffer 视图，
+     不关心底层是ArrayBuffer 还是 SharedArrayBuffer —— 我们不会用后者，
+     也不存在并发共享的场景，故放宽是安全且贴合实际的。 */
+  sendFeatureReport(reportId: number, data: ArrayBufferView<ArrayBufferLike> | ArrayBufferLike): Promise<void>;
   receiveFeatureReport(reportId: number, size?: number): Promise<DataView>;
 }
 

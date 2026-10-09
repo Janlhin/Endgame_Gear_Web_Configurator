@@ -67,14 +67,18 @@ export interface Stage {
    *  写入时再由 buildBlob8k / buildSensorPayload 组装回 flags。
    *  只在 v1 / v2 上生效，故 render.ts 与 buildBlob8k 里都有 S.gen 的条件判断。 */
 
+  /* 这四个是布尔开关：写入侧只用真假判断（`if (S.stage.slamclick) f |= 1`），
+     赋0/1 与赋 true/false 运行时等价。但 UI 层（render.ts / main.ts）统一写
+     `!!(flags &掩码)`，故类型是 boolean 而非 number —— 之前声明成number
+     是错的，收敛 S 时被tsc 抓了出来。 */
   /** Slamclick 过滤（flags & 0x01）。 */
-  slamclick?: number;
+  slamclick?: boolean;
   /** 抖动过滤（flags & 0x10），**仅 v1（4k 一代）有**。 */
-  jitter?: number;
+  jitter?: boolean;
   /** 强制最高传感器 FPS（flags & 0x40），**仅 v2 有**。 */
-  maxFps?: number;
+  maxFps?: boolean;
   /** 多击确认过滤（flags & 0x20），**仅 v2 有**。 */
-  multiclick?: number;
+  multiclick?: boolean;
 
   powerSaving: MinutesOrOff;
   deepSleep: MinutesOrOff;
@@ -128,15 +132,84 @@ export function newStage(): Stage {
   };
 }
 
-export const S: any = {
+/** 全局状态。**类型如实反映现状，不做美化**——
+ *  `dev` / `blob` / `gen` / `xm1LastRead` 都可能是 null（设备未连接 / 未读取），
+ *  调用方必须自己判空。此前 S 是 any，上述空值假设全无检查；
+ *  收敛后暴露的 50 个错误里绝大多数正是这类「本来就该判空却没判」的地方，
+ *  属于**修好而非添麻烦**。 */
+export interface GlobalState {
   /* —— 传输层 —— */
-  dev: null as any,                            // 已打开的 HIDDevice
-  queue: Promise.resolve() as Promise<any>,    // 事务串行队列
-  lastFail: false,                             // 上次事务失败 → 下次先 probe
+  /** 已打开的 HIDDevice。未连接时为 null——所有报文发送前必须判空。 */
+  dev: HIDDevice | null;
+  /** 事务串行队列。串成一条链，保证 HID 报文不并发（见 transport.ts）。 */
+  queue: Promise<void>;
+  /** 上次事务失败 → 下次先 probe。 */
+  lastFail: boolean;
+
+  /* —— 设备识别 —— */
+  mouseName: string;
+  /** 4k 族代数（1/ 2），**null = 未知**，0 也可能出现（见 connect.ts 的识别逻辑）。
+   *  渲染时以 `v${gen}` 展示、并传给 cpiInputBounds() 决定 CPI 步进。 */
+  gen: number | null;
+  eightK: boolean;
+  family4: boolean;
+  xm1: boolean;
+  wired: boolean;
+  /** 仅静态实证、未真机验证 → 只读。 */
+  unverified: boolean;
+  /** PID 未收录 → 只读。 */
+  unknownModel: boolean;
+  /** 未验证型号的「实验写入」开关：默认关，用户点确认后才在本次连接内打开。
+   *  随设备丢失 / 复位一起清掉（见 presence.resetToInitial），绝不跨会话保留。 */
+  betaArmed: boolean;
+
+  /* —— 从设备读回的数据 —— */
+  /** 1024B 配置。**未读取时为 null** —— blob.ts / buildSensorPayload 的
+   *  每一处 `b[i]` 都依赖调用方先判空。 */
+  blob: Uint8Array | null;
+  /** 8k：最近一次完整 1041B 报告帧。 */
+  lastFrame: Uint8Array | null;
+  /** 该帧的配置是否确实起于报告偏移 16。 */
+  frameAligned: boolean;
+  dongleFw: string;
+  mouseFw: string;
+  battery: number | null;
+
+  /* —— 界面模型（stage 是 UI 的单一数据源） —— */
+  stage: Stage;
+
+  /* —— XM1 写入闸门 —— */
+  /** 只允许「回声」这一份。未读取时 null。 */
+  xm1LastRead: Uint8Array | null;
+  /** 是否处于一次明确的写回测试中。 */
+  xm1Armed: boolean;
+  xm1Edit: Xm1Edit | null;
+  /** 快照：每次成功读取、以及每次写入前各存一份，最多 20 份，支持一键回退。 */
+  xm1Snaps: { at: number; label: string; blob: Uint8Array }[];
+}
+
+/** 取当前配置 blob，**未读取过则抛**。
+ *
+ *  典型用法是「readBlob() 刚成功，紧接着解析/构造报文」——
+ *  那条路径上 S.blob 必然非空。此前 S 是 any，这类假设完全没被检查；
+ *  收敛后暴露出的 4 处 TS2345 全是这个模式。
+ *
+ *  同样用抛而不用静默兜底：读不到配置却继续往下走，
+ *  会把一份空/过期的 blob 写回设备 —— 那正是配置被清零的成因。 */
+export function blob(): Uint8Array {
+  if (!S.blob) throw new Error("尚未成功读取过配置");
+  return S.blob;
+}
+
+export const S: GlobalState = {
+  /* —— 传输层 —— */
+  dev: null,                                    // 已打开的 HIDDevice
+  queue: Promise.resolve(),                // 事务串行队列
+  lastFail: false,// 上次事务失败 → 下次先 probe
 
   /* —— 设备识别 —— */
   mouseName: "—",
-  gen: null as any,                            // 4k 族代数 1/2（null = 未知）
+  gen: null,                                    // 4k 族代数 1/2（null = 未知）
   eightK: false,                               // 8k 有线族
   family4: false,                              // 第四协议族（只识别、不通信）
   xm1: false,                                  // XM1 / XM1 RGB
@@ -148,18 +221,18 @@ export const S: any = {
   betaArmed: false,
 
   /* —— 从设备读回的数据 —— */
-  blob: null as Uint8Array | null,             // 1024B 配置
-  lastFrame: null as Uint8Array | null,        // 8k：最近一次完整 1041B 报告帧
+  blob: null,                // 1024B 配置
+  lastFrame: null,                // 8k：最近一次完整 1041B 报告帧
   frameAligned: false,                         // 该帧的配置是否确实起于报告偏移 16
   dongleFw: "—", mouseFw: "—",
-  battery: null as number | null,
+  battery: null,
 
   /* —— 界面模型（stage 是 UI 的单一数据源） —— */
   stage: newStage(),
 
   /* —— XM1 写入闸门 —— */
-  xm1LastRead: null as Uint8Array | null,      // 只允许「回声」这一份
+  xm1LastRead: null,              // 只允许「回声」这一份
   xm1Armed: false,                             // 是否处于一次明确的写回测试中
-  xm1Edit: null as Xm1Edit | null,
-  xm1Snaps: [] as { at: number; label: string; blob: Uint8Array }[],
+  xm1Edit: null,
+  xm1Snaps: [],
 };

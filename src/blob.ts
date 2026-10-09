@@ -36,8 +36,15 @@ export function mmToLodByte(mm: number, glass?: boolean) {
   return Math.round(mm * 10) - 7;
 }
 
+/** 从 S.blob 解析出 stage。**调用方必须先确认已读到配置**
+ *  （`S.blob !== null`）—— 典型调用点是 session.ts 的 readBlob()
+ *  与 importBlob()，两者都在读成功后立即调用。
+ *
+ *  这里用 `!` 断言而不是加 if：契约是「没 blob 就该崩」，
+ *  与其静默返回一个空 stage（让人以为解析成功了），
+ *  不如立刻抛出来暴露调用顺序错误。 */
 export function parseBlob() {
-  const b = S.blob;
+  const b = S.blob!;
   // 类型是 Stage 而非 any —— 于是下面每一次字段赋值都受类型检查约束。
   // 新增字段必须先在 Stage 接口里声明（含未核实字段 raw/ unknown/ unk7，
   // 它们的语义见 state.ts 的注释），否则 tsc 会报错。

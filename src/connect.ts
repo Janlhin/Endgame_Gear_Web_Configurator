@@ -129,7 +129,12 @@ export async function openDevice(d: HIDDevice) {
     (d as HIDDevice & { __realSend?: HIDDevice["sendFeatureReport"] }).__realSend = realSend;
     log("⚠ XM1：读查询常驻放行；写 blob 仅允许「原样回声」（逐字节校验），其余一律拦截");
   }
-  S.dev.addEventListener("inputreport", (e: HIDInputReportEvent) => {
+  // 回调参数声明为 Event 再转型：HIDDevice 继承自 EventTarget，
+  // 其 addEventListener 的签名要求 (evt: Event) => void，
+  // 直接写 (e: HIDInputReportEvent) 会因参数类型逆变而不兼容。
+  // 运行时浏览器给的就是 HIDInputReportEvent，转型是安全的。
+  S.dev.addEventListener("inputreport", (ev) => {
+    const e = ev as HIDInputReportEvent;
     if (e.data.byteLength < 2) return;
     const code = e.data.getUint8(0), v = e.data.getUint8(1);
     if (code === 0xB4) { S.battery = e.data.getUint8(2); render(); log(`⚡ battery event: ${S.battery}%`); }

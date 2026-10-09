@@ -42,6 +42,17 @@ export function fillSelect(sel: HTMLSelectElement, opts: (string | number)[][], 
 }
 
 export function renderXm1() {
+  /* S.xm1Edit 为 null 说明 XM1 配置还没成功读出来（session.ts:82 的 catch
+     分支也会走到这里）。此时下面每处 S.xm1Edit.stages 都会抛，
+     故先给出提示并返回——**这是本次收敛 S 时暴露的真实风险**，
+     此前 S 是 any，编译器不会报，实际跑到这里会白屏。 */
+  if (!S.xm1Edit) {
+    $el("iModel").textContent = S.mouseName;
+    return;
+  }
+  // 提取局部别名：判空结果不会传进下面的闭包，闭包里再用 S.xm1Edit 会重新报错。
+  // 这一行是收敛 S 时最需要的改动——它同时让「此处已判空」对类型系统可见。
+  const ed = S.xm1Edit;
   $el("iModel").textContent = S.mouseName;
   $el("iMouseFw").textContent = "—";
   $el("iDongleFw").textContent = t("noDongleWired");
@@ -53,32 +64,32 @@ export function renderXm1() {
 
   const tb = $el<HTMLTableSectionElement>("cpiRows");
   tb.innerHTML = "";
-  if (!S.blob || !S.blob.length || !S.xm1Edit) {
+  if (!S.blob || !S.blob.length || !ed) {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td colspan="5" class="muted">${t("bRead")}</td>`;
     tb.appendChild(tr);
     return;
   }
 
-  S.xm1Edit.stages.forEach((st: any, i: number) => {
+  ed.stages.forEach((st: any, i: number) => {
     const tr = document.createElement("tr");
     tr.innerHTML =
       `<td>CPI ${i + 1}</td>` +
       `<td><input type="checkbox" data-on="${i}"${st.on ? " checked" : ""}></td>` +
-      `<td style="text-align:center"><input type="radio" name="xm1act" data-act="${i}"${S.xm1Edit.active === i ? " checked" : ""}></td>` +
+      `<td style="text-align:center"><input type="radio" name="xm1act" data-act="${i}"${ed.active === i ? " checked" : ""}></td>` +
       `<td colspan="2"><input type="number" data-x="${i}" min="50" max="30000" step="50" value="${st.x}"></td>`;
     // XM1 恒走默认档（50–30000/步进 50）：它的步进是 2026-10-08 实测确认过的，不随 gen 放宽
     tb.appendChild(tr);
   });
   // 事件：直接改编辑状态，不立即写设备
   tb.querySelectorAll<HTMLInputElement>("input[data-on]").forEach((el) => {
-    el.onchange = () => { S.xm1Edit.stages[+el.dataset.on!].on = el.checked ? 1 : 0; };
+    el.onchange = () => { ed.stages[+el.dataset.on!].on = el.checked; };
   });
   tb.querySelectorAll<HTMLInputElement>("input[data-act]").forEach((el) => {
-    el.onchange = () => { S.xm1Edit.active = +el.dataset.act!; };
+    el.onchange = () => { ed.active = +el.dataset.act!; };
   });
   tb.querySelectorAll<HTMLInputElement>("input[data-x]").forEach((el) => {
-    el.oninput = () => { S.xm1Edit.stages[+el.dataset.x!].x = +el.value || 0; };
+    el.oninput = () => { ed.stages[+el.dataset.x!].x = +el.value || 0; };
   });
   const note = document.createElement("tr");
   note.innerHTML = `<td colspan="5" class="muted">${t("xm1EditNote")}</td>`;
@@ -87,9 +98,9 @@ export function renderXm1() {
   // LOD / Ripple：XM1 只有这两个传感器项已核实
   const lodSel = $el<HTMLSelectElement>("lod");
   if (lodSel) {
-    fillSelect(lodSel, [[1, "1 mm"], [2, "2 mm"], [3, "3 mm"]], Math.round(S.xm1Edit.lodMM));
+    fillSelect(lodSel, [[1, "1 mm"], [2, "2 mm"], [3, "3 mm"]], Math.round(ed.lodMM));
     lodSel.disabled = false;
-    lodSel.onchange = () => { S.xm1Edit.lodMM = +lodSel.value; };
+    lodSel.onchange = () => { ed.lodMM = +lodSel.value; };
   }
   const rip = $el<HTMLSelectElement>("ripple");
   if (rip) {
@@ -99,9 +110,9 @@ export function renderXm1() {
     //   **XM1 视图的波纹开关因此从未生效**。
     //   收敛 $ 的类型时被抓出来（TS2339: Property 'checked' does not exist on
     //   type 'HTMLSelectElement'）。现按 4k 视图（L223）的同一写法改为 .value。
-    rip.value = String(S.xm1Edit.ripple ? 1 : 0);
+    rip.value = String(ed.ripple ? 1 : 0);
     rip.disabled = false;
-    rip.onchange = (e: Event) => { S.xm1Edit.ripple = +(e.target as HTMLSelectElement).value; };
+    rip.onchange = (e: Event) => { ed.ripple = +(e.target as HTMLSelectElement).value; };
   }
   // 档位数：XM1 固定 4 档（官方 UI 也是 4 张卡片），只读展示
   const lv = $el<HTMLSelectElement>("cpiLevels");
@@ -232,7 +243,7 @@ export function render() {
   /* ★ 角度调校**只读**：v2 专属字段的位置存在两说（4k 分块写的 payload[5] ↔
      blob[0x01] 与 8k 交叉印证的 blob[0x70]）。读写若指向不同字节，就是"读 A 写 B"——
      设备拿到的是我们从未展示过的值。真机改值回读定论前，这里不开放编辑。 */
-  $el<HTMLInputElement>("angleTune").value = S.stage.angleTune;
+  $el<HTMLInputElement>("angleTune").value = String(S.stage.angleTune);
   $el<HTMLInputElement>("angleTune").disabled = true;
   $el("angleTune").title = t("angleTuneNote");
 
@@ -252,15 +263,15 @@ export function render() {
   pollSel.onchange = (e: Event) => S.stage.polling = +(e.target as HTMLSelectElement).value;
   $el<HTMLSelectElement>("motionSync").value = String(S.stage.motionSync); $el<HTMLSelectElement>("motionSync").onchange = (e: Event) => S.stage.motionSync = +(e.target as HTMLSelectElement).value;
   S.stage.slamclick = !!(S.stage.flags & 1);
-  $el<HTMLSelectElement>("slamclick").value = S.stage.slamclick ? "1" : "0"; $el<HTMLSelectElement>("slamclick").onchange = (e: Event) => S.stage.slamclick = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("slamclick").value = S.stage.slamclick ? "1" : "0"; $el<HTMLSelectElement>("slamclick").onchange = (e: Event) => S.stage.slamclick = !!(e.target as HTMLSelectElement).value;
   /* 注意：行级显示（rowV1Jitter / rowV2Max / rowV2Multi 等）**统一由 layout.ts 负责**，
      这里不再设置 display —— 两处各自切换会互相打架（8k 就同时踩到这一点）。 */
   S.stage.jitter = !!(S.stage.flags & 0x10);
-  $el<HTMLSelectElement>("jitter").value = S.stage.jitter ? "1" : "0"; $el<HTMLSelectElement>("jitter").onchange = (e: Event) => S.stage.jitter = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("jitter").value = S.stage.jitter ? "1" : "0"; $el<HTMLSelectElement>("jitter").onchange = (e: Event) => S.stage.jitter = !!(e.target as HTMLSelectElement).value;
   S.stage.maxFps = !!(S.stage.flags & 0x40);
-  $el<HTMLSelectElement>("maxFps").value = S.stage.maxFps ? "1" : "0"; $el<HTMLSelectElement>("maxFps").onchange = (e: Event) => S.stage.maxFps = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("maxFps").value = S.stage.maxFps ? "1" : "0"; $el<HTMLSelectElement>("maxFps").onchange = (e: Event) => S.stage.maxFps = !!(e.target as HTMLSelectElement).value;
   S.stage.multiclick = !!(S.stage.flags & 0x20);
-  $el<HTMLSelectElement>("multiclick").value = S.stage.multiclick ? "1" : "0"; $el<HTMLSelectElement>("multiclick").onchange = (e: Event) => S.stage.multiclick = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("multiclick").value = S.stage.multiclick ? "1" : "0"; $el<HTMLSelectElement>("multiclick").onchange = (e: Event) => S.stage.multiclick = !!(e.target as HTMLSelectElement).value;
   const toOpts: [string | number, string][] = [["off", t("minutes") === "min" ? "Off" : "关闭"]];
   for (let i = 1; i <= 120; i++) toOpts.push([i, t("minutesFmt", i)]);;
   fillSelect($el<HTMLSelectElement>("powerSaving"), toOpts, S.stage.powerSaving); $el<HTMLSelectElement>("powerSaving").value = String(S.stage.powerSaving);

@@ -8,7 +8,7 @@ import { errMsg } from "./err.js";
 import { sleep, hex, log } from "./util.js";
 import { t } from "./i18n.js";
 import { S, type Stage } from "./state.js";
-import { rawReceive } from "./transport.js";
+import { dev, rawReceive } from "./transport.js";
 // buildBlob8k 不在这里导入：8k 的写入编排（buildBlob8k → store8k）在
   // session.ts 的 apply8k()，本文件只负责「整块发出去」那一步。
   // 2026-10-09 清理此前残留的导入。
@@ -19,7 +19,7 @@ export async function readBlob8k() {
   const cmd = new Uint8Array(63); cmd[0] = 0x12;      // LOAD，无负载
   let last = "";
   for (let round = 1; round <= 3; round++) {
-    try { await S.dev.sendFeatureReport(RPT_CMD, cmd); }
+    try { await dev().sendFeatureReport(RPT_CMD, cmd); }
     catch (e) { log(`✗ 8k LOAD 发送失败: ${errMsg(e)}`); await sleep(200); continue; }
     await sleep(80);
     let delay = 60;
@@ -63,7 +63,7 @@ export async function store8k(newBlob: Uint8Array): Promise<boolean> {
   // 只需要 log(errMsg(e)) 能处理任意值，不需要具体类型。
   let lastErr: unknown = null;
   for (let a = 0; a < 4; a++) {
-    try { await S.dev.sendFeatureReport(RPT_BULK, data); lastErr = null; break; }
+    try { await dev().sendFeatureReport(RPT_BULK, data); lastErr = null; break; }
     catch (e) { lastErr = e; await sleep(50); }
   }
   if (lastErr) throw lastErr;
@@ -95,8 +95,11 @@ export function verifyPerf8k(w: Stage): string[] {
   const f = S.stage.flags | 0;
   if (w.polling !== S.stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}→0x${S.stage.polling.toString(16)}`);
   if (w.motionSync !== (S.stage.motionSync ? 1 : 0)) bad.push("Motion Sync");
-  if (w.slamclick !== (f & 1 ? 1 : 0)) bad.push("Slamclick");
-  if (w.jitter !== (f & 0x10 ? 1 : 0)) bad.push("Jitter filter");
+  // 这两个字段的类型已由 number 改为 boolean（见 state.ts 的 Stage 注释），
+  // 故比较方式也从「!== 0/1」改为「!== true/false」——运行时等价，
+  // 但和写入侧（`if (S.stage.slamclick) f |= 1`）的语义一致。
+  if (w.slamclick !== !!(f & 1)) bad.push("Slamclick");
+  if (w.jitter !== !!(f & 0x10)) bad.push("Jitter filter");
   return bad;
 }
 

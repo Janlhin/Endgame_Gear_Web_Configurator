@@ -48,8 +48,8 @@ export function snapPerf(): any {
   const f = S.stage.flags | 0;
   return {
     polling: S.stage.polling, motionSync: S.stage.motionSync ? 1 : 0,
-    slamclick: f & 1 ? 1 : 0, jitter: f & 0x10 ? 1 : 0,
-    multiclick: f & 0x20 ? 1 : 0, maxFps: f & 0x40 ? 1 : 0,
+    slamclick: !!(f & 1), jitter: !!(f & 0x10),
+    multiclick: !!(f & 0x20), maxFps: !!(f & 0x40),
     powerSaving: S.stage.powerSaving, deepSleep: S.stage.deepSleep,
     filters: (S.stage.filters || []).slice(),
   };
@@ -60,10 +60,10 @@ export function verifyPerf(w: any): string[] {
   const f = S.stage.flags | 0;
   if (w.polling !== S.stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}→0x${S.stage.polling.toString(16)}`);
   if (w.motionSync !== (S.stage.motionSync ? 1 : 0)) bad.push("Motion Sync");
-  if (w.slamclick !== (f & 1 ? 1 : 0)) bad.push("Slamclick");
+  if (w.slamclick !== !!(f & 1)) bad.push("Slamclick");
   if (S.gen === 1 && w.jitter !== (f & 0x10 ? 1 : 0)) bad.push("Jitter filter");
-  if (S.gen === 2 && w.multiclick !== (f & 0x20 ? 1 : 0)) bad.push("Multiclick");
-  if (S.gen === 2 && w.maxFps !== (f & 0x40 ? 1 : 0)) bad.push("Force max FPS");
+  if (S.gen === 2 && w.multiclick !== !!(f & 0x20)) bad.push("Multiclick");
+  if (S.gen === 2 && w.maxFps !== !!(f & 0x40)) bad.push("Force max FPS");
   if (w.powerSaving !== S.stage.powerSaving) bad.push(`Power saving ${w.powerSaving}→${S.stage.powerSaving}`);
   if (w.deepSleep !== S.stage.deepSleep) bad.push(`Deep sleep ${w.deepSleep}→${S.stage.deepSleep}`);
   for (let i = 0; i < w.filters.length; i++)

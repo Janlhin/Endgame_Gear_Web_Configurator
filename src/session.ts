@@ -6,7 +6,7 @@ import { errMsg, errCode } from "./err.js";
  */
 import { log, banner } from "./util.js";
 import { t } from "./i18n.js";
-import { S } from "./state.js";
+import { S, blob } from "./state.js";
 import { buildSensorPayload, buildPowerPayload, parseBlob, xm1Parse } from "./blob.js";
 import { snapSensor, verifySensor, snapPerf, verifyPerf, reportVerify } from "./verify.js";
 import { readBlob } from "./device-4k.js";
@@ -14,7 +14,7 @@ import { readBlob8k, store8k, verifySensor8k, verifyPerf8k } from "./device-8k.j
 import { xm1QueryByte, xm1Snapshot } from "./device-xm1.js";
 import { render, renderXm1, renderInfoOnly } from "./render.js";
 import { layoutFor, applyLayout } from "./layout.js";
-import { probe, guarded } from "./transport.js";
+import { dev, guarded, probe } from "./transport.js";
 import { buildBlob8k, PID_FAMILY4, PID_8K, VID_22D4, MOUSE_PIDS, modelOf } from "./protocol.js";
 
 export function fwStr(v: number) { const h = v.toString(16).padStart(4, "0"); return `${parseInt(h.slice(0, 2), 16)}.${parseInt(h.slice(2), 16)}`; }
@@ -26,18 +26,18 @@ export async function refreshAll() {
        该族报文格式与本工具实现的三族完全不同（64B 包 + 54 条 kCom* 命令 + 口令握手），
        在没有实现之前连接它是无意义的；明确告知比"连不上"更有用。 */
     if (S.family4) {
-      S.mouseName = PID_FAMILY4[S.dev.productId] || t("f4Unknown");
+      S.mouseName = PID_FAMILY4[dev().productId] || t("f4Unknown");
       S.mouseFw = "—"; S.dongleFw = "—"; S.battery = null;
       applyLayout("unsupported");
       renderInfoOnly();
       banner("warn", t("bFamily4"));
-      log(`⚠ 第四协议族：VID=0x${S.dev.vendorId.toString(16)} PID=0x${S.dev.productId.toString(16)}，仅识别不通信`);
+      log(`⚠ 第四协议族：VID=0x${dev().vendorId.toString(16)} PID=0x${dev().productId.toString(16)}，仅识别不通信`);
       return;
     }
     /* 8k 有线族：从 PID 即可确定型号（有线直连，无需 0x0E 查询），
        读走 0x12 + 1024B 帧，写走 0x11 整块写。 */
     if (S.eightK) {
-      S.mouseName = PID_8K[S.dev.productId];
+      S.mouseName = PID_8K[dev().productId];
       S.mouseFw = "—"; S.dongleFw = "—"; S.battery = null;
       applyLayout("8k");
       try {
@@ -60,7 +60,7 @@ export async function refreshAll() {
        读取路径已按官方 0x40FC80 修正（见 readBlobXm1 上方注释）；
        写入仍停用（重排层未核实），blob 仅供只读展示。 */
     if (S.xm1) {
-      S.mouseName = modelOf(VID_22D4, S.dev.productId);
+      S.mouseName = modelOf(VID_22D4, dev().productId);
       S.gen = 0;
       S.dongleFw = "—"; S.mouseFw = "—"; S.battery = null;
       /* XM1 只显示它真正有的东西：CPI（单值）/ LOD / Ripple + 备份工具。
@@ -72,7 +72,7 @@ export async function refreshAll() {
            这条通道是唯一入口。只读，不含负载。 */
         await xm1QueryByte();
         await readBlob();
-        S.xm1Edit = xm1Parse(S.blob);            // 编辑状态以读回值为初始
+        S.xm1Edit = xm1Parse(blob());            // 编辑状态以读回值为初始
         xm1Snapshot(t("xm1SnapRead"));
         parseBlob();
         render();
@@ -119,7 +119,7 @@ export async function refreshAll() {
 
 export async function apply8k() {
   const want = snapSensor(), wantPerf = snapPerf();
-  const nb = buildBlob8k(S.blob, S.stage);               // 从读回值出发，只打补丁
+  const nb = buildBlob8k(blob(), S.stage);               // 从读回值出发，只打补丁
   const acked = await store8k(nb);
   log(acked ? "✓ 8k STORE 已确认（ACK）" : "⋯ 8k STORE 未收到 ACK，继续回读校验");
   await refreshAll();
@@ -130,7 +130,7 @@ export async function applySensor() {
   if (S.eightK) return apply8k();                  // 8k 是整块写，两张卡共用一条路径
   const want = snapSensor();                     // 期望值（写入前）
   const wantPerf = snapPerf();                   // 联动写 0x15 时玻璃模式也在里面
-  const glassChanged = S.gen === 2 && (S.blob[0x6F] ? 1 : 0) !== S.stage.glass;
+  const glassChanged = S.gen === 2 && (blob()[0x6F] ? 1 : 0) !== S.stage.glass;
   await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
   log("✓ cmd 0x14 written");
   if (glassChanged) {
@@ -147,7 +147,7 @@ export async function applyPerf() {
   if (S.eightK) return apply8k();                  // 同上：8k 的性能项与传感器项在同一次整块写里
   const want = snapPerf();                       // 期望值（写入前）
   const wantSensor = snapSensor();               // 联动写 0x14 时传感器字段也在里面
-  const glassChanged = S.gen === 2 && (S.blob[0x6F] ? 1 : 0) !== S.stage.glass;
+  const glassChanged = S.gen === 2 && (blob()[0x6F] ? 1 : 0) !== S.stage.glass;
   await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
   log("✓ cmd 0x15 written");
   if (glassChanged) {
