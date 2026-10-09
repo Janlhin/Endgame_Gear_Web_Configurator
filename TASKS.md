@@ -48,6 +48,18 @@
 | T-108 | 有覆盖率基线 | 引入覆盖率计量（c8 或 `node --experimental-test-coverage`），**只记录当前基线数字，不设阈值** | 无 | 中 | `npm run verify` 输出覆盖率数值；基线写入 `docs/`。**阈值待有数据后另行提案**（延续既有判例「测试框架暂不迁移到 Vitest」） | 待办 |
 | T-109 | 协议边界不再是 `any` | 收敛 `src/connect.ts`（6）、`src/device-8k.ts`（3）、`src/device-xm1.ts`（1）、`src/blob.ts`（1）。**`src/diag.ts` 及其他不动**（判例三） | T-103 ✅ | 中 | 该四文件 ESLint `no-explicit-any` 计数为 0；`--max-warnings` 下调对应数值；`npm run verify` 全绿；**`re/test_write_gates.ts` 仍全绿（写入闸门不得被削弱）** | ✅ **完成**（`50b5c3d`）。**any 97 → 85**，四文件归零且 `no-explicit-any` 在这四处升级为 **error**。做法：state.ts 新增 `Stage` / `Xm1Edit` / `Xm1Stage` / `StageButton` / `MinutesOrOff` 五个接口，取代散落的 any；`raw`/`unknown`/`unk7` 作为**安全机制载体**显式声明（删掉等于拆掉安全网）。类型通道当场抓出 3 个真实问题（详见下） |
 | T-111 | 死代码清理（ESLint 新发现） | 逐个处理 53 项 `no-unused-vars` | 无 | 中 | 每个符号都有明确处置；`npm run verify` 全绿 | ✅ **完成**（`07c1b40`）。**49 处清除，`no-unused-vars` 升为 error**，阈值 142→88。核实结论：**每个符号在其他文件都有真实调用**（store8k→session.ts:123、buildBlob8k→session.ts:122、xm1GuardWrite→connect.ts:115、modelOf→session.ts:63、layoutFor→session.ts:69…），故属拆分 main.ts 时的导入残留，**只删导入名不动实现**。另删 main.ts 的 2 个本地死变量（`let xm1Edit` / `const xm1Snaps`，状态早已迁移到 `S.xm1Edit` / `S.xm1Snaps`）。**产物零变化**——esbuild 的 tree-shaking 本就消除了它们，这是死代码判定的决定性证据 |
+| T-112 | `$()` 与 `S` 的类型收敛 | `util.ts:2` 的 `const $ = (id: string): any => document.getElementById(id)` 是**121 处 DOM 调用的类型源头**；`S` 本身也是 `any`（dev / queue / gen / mouseFw 等）。二者是剩余 85 处 any 的主要来源 | T-109 ✅ | 中 | `$()` 收敛完成；`S` 仍为 any；`npm run verify` 全绿 | 🟡 **一半完成**（`d6decd7`）。**`$()` 已收敛**：`$` 返回 `T \| null`（动态元素），新增 `$el` 返回 `T`（静态元素，判据是该 id 能在 index.html grep 到，共 95 个）。**191 个类型错误归零**，tsc 零错误。**顺带修出一处真实 bug**：XM1 视图波纹开关从未生效（`ripple` 是 `<select>` 却写 `.checked`，已改 `.value`）。**`S` 仍是 any**，构成剩余 85 处 any 的主要来源 |
+| T-110 | 死代码有自动检测 | 引入 `knip`，产出首份死代码报告 | 无 | 中 | `npm run knip` 可执行并输出报告；结论写入 `DECISIONS.md` | 待办 |
+
+---
+
+## 结构性工作（队列空时执行，不依赖任何裁决）
+
+| ID | 目标 | 动作 | 依赖 | 可逆性 | 完成判据 | 状态 |
+|---|---|---|---|---|---|---|
+| S-101 | 一次性脚本归置| 逐个评估 `re/` 下约 10 个一次性探查脚本（`dias.py`、`obj_scan.py`、`obj_scan2.py`、`cmd_scan.py`、`imm_scan.py`、`xref_scan.py`、`reportid_scan.py`、`const_scan.py` 等）。**能证明结论已沉淀进 `re/PROTOCOL_NOTES.md` / `re/XM1_NOTES.md` 的移入归档目录，产出一致的保留并标注**（判例四，已获授权，不删除） | 无（已裁决） | 中 | 每个脚本有明确归档结论；`re/` 根目录只留有复用价值的脚本；结论写入 `DECISIONS.md` | 待办 |
+| S-102 | 决策日志归整 | 把 `DECISIONS.md` 中散落的假设归档为判例，标注哪些已形成「同类事项不得重复询问」的判例 | 无 | 高 | 每条判例标注影响的后续任务范围 | 待办 |
+| S-103 | 包体积基线 | 记录当前产物体积（285.3 KB：js 250.9 / css 6.7）作为基线，纳入 `verify` 的体积回归检查 | 无 | 高 | `verify` 输出体积并在超阈值时失败；基线数字写入文档 | 待办 |
 
 ### 死代码判定的三种手段（本次实践得出，按可信度排序）
 
@@ -135,3 +147,34 @@ ESLint 首次运行暴露 183 项。处置原则：
 4. 每步都跑 `tsc --noEmit`，它会指出下一处该标什么。
 
 顺序反了（比如先改调用处）会得到大量 `as` 断言，把类型通道变成装饰。
+
+### ⚠️ 一次自伤事故的记录（2026-10-09，务必读完）
+
+**发生了什么**：用 Python 脚本按段落替换 TASKS.md 的「T-111 已完成的核实」小节时，
+`end` 定位用的是「下一个标题」作为终止条件，但那个标题在文件里出现了**两次**
+（内容段与「已完成任务的实测结论」段各一）。脚本因此把两者之间的
+**T-110、S-101、S-102、S-103、T-112 五项任务整段切掉了**，
+并且直到 T-112 执行时我才发现——**队列少了一半，我毫无察觉地继续推进**。
+
+**怎么发现的**：写T-112 的状态时 `grep "^| T-112"` 返回空，才回头查队列全貌。
+
+**为什么没被拦住**：
+
+- markdownlint 只查**格式**，不查**内容完整性** —— 少 5 行表格它照样「0 问题」。
+- 没有在每次改文档后核对任务总数。
+
+**怎么修的**：`git show 07c1b40:TASKS.md` 导出备份，按精确行区间取回那 5 项，
+再插回 T-111 之后。
+
+**两条规矩（此后必守）**：
+
+1. **改长文档的某个段落前，先确认「下一个标题」在全文件里唯一。**
+   用 `grep -n` 数一遍出现次数；≥2 次就不能用它当终止条件，改用行号或
+   「下一个与当前同级的标题」。
+2. **改任务队列后必须核对任务总数**：
+   `grep -cE "^\| (T|S)-[0-9]+" TASKS.md`，与改动前对比。
+   数量减少就是事故，立刻从 git 恢复。
+
+**顺带的发现**：这次的产物 `index.html` 一并被提交了（它本身没问题），
+但**两个临时文件**（`.id_tags.tmp` / `.static_ids.tmp`）也曾进入工作树——
+已清理，且 `.gitignore` 未改动（它们本来就不该被 add，已确认未入库）。
