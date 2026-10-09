@@ -36,7 +36,7 @@
 | T-103 | `any` 有 lint 拦截 | 加 ESLint flat config + `typescript-eslint`，`@typescript-eslint/no-explicit-any` 设为 `error` | 无 | 高 | `npm run lint` 对当前 82 处 `any` 报错（先配置不修）；`npm run verify` 其余段全绿 | 待办 |
 | T-104 | 样式硬编码有拦截 | 加 Stylelint + `stylelint-config-standard-scss`，含 `color-no-hex`（`_tokens.scss` 走 overrides 放行） | 无 | 高 | `npm run stylelint` 通过；故意在业务 SCSS 写一个字面量颜色，该命令必须失败 | 待办 |
 | T-105 | esbuild 漏洞有结论 | 单独提交升级 esbuild 0.24.2 → 0.28.x，跑完整 verify 确认产物仍零外部引用 | 无 | 中 | `npm audit` 无moderate；`npm run verify` 全绿；产物外部引用计数仍为 0；`cardChecklist` canary 仍命中 | 待办 |
-| T-106 | 首次获得 CI 权威结论 | 推送 84 个提交到 origin，观察首次 CI 运行 | **判例一**（推送即上线，不可逆） | **低** | `verify` 与 `ui` 两个 job 在GitHub Actions 上均为绿；产物 canary 通过 | 被阻塞 |
+| T-106 | 首次获得 CI 权威结论 | 推送 85 个提交到 origin，观察首次 CI 运行 | **凭据授权**：OAuth App 令牌缺 `workflow` scope（2026-10-09 推送被拒，见下方记录） | **低** | `verify` 与 `ui` 两个 job 在GitHub Actions 上均为绿；产物 canary 通过 | 被阻塞（授权中） |
 | T-107 | 文档与代码一致性有自动判据 | 加 `docs:sync` 生成脚本（从 `package.json` / `tsconfig.json` 生成文档中的脚本名与依赖表），接 `git diff --exit-code` | T-101 | 中 | 故意改 `package.json` 里一个脚本名，`npm run verify` 必须失败 | 待办 |
 | T-108 | 有覆盖率基线 | 引入覆盖率计量（c8 或 `node --experimental-test-coverage`），**只记录当前基线数字，不设阈值** | 无 | 中 | `npm run verify` 输出覆盖率数值；基线写入 `docs/`。**阈值待有数据后另行提案**（延续既有判例「测试框架暂不迁移到 Vitest」） | 待办 |
 | T-109 | 协议边界不再是 `any` | 收敛 `src/connect.ts`、`src/device-8k.ts`、`src/device-xm1.ts`、`src/blob.ts` 中的 `any` 为具体类型或 `unknown` + 收窄。**`src/diag.ts` 及其他不动**（判例三） | T-103 | 中 | 该四文件 `grep -c ': any\|as any'` 计数为 0；`npm run verify` 全绿；**`re/test_write_gates.ts` 仍全绿（写入闸门不得被削弱）** | 待办 |
@@ -58,7 +58,35 @@
 
 | 任务 | 阻塞于 | 阻塞性质 |
 |---|---|---|
-| T-106 | 判例一：推送需显式确认 | **不可逆操作**（推送即上线） |
+| T-106 | **凭据授权**（非待裁决项，见下方记录） | 推送需`workflow` scope |
+
+### T-106 推送受阻记录（2026-10-09）
+
+**已解除的阻塞**：判例一要求推送前需显式确认——已确认（用户直接给出推送命令）。
+
+**新遇到的阻塞**：`git push -u origin main` 被 GitHub 拒绝：
+
+```
+! [remote rejected] main -> main (refusing to allow an OAuth App to create
+  or update workflow `.github/workflows/deploy.yml` without `workflow` scope)
+```
+
+**性质**：凭据授权限制，**不是代码或配置问题**。当前令牌缺 `workflow` scope，
+而 `.github/workflows/` 下的 `verify.yml` 与 `deploy.yml` 均需该权限。
+
+**推送前已完成的检查**（全部通过）：
+- 远端可达（HTTP 200），确认仓库存在但为空，从未推送过
+- 工作树干净，HEAD = `3aa2aee`
+- 无大文件（>1MB）被追踪
+- 无 `*.exe` / `*.bin` / `*.zip` 等第三方二进制泄露（`re/upstream/*.exe` 已被 .gitignore 正确排除）
+- 无凭据文件（唯一命中的 `scss/_tokens.scss` 是样式变量，非敏感）
+
+**失败的替代方案及原因**：曾考虑「排除 workflow 文件先推代码」——
+被否决，因为那会让 CI 与 Pages 部署**完全失效**，且本地工作树需临时缺失
+workflow 文件，属于用更大的问题换小问题。
+
+**解除方式**：给令牌加 `workflow` scope（重新授权 OAuth App，或改用
+Personal Access Token），之后重试推送。**此项必须由人操作，AI 无法代劳。**
 
 **可执行项统计**：T-102～T-105、T-107～T-110、S-101～S-103 共 **10 项可执行**
 （T-101 已完成），满足持续推进方案「队列中始终 ≥ 3 个可执行项」的要求。**接手期不存在真阻塞。**
