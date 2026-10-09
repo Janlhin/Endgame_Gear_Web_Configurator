@@ -545,3 +545,42 @@ typescript-eslint 的 peer 上限覆盖 TS7 后，删掉两个别名、恢复
   排查必须以令牌配置页为准。
 - **影响范围**：凡涉及 `.github/workflows/` 的仓库（即所有用 Actions/CI 的仓库）
   推送时都需要该权限项。
+
+### 判例二十：CI 首次真实运行暴露两个环境依赖（2026-10-09 19:14）
+
+推送成功后 `deploy pages` 与 `verify` 两个 workflow 自动启动，**首次真实运行结果
+是混合的**——这正是本地全绿无法替代的证据（判例一遗留的未验证项到此闭合）：
+
+[cols="1,1,2,2",options="header"]
+|===
+| workflow | job | 结果 | 失败点
+
+| `verify` | `verify`（ubuntu）
+| ✅ **success**
+| —（tsc / 断言 / i18n / 构建 / 产物 canary / commit message 全过）
+
+| `verify` | `ui`（windows-latest）
+| ❌ failure
+| 无头 Edge 演练 → `UnicodeEncodeError: 'charmap' codec can't encode characters`
+
+| `deploy pages` | `deploy`
+| ❌ failure
+| `actions/configure-pages@v5` → `Get Pages site failed ... Not Found`
+|===
+
+- **失败一：Windows runner 的控制台编码是 GBK**，而四个 UI 脚本会打印
+  中 / 日 / 韩文断言结果（`zh-TW`「網頁版配置器」、`ja`「コンフィギュレーター」…），
+  非 ASCII 字符无法用 charmap 编码。**本地不复现**——本地控制台代码页与 runner 不同，
+  这正是判例一预言的「runner 上的无头 Edge 与本地不一定一致」那一类差异。
+  **修法**：`ui` job 里设 `PYTHONIOENCODING=utf-8` 与 `PYTHONUTF8=1`，
+  **只改 runner 环境，不动脚本逻辑**（脚本在本地仍应按原样运行）。
+- **失败二：Pages 站点尚未创建**，而 `configure-pages@v5` 默认
+  `enablement: false` 会去查一个不存在的站点。**修法**：改为 `enablement: true`，
+  由该action 自行启用 Pages（来源设为 GitHub Actions），**不再依赖「先手动去
+  Settings → Pages 点一次」这个前置步骤**——把手动步骤自动化，减少交接时的坑。
+- **两条都不是代码缺陷**：业务代码、测试、构建产物均无问题（`verify` job 全绿即证据）。
+  但**「不是代码问题」不等于「可以不修」**——门禁长期红着，就等于把门禁关掉
+  （判例六的同一逻辑）。
+- **影响范围**：上述两个修复需**再次推送**才会验证生效。因此 CI 的结论是
+  「本地 verify 全绿 + CI 的 `verify` job 全绿 + `ui`/`deploy` 两个环境问题已修」，
+  **尚未取得「CI 全绿」的结论**——后者必须等下一次推送后复查，不能凭「已修」推定。

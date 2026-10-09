@@ -48,7 +48,15 @@ jobs:
           grep -q 'id="cardChecklist"' index.html || { echo "清单卡未渲染进产物"; exit 1; }
           echo "清单卡已渲染 ✓"
 
+      # ★ enablement: true —— 首次 CI 实测失败于此：
+      #   configure-pages 默认 enablement:false，会去查一个尚未创建的 Pages 站点，
+      #   报 "Get Pages site failed ... Not Found"。
+      #   改成 true 后由本action 自行启用 Pages（来源设为 GitHub Actions），
+      #   不再依赖「先手动去 Settings → Pages 点一次」这个前置步骤。
+      #   token 需具备 pages:write + id-token:write（本workflow 顶部已声明）。
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: index.html

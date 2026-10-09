@@ -68,5 +68,16 @@ jobs:
         with:
           python-version: "3.12"
       - run: npm ci
-      - name: 布局裁剪 / 语言检测 / 渲染 / 复位演练（无头 Edge）
-        run: python re/layout_check.py && python re/i18n_check.py && python re/render_check.py && python re/reset_check.py
+      # ★ Windows runner 默认控制台编码是 GBK(charmap)，而四个脚本会打印
+      # 中 / 日 / 韩文断言结果（zh-TW「網頁版配置器」、ja「コンフィギュレーター」…），
+      # 首次 CI 运行实测报 UnicodeEncodeError: 'charmap' codec can't encode characters。
+      # 本地 Windows 之所以没暴露：控制台代码页与 runner 不同。
+      # 修法是强制 Python 用 UTF-8 输出——只改 runner 环境，不动脚本逻辑。
+      - name: UI 演练（无头 Edge，UTF-8 输出）
+        run: |
+          $env:PYTHONIOENCODING = "utf-8"
+          $env:PYTHONUTF8 = "1"
+          python re/layout_check.py
+          python re/i18n_check.py
+          python re/render_check.py
+          python re/reset_check.py
