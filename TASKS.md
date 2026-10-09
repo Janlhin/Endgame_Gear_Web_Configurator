@@ -47,7 +47,33 @@
 | T-107 | 文档与代码一致性有自动判据 | 加 `docs:sync` 生成脚本（从 `package.json` / `tsconfig.json` 生成文档中的脚本名与依赖表），接 `git diff --exit-code` | T-101 | 中 | 故意改 `package.json` 里一个脚本名，`npm run verify` 必须失败 | 待办 |
 | T-108 | 有覆盖率基线 | 引入覆盖率计量（c8 或 `node --experimental-test-coverage`），**只记录当前基线数字，不设阈值** | 无 | 中 | `npm run verify` 输出覆盖率数值；基线写入 `docs/`。**阈值待有数据后另行提案**（延续既有判例「测试框架暂不迁移到 Vitest」） | 待办 |
 | T-109 | 协议边界不再是 `any` | 收敛 `src/connect.ts`（6 处 any + 2 死导入）、`src/device-8k.ts`（3）、`src/device-xm1.ts`（1）、`src/blob.ts`（1）。**`src/diag.ts` 及其他不动**（判例三） | T-103 ✅ | 中 | 该四文件 ESLint `no-explicit-any` 计数为 0；`--max-warnings` 下调对应数值；`npm run verify` 全绿；**`re/test_write_gates.ts` 仍全绿（写入闸门不得被削弱）** | 待办 |
-| T-111 | 死代码清理（ESLint 新发现） | 逐个处理 53 项 `no-unused-vars`。**注意多数不是垃圾而是「导入但未接线」的半成品**：`main.ts` 有 40+ 项（`xm1GuardWrite`、`readBlob8k`、`xm1Apply`、`xm1Snaps`、`buildXm1BlobReport` 等），`device-8k.ts` 的 `buildBlob8k`、`device-xm1.ts` 的 `xm1GuardEchoByte`，`connect.ts` 的 `sleep`/`hex`，`render.ts` 的 `hex`。**这些可能正对应未完成的功能**，删除前必须逐个确认意图 → 属灰名单，需先提案 | 无 | 中 | 每个符号都有明确处置（接线 / 删除 / 标注 TODO(verify)）；`main.ts:183` 的死变量 `xm1Edit` 一并处理（它是迁移到 `S.xm1Edit` 后的遗留，`prefer-const` 已因此被豁免）；`npm run verify` 全绿 | 待办 |
+| T-111 | 死代码清理（ESLint 新发现） | 逐个处理 53 项 `no-unused-vars`。**注意多数不是垃圾而是「导入但未接线」的半成品**，删除前必须逐个确认意图 → 灰名单，需先提案 | 无 | 中 | 每个符号都有明确处置（接线 / 删除 / 标注 TODO(verify)）；`main.ts:183` 的死变量 `xm1Edit` 一并处理；`npm run verify` 全绿 | 待办 |
+
+### T-111 已完成的核实（2026-10-09，避免后续误删）
+
+`main.ts` 里 40+ 项未使用导入，已逐一核实真实情况：
+
+| 函数 | 在 main.ts 的出现 | 结论 |
+|---|---|---|
+| `writeBlobXm1` | import + **L424、L461 实际调用** | **在用**，勿动。XM1 写入走的就是它 |
+| `readBlobXm1` | 仅 import | 未接线 |
+| `xm1QueryByte` | 仅 import | 未接线 |
+| `xm1Snapshot` | 仅 import | 未接线 |
+| `xm1Apply` | 仅 import | 未接线 |
+| `xm1GuardWrite` | import + 2 处**注释** | 未接线（注释里提到它不等于调用） |
+| `xm1GuardQuery` / `xm1GuardEchoByte` | 仅 import | 未接线 |
+| `readBlob8k` / `store8k` / `buildBlob8k` | 仅 import | 未接线 |
+
+**核实方法**（下次直接用）：`grep -c "\b函数名\b" src/main.ts` 拿到总出现数，
+再`grep -c "^import.*\b函数名\b" src/main.ts` 拿到导入数。
+**两者相等即只在 import 里出现过 = 未接线**。注意 `grep -rn` 全目录搜会被
+i18n 词条字符串污染（本项目 `xm1ApplyConfirm` / `xm1Applying` 这类词条
+含函数名子串），必须限定单文件且排除 import 行。
+
+**重要提醒**：这批未接线函数是**上一轮重构（`09c7243` / `036a043` 拆分 main.ts）
+的遗留**。它们不是随手写的垃圾，而是重构时把逻辑搬到了别处（写入路径现由
+`writeBlobXm1` + `xm1GuardWrite` 承担），旧导入没清。
+但也可能是「本该接线却漏了」——**这正是必须逐个人工确认、禁止 lint 自动处置的原因**。
 | T-110 | 死代码有自动检测 | 引入 `knip`，产出首份死代码报告 | 无 | 中 | `npm run knip` 可执行并输出报告；结论写入 `DECISIONS.md` | 待办 |
 
 ---
