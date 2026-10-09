@@ -16,7 +16,7 @@
     "verify": "npm run check && npm run lint && npm run lint:docs && npm run test && npm run check:i18n && npm run check:ui && npm run build",
     "verify:ci": "npm run check && npm run lint && npm run lint:docs && npm run test && npm run check:i18n && npm run build",
     "prepare": "husky",
-    "lint": "eslint src --max-warnings 142",
+    "lint": "eslint src --max-warnings 88",
     "lint:fix": "eslint src --fix"
   },
   "devDependencies": {

@@ -7,7 +7,7 @@ import { errMsg } from "./err.js";
 import { sleep, hex, log } from "./util.js";
 import { S } from "./state.js";
 import { rawReceive, guarded } from "./transport.js";
-import { RPT_CMD, RPT_BULK } from "./protocol.js";
+import { RPT_BULK } from "./protocol.js";
 import { looksLikeBlob } from "./blob.js";
 import { readBlobXm1 } from "./device-xm1.js";
 

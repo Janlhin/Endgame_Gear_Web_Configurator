@@ -9,7 +9,10 @@ import { sleep, hex, log } from "./util.js";
 import { t } from "./i18n.js";
 import { S, type Stage } from "./state.js";
 import { rawReceive } from "./transport.js";
-import { RPT_CMD, RPT_BULK, buildBlob8k, build8kStoreData } from "./protocol.js";
+// buildBlob8k 不在这里导入：8k 的写入编排（buildBlob8k → store8k）在
+  // session.ts 的 apply8k()，本文件只负责「整块发出去」那一步。
+  // 2026-10-09 清理此前残留的导入。
+  import { RPT_CMD, RPT_BULK, build8kStoreData } from "./protocol.js";
 import { looksLikeBlob8k } from "./blob.js";
 
 export async function readBlob8k() {

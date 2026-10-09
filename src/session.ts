@@ -11,7 +11,7 @@ import { buildSensorPayload, buildPowerPayload, parseBlob, xm1Parse } from "./bl
 import { snapSensor, verifySensor, snapPerf, verifyPerf, reportVerify } from "./verify.js";
 import { readBlob } from "./device-4k.js";
 import { readBlob8k, store8k, verifySensor8k, verifyPerf8k } from "./device-8k.js";
-import { readBlobXm1, xm1QueryByte, xm1Snapshot } from "./device-xm1.js";
+import { xm1QueryByte, xm1Snapshot } from "./device-xm1.js";
 import { render, renderXm1, renderInfoOnly } from "./render.js";
 import { layoutFor, applyLayout } from "./layout.js";
 import { probe, guarded } from "./transport.js";

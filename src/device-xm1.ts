@@ -13,7 +13,9 @@ import { $, sleep, hex, log, banner } from "./util.js";
 import { t } from "./i18n.js";
 import { S, type Xm1Edit } from "./state.js";
 import { rawReceive } from "./transport.js";
-import { RPT_CMD, RPT_BULK, XM1_SETTLE_MS, buildXm1BlobReport, buildXm1ByteReport, xm1GuardEchoByte } from "./protocol.js";
+// xm1GuardEchoByte 由 connect.ts 的发送闸门调用（它在包裹 sendFeatureReport），
+  // 本文件不需要它。2026-10-09 清理此前残留的导入。
+  import { RPT_CMD, RPT_BULK, XM1_SETTLE_MS, buildXm1BlobReport, buildXm1ByteReport } from "./protocol.js";
 import { looksLikeBlob, xm1Parse, XM1_F, XM1_STAGE_ON, xm1LodToMm, xm1MmToLod, cpiClamp } from "./blob.js";
 
 export function xm1QueryReq(cmd: number) {

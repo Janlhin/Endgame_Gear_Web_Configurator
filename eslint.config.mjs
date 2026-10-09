@@ -78,13 +78,13 @@ export default tseslint.config(
       // 全部报错只会淹没真正的问题（实测 src/connect.ts 的 sleep/hex 是真实死导入）。
       // 因此放行两类：下划线前缀（约定即忽略）、catch 参数（语言强制无法省略）。
       //
-      // 当前同样是 warn 而非 error：存量 53 处，其中不少是「导入但暂未接线」
-      // 的函数与常量（buildBlob8k、xm1GuardEchoByte、XM1_MAX_STAGES 等），
-      // 它们可能是「准备接入但还没接」的半成品，**删除前必须逐个确认意图**——
-      // 这属于主规范的分级授权灰名单，不能由lint 自动处置。
-      // 清理任务见 TASKS.md的 T-111。
+      // ⚠️ **级别已在 T-111 完成后从 warn 升为 error**，但仍保留上面两项放行。
+      // T-111 逐个核实了49 处未使用导入：每个符号在其他文件都有真实调用
+      // （store8k 在 session.ts:123、buildBlob8k 在 session.ts:122、
+      // xm1GuardWrite 在 connect.ts:115…），确认是拆分 main.ts 时的导入残留，
+      // 已全部移除。现在往后任何人留下未使用的导入，提交会被直接拒绝。
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
@@ -101,14 +101,6 @@ export default tseslint.config(
       "prefer-const": "error",
       "no-var": "error",
       "no-useless-assignment": "warn",
-
-      // ---- 存量豁免：都是死代码，不是规则违背 ----
-      // src/main.ts:183 `let xm1Edit: any = null;` —— 声明后从未被读取。
-      // 第 426 行用的是 S.xm1Edit（state.ts 里的另一个变量），
-      // 即状态已迁移到 S，本地变量是迁移前的遗留。
-      // 删除它属业务代码改动 → 归入 TASKS.md 的 T-111（死代码清理），
-      // 由独立提交做，不在接入 lint 的提交里顺手改。
-      "prefer-const": "off",
     },
   },
 

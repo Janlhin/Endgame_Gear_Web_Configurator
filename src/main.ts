@@ -2,25 +2,24 @@ import { errMsg } from "./err.js";
 // 应用主体：全局状态 / 传输层 / blob 读写解析 / UI 渲染 / 连接与事件绑定
 import { $, sleep, hex, log, banner } from "./util.js";
 import { LANG, t, applyI18n } from "./i18n.js";
-import { VID, VID_22D4, DONGLE_PID, DONGLE_PIDS, MOUSE_PIDS, RPT_CMD, RPT_BULK,
-         XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,
-         buildXm1BlobReport, buildXm1ByteReport,
-         xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte,
-         PID_8K, is8k, PID_FAMILY4, isFamily4, USAGE_FAMILY4,
-         buildBlob8k, build8kStoreData } from "./protocol.js";
+/* 协议常量与判定函数只import 本文件真正用到的那些。
+   2026-10-09 清理：上一轮把连接与读写逻辑拆到 connect.ts / session.ts /
+   device-*.ts 之后，这里的 40 个导入全部失去了调用方。
+   逐个核实过：每个符号在其他文件都有真实调用（如store8k 在 session.ts:123、
+   xm1GuardWrite 在 connect.ts:115、modelOf 在 session.ts:63），
+   所以只删本文件的导入名，**不动任何导出与实现**。 */
+import { VID, VID_22D4, DONGLE_PIDS, isXm1, USAGE_FAMILY4 } from "./protocol.js";
 import { isXm2weFamily } from "./xm2we.js";
 import { buildDiag } from "./diag.js";
-import { applyLayout, layoutFor, applyLayoutFromHash, reapplyLayout } from "./layout.js";
-import { openXm2we, closeXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
-import { S, newStage } from "./state.js";
-import { rawReceive, transact, guarded, probe, StatusError, xm1WriteDisabled } from "./transport.js";
+import { applyLayout, applyLayoutFromHash, reapplyLayout } from "./layout.js";
+import { openXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
+import { S } from "./state.js";
+import { guarded } from "./transport.js";
 import { snapSensor, verifySensor, snapPerf, verifyPerf, snapButtons, verifyButtons, reportVerify } from "./verify.js";
-import { looksLikeBlob, looksLikeBlob8k, parseBlob, buildSensorPayload, buildPowerPayload, xm1Parse,
-         XM1_F, XM1_STAGE_ON, xm1LodToMm, xm1MmToLod } from "./blob.js";
-import { readBlobXm1, writeBlobXm1, xm1QueryByte, xm1Snapshot, xm1Apply } from "./device-xm1.js";
-import { readBlob8k, store8k, verifySensor8k, verifyPerf8k } from "./device-8k.js";
+import { parseBlob, buildSensorPayload, buildPowerPayload, xm1Parse } from "./blob.js";
+import { writeBlobXm1 } from "./device-xm1.js";
 import { readBlob } from "./device-4k.js";
-import { render, renderXm1, renderInfoOnly, renderHelp } from "./render.js";
+import { render, renderHelp } from "./render.js";
 import { refreshAll, applySensor, applyPerf, resetSettle, writeSettle } from "./session.js";
 import { releaseAllDevices, onDeviceLost, openDevice, guard4k } from "./connect.js";
 import { resetToInitial } from "./presence.js";
@@ -178,12 +177,12 @@ document.addEventListener("langchange", () => { reapplyLayout(); renderHelp(); r
 
 /* ================= XM1 编辑（受限）=================
  * 可写字节被 protocol.ts 的 xm1GuardWrite 硬限制在 23 个已核实偏移内 —— UI 只是
- * 表面，真正的边界在发送层。这里负责：编辑状态、打补丁、差异预览、写入前快照、
- * 写入后回读校验。 */
-let xm1Edit: any = null;
-
-/* 快照：每次成功读取、以及每次写入前各存一份，最多 20 份，支持一键回退。 */
-const xm1Snaps: { at: number; label: string; blob: Uint8Array }[] = [];
+ * 表面，真正的边界在发送层。这里负责：差异预览、写入前的快照回退、写入后回读校验。
+ *
+ * 2026-10-09 清理：原先这里的 `let xm1Edit` 与 `const xm1Snaps` 两个本地变量
+ * 已删除——XM1 的编辑状态与快照早已迁移到全局状态 S（见 state.ts 的
+ * S.xm1Edit / S.xm1Snaps），本文件下方用的是 S.xm1Edit / S.xm1Snaps。
+ * 残留的本地副本从未被读取，属迁移前的遗留。 */
 
 
 /** 把编辑状态打成一份新的 1024B（只动 XM1_F 里登记的偏移）。 */

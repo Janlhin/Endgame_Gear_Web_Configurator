@@ -3,12 +3,13 @@
  *  事件绑定就地写在渲染函数里（控件是渲染时动态建出来的，每次渲染后重绑），
  *  所以本模块引用 device-xm1 的 xm1Apply。依赖方向是 render → device，单向。
  */
-import { $, hex, banner } from "./util.js";
+import { $, banner } from "./util.js";
 import { LANG, t } from "./i18n.js";
 import { S } from "./state.js";
 import { xm1Apply } from "./device-xm1.js";
-import { xm1LodToMm, cpiClamp, cpiInputBounds } from "./blob.js";
-import { XM1_MAX_STAGES } from "./protocol.js";
+import { cpiClamp, cpiInputBounds } from "./blob.js";
+// XM1_MAX_STAGES 原先在这里导入但从未使用（XM1 档位数量在 blob.ts 解析时
+// 就已写进 stage.levels）——2026-10-09 随本次死代码清理一并移除。
 
 /* ★ 这两张表按 LANG 直接取用（取不到就是 undefined → 崩）。
    新增语言时必须同步补齐 —— re/i18n_audit.mjs 会校验它们覆盖了全部语言。 */

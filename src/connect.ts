@@ -6,7 +6,7 @@
  *    规则：filter 必须精确限定到厂商集合、open() 前后各查一次、
  *    宁可拒绝连接也不要猜。
  */
-import { $, sleep, hex, log, banner } from "./util.js";
+import { $, log, banner } from "./util.js";
 import { t } from "./i18n.js";
 import { S } from "./state.js";
 import { setConn, render } from "./render.js";
