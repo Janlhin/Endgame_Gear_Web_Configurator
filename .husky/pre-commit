@@ -3,17 +3,26 @@
 #
 # 为什么只跑这几项：pre-commit 的等待时间是本地开发摩擦的主要来源，
 # 每加一项就多一份烦躁，最后大家开始用 --no-verify 绕过——那就全废了
-# （AGENTS.md 红线4：禁止 --no-verify）。因此这里只放秒级的：
+# （AGENTS.md 红线 4：禁止 --no-verify）。因此这里只放秒级的：
 #   tsc --noEmit        主类型通道
-#   markdownlint --fix  文档结构（只修可自动修的）
-#   tsc 再跑一次        确认 --fix 没把 TS 文件改坏
+#   eslint             类型通道的第二道（禁 any 等）
+#   markdownlint --fix 文档结构（只修可自动修的）
+#   tsc / eslint 再跑  确认 --fix 没把代码改坏
 #
-# 不放这里的：test / check:i18n / check:ui / build —— 它们要esbuild
+# 不放这里的：test / check:i18n / check:ui / build —— 它们要 esbuild
 # 编译、起无头 Edge、构建单文件，整套跑完十几秒。放 CI。
+#
+# ⚠️ lint 带 --max-warnings 154（存量 any 的真实计数）。**新增一处 any
+# 会让这个提交失败** —— 这是设计意图，不是误报。想临时绕过请改
+# eslint.config.mjs 的阈值并写明理由，不要用 --no-verify。
 
 npm run check || exit 1
+
+npm run lint || exit 1
 
 # markdownlint 只修可自动修的部分；修完仍有问题时命令本身会失败。
 npm run lint:docs:fix
 
+# --fix 可能改动文件，复查一遍类型与 lint。
 npm run check || exit 1
+npm run lint || exit 1
