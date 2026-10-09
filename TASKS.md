@@ -92,12 +92,20 @@ workflow 文件，属于用更大的问题换小问题。
      `microsoft/vscode` 同样 403）。**把「一个渠道失败」当成事实结论，与判例十五同源。**
   ② GitHub 对无权限资源返回 **404 而非 403**，故不能靠端点报错反推缺哪个权限。
 
-- **解除方式**（须人操作，见 `docs/推送前需授权.md`）：
-  ① 编辑该 fine-grained PAT，勾选仓库 `Endgame_Gear_Web_Configurator`
-     并给 `Contents` / `Workflows` 读写权限；或
-  ② 改用 classic PAT（勾 `repo` + `workflow`，scope 可用
-     `X-OAuth-Scopes` 头自行验证）；或
-  ③ `gh auth login`（gh 侧统一管理，后续无需再传令牌）。
+- **★ 第四次尝试：新 PAT 401 无效；但 `gh` 链路已通、只差一个 scope**（2026-10-09）——
+  新提供的 fine-grained PAT 经 `/user` 与 `/repos` **均返回 401 未经授权**
+  （长度 93、前缀正确）。**401 = 令牌本身无效**（撤销/过期/复制有误），
+  与 403（有效但无权）**必须先分清**，否则会把「令牌坏了」误判成「权限不够」。
+- **★ 局面已实质变化**：此前删除的 `git:`（wincred）凭据现有了替代者——
+  实测 `gh auth git-credential get` **能正常向 git 供给用户名+令牌**，
+  且推送报错**回到最初那句** `without workflow scope`，
+  证明 git 现在用的**正是 gh 那条令牌**。**链路已通，只差 `workflow` 一个 scope。**
+- **解除方式（大幅简化）**：`gh auth refresh -h github.com -s workflow` 即可收尾，
+  **后续无需再向任何人传递令牌**。见 `docs/推送前需授权.md` 路线 A。
+- ⚠️ 更正一处路径记载：全局 `credential.https://github.com.helper` 实际指向
+  **`C:\Program Files\GitHub CLI\gh.exe`**（2.102.0），
+  **不是**先前记录的 PortableGit 那份（2.88.1）。
+
 - **一次性推送做法已实践**：令牌写入 `chmod 600` 临时文件 + askpass 脚本，
   以 `GIT_ASKPASS=... GIT_TERMINAL_PROMPT=0 git -c credential.helper= push` 执行，
   **不写 remote URL、不落盘 .git/config**，推完立即删除临时文件。
