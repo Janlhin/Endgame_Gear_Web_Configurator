@@ -1,6 +1,6 @@
 # 推到 GitHub 的收尾步骤（只差一步，需要你本人操作）
 
-仓库**已创建**（公开、空）：https://github.com/Janlhin/endgame-gear-web-configurator
+仓库**已创建**（公开、空）：https://github.com/Janlhin/Endgame_Gear_Web_Configurator
 
 推送被 GitHub 拒绝，原因只有一个：
 
@@ -26,7 +26,7 @@ gh auth refresh -h github.com -s workflow
 ## 二、推送
 
 ```bash
-cd C:/Users/Janlhin/WorkBuddy/2026-10-08-19-20-54/endgame-gear-web-configurator
+cd C:/Users/Janlhin/WorkBuddy/2026-10-08-19-20-54/Endgame_Gear_Web_Configurator
 git push -u origin main
 git push origin v1.2 v1.3
 ```
@@ -36,7 +36,7 @@ git push origin v1.2 v1.3
 仓库 Settings → Pages → Build and deployment → Source 选 **GitHub Actions**。
 
 推送后 `deploy.yml` 会自动跑（push 到 `main` 触发），产出：
-`https://janlhin.github.io/endgame-gear-web-configurator/`
+`https://janlhin.github.io/Endgame_Gear_Web_Configurator/`
 
 若没自动触发：Actions 标签页 → `deploy pages` → Run workflow。
 

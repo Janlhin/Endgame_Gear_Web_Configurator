@@ -148,14 +148,14 @@ npm run check     # tsc --noEmit 类型检查
 
 ```bash
 git init && git add . && git commit -m "feat: Endgame Gear web configurator"
-gh repo create endgame-gear-web-configurator --public --source=. --push
+gh repo create Endgame_Gear_Web_Configurator --public --source=. --push
 gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[path]=/"   # 或在仓库 Settings → Pages 里选 main /
 ```
 
-之后访问 `https://<你的用户名>.github.io/endgame-gear-web-configurator/`。GitHub Pages 自动是 HTTPS，满足 WebHID 的安全上下文要求。
+之后访问 `https://<你的用户名>.github.io/Endgame_Gear_Web_Configurator/`。GitHub Pages 自动是 HTTPS，满足 WebHID 的安全上下文要求。
 
 > **部署要点**（本项目已逐项核对过，详见 [`docs/ui-port-feasibility.md`](docs/ui-port-feasibility.md)）：
-> - 产物**没有任何绝对路径**（也没有 `<base>`），所以放在项目页子路径 `…/endgame-gear-web-configurator/` 下不会破。
+> - 产物**没有任何绝对路径**（也没有 `<base>`），所以放在项目页子路径 `…/Endgame_Gear_Web_Configurator/` 下不会破。
 >   对照：同类站点 `op1w.vercel.app` 用的是 `/assets/…` 绝对路径，同一份构建搬到项目页子路径会 404。
 > - 仓库根已有 **`.nojekyll`**：分支发布默认会跑 Jekyll，而它会排除 `_` 开头的文件（如 `scss/_tokens.scss`），
 >   更糟的是**一旦 Jekyll 构建失败，整站 404**。本项目只需要托管两个构建好的 HTML。

@@ -58,3 +58,10 @@
 - **两处冲突按设计保持未定论**：角度调校在 blob `0x01` 还是 `0x70`；
   `custom_flags@126` 与 `glassMode@127` 位置重叠。
 - XM1 的灯效 / 按键映射 / Angle 仍待差分实验定位（实验包见 `docs/xm1-diff-kit.md`）。
+
+---
+
+## 未发布 · 发布前修正
+
+- 仓库 / npm 包名 / 产物内的应用标识改为 **`Endgame_Gear_Web_Configurator`**，
+  与账号内其余四个仓库的命名风格一致（PascalCase + 下划线）。详见 DECISIONS.md 同日条目。

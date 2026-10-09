@@ -443,7 +443,7 @@ $("btnSave").onclick = () => {
     for (let i = 0; i < 16 && o + i < S.blob.length; i++) row.push(S.blob[o + i].toString(16).padStart(2, "0"));
     hexLines.push(o.toString(16).padStart(4, "0") + ": " + row.join(" "));
   }
-  const out = { app: "endgame-gear-web-configurator", savedAt: new Date().toISOString(),
+  const out = { app: "Endgame_Gear_Web_Configurator", savedAt: new Date().toISOString(),
                 device: S.mouseName, gen: S.gen, lang: LANG,
                 blobB64: btoa(String.fromCharCode(...S.blob)),
                 blobHex: hexLines.join("\n") };

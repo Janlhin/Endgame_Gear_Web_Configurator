@@ -120,3 +120,22 @@
 - **理由**：方案要求「不同时间点执行、不相互豁免」。因此 CI 拆成两个 job：
   `verify`（ubuntu，跑 `verify:ci` + 产物断言 + commit message 校验）与
   `ui`（windows-latest，跑四个无头浏览器检查）。**两条通道都跑，谁都不跳过谁。**
+
+## 2026-10-09 · 仓库名改为 `Endgame_Gear_Web_Configurator`（发布前最后一步）
+
+- **决策**：仓库、npm 包名、产物里的 `app` 标识统一改为 `Endgame_Gear_Web_Configurator`。
+- **理由**：账号内已有四个仓库（`OpenSave` / `OpenRA_simplified_chinese` /
+  `MPV_Config_Builder` / `DXVK_Manager`）**全部是 PascalCase + 下划线分段**。
+  GitHub 生态通行的是 kebab-case，但**同一账号内的一致性权重更高**——GitHub 首页是给人看的，
+  五个仓库并排时风格统一比单个名字符合外部惯例更显眼。
+- **被否决的替代方案**：
+  - 保持 `endgame-gear-web-configurator`（kebab-case）—— 单看更"规范"，但成为账号里唯一的例外；
+  - `egg-web-configurator`（缩写短名）—— 搜索与自解释性都变差。
+- **代价（已知并接受）**：URL 变成 `/Endgame_Gear_Web_Configurator/`，
+  带下划线与大小写，不如全小写干净。但 GitHub 会 301 重定向，且本工具的分享途径
+  以"直接下载单文件"为主，URL 只是一条备用路径。
+- **改名时机**：仓库已建但**尚未推送**，此刻改名零成本——没有断链，没有历史污染。
+  推上去之后 GitHub 把 `_` 与 `-` 视为不同字符，改名即断链。
+- **同步范围**：`package.json` / `package-lock.json` / README 的 `gh repo create` 命令与
+  Pages 路径 / `docs/push-to-github.md` / 三个源码里的 `app:` 字段 /
+  构建产物。`CHANGELOG.md` 与本文件里**保留改名前的原文**——那是历史记录，不是当前配置。

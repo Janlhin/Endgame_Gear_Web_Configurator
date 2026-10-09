@@ -364,7 +364,7 @@ export class Xm2weSession {
 
   toJSON() {
     return {
-      app: "endgame-gear-web-configurator", family: "xm2we", savedAt: new Date().toISOString(),
+      app: "Endgame_Gear_Web_Configurator", family: "xm2we", savedAt: new Date().toISOString(),
       polling: this.polling(), debounce: this.debounce(),
       cpi: this.cpiTable(), keys: this.keyTable(), led: this.ledColors(),
       memHex: this.dumpHex(),

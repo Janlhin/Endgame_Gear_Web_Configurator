@@ -78,7 +78,7 @@ export function buildDiag(extra: any = {}): any {
   }));
   const env: any = (globalThis as any).navigator || {};
   return {
-    app: "endgame-gear-web-configurator",
+    app: "Endgame_Gear_Web_Configurator",
     schema: "diag/1",
     savedAt: new Date().toISOString(),
     purpose: "未验证型号的实测数据包 —— 请连同「改了什么、回读结果、手感是否真的变了」一起发回",
