@@ -79,10 +79,22 @@ workflow 文件，属于用更大的问题换小问题。
   实测有**两个 gh**（`C:\Program Files\GitHub CLI\gh.exe` 2.102.0、
   PortableGit 自带 2.88.1），只是**都不在 Git Bash 的 PATH 里**，
   `where gh` 报「无法找到文件」，故 bash 检测得到的是**假阴性**。
+- **★ 第三次尝试：fine-grained PAT 亦被拒（403）**（2026-10-09）——
+  新建 `github_pat_` 令牌，`/user` 验证**有效、身份正确**，但 push 报
+  `Permission to <repo>.git denied to <user>`。**根因**：fine-grained PAT 的权限
+  **绑定到具体仓库**，创建时必须显式选中本仓库，否则一律 403 且**报错不提示缺什么**。
+  **教训：「令牌有效」≠「有权访问目标仓库」，两级都要验**（判例十八）。
+  ⚠️ 另实测：本仓库当前为**私密**（匿名 API 查询无返回；早期记录为「公开」）。
 - **解除方式**（须人操作，见 `docs/推送前需授权.md`）：
-  ① 让 `gh` 侧令牌先拿到 `workflow`；② 删除 wincred 里的旧 `git:` 凭据，
-  让 git 回落到 gh 已授权的令牌；③ 重推。备选：把带 `workflow` 的令牌
-  直接写进 remote URL（推完必须换回，否则令牌留在 `.git/config`）。
+  ① 编辑该 fine-grained PAT，勾选仓库 `Endgame_Gear_Web_Configurator`
+     并给 `Contents` / `Workflows` 读写权限；或
+  ② 改用 classic PAT（勾 `repo` + `workflow`，scope 可用
+     `X-OAuth-Scopes` 头自行验证）；或
+  ③ `gh auth login`（gh 侧统一管理，后续无需再传令牌）。
+- **一次性推送做法已实践**：令牌写入 `chmod 600` 临时文件 + askpass 脚本，
+  以 `GIT_ASKPASS=... GIT_TERMINAL_PROMPT=0 git -c credential.helper= push` 执行，
+  **不写 remote URL、不落盘 .git/config**，推完立即删除临时文件。
+  已核验：`remote -v` 与 `.git/config` 均无令牌残留。
 - 远端经 `git ls-remote origin` 复核为**零对象**，三次拒绝均发生在传输完成前，
   **未污染远端**——可放心重试，不会留下半推送状态。
 
