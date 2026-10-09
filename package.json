@@ -13,12 +13,13 @@
     "check:ui": "python re/layout_check.py && python re/i18n_check.py && python re/render_check.py && python re/reset_check.py",
     "lint:docs": "markdownlint-cli2",
     "lint:docs:fix": "markdownlint-cli2 --fix",
-    "verify": "npm run check && npm run lint && npm run lint:docs && npm run lint:css && npm run test && npm run check:i18n && npm run check:ui && npm run build",
-    "verify:ci": "npm run check && npm run lint && npm run lint:docs && npm run lint:css && npm run test && npm run check:i18n && npm run build",
+    "verify": "npm run check:meta && npm run check && npm run lint && npm run lint:docs && npm run lint:css && npm run test && npm run check:i18n && npm run check:ui && npm run build",
+    "verify:ci": "npm run check:meta && npm run check && npm run lint && npm run lint:docs && npm run lint:css && npm run test && npm run check:i18n && npm run build",
     "prepare": "husky",
     "lint": "eslint src --max-warnings 81",
     "lint:fix": "eslint src --fix",
-    "lint:css": "stylelint \"scss/**/*.scss\""
+    "lint:css": "stylelint \"scss/**/*.scss\"",
+    "check:meta": "node re/check_verify.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",

@@ -87,7 +87,31 @@ writeFileSync("index.html", html);
    含中文的产物按 .length 算会少报约 20%（中文在 UTF-16 里算 1 个码元、
    在磁盘上占 3 字节），曾把 253 KB 报成 207 KB。 */
 const kb = (s) => (Buffer.byteLength(s, "utf8") / 1024).toFixed(1);
+const kbOf = (s) => Buffer.byteLength(s, "utf8") / 1024;
+
+/* ★ 体积基线门禁（S-103）
+ *
+ * 基线取285.8 KB（2026-10-09，esbuild 0.28.2 + stylelint 接入后），
+ * 上限定 **300 KB** —— 留约 5% 余量：
+ *   · 余量太小 → 正常的文案微调就红，维护者会习惯性去改阈值，门禁失效；
+ *   · 余量太大 → 混入一个 50KB 的依赖也照样绿，失去意义。
+ * 300 KB 意味着「有人在没意识到的情况下塞进一个新库」会被立刻发现。
+ *
+ * ⚠️ 只想让体积变大时，先问「这个功能值不值这几十 KB」——
+ * 本项目的硬约束是**零外部依赖单文件**（见 README）。
+ * 确需上调时连同理由写进本注释，不要只改数字。 */
+const SIZE_BUDGET_KB = 300;
+const actualKb = kbOf(html);
 console.log(`dist/index.html + index.html written, ${kb(html)} KB  (js ${kb(js)} KB, css ${kb(css)} KB)`);
+if (actualKb > SIZE_BUDGET_KB) {
+  console.error(
+    `\n✗ 体积超预算：${kb(html)} KB > ${SIZE_BUDGET_KB} KB` +
+    `\n  新增 ${(actualKb - SIZE_BUDGET_KB).toFixed(1)} KB。` +
+    `\n  本项目要求零外部依赖单文件——塞库之前先确认它值这个体积。` +
+    `\n  确需上调预算，改build.mjs 的 SIZE_BUDGET_KB 并写明理由。`,
+  );
+  process.exitCode = 1;
+}
 
 // ---------- 4. 独立工具页：离线 blob 分析 / 对比 ----------
 // 与主程序同源：共用 scss/ 令牌（因此深浅主题一致），产物同样是零依赖单文件，
