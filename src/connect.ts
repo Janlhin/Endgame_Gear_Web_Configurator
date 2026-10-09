@@ -115,9 +115,18 @@ export async function openDevice(d: HIDDevice) {
       const isEchoBlob = S.xm1Armed && xm1GuardWrite(reportId, u8, ref);  // ② 写 blob（仅限已核实字段）
       const isEchoByte = S.xm1Armed && xm1GuardEchoByte(reportId, u8, ref); // ③ 回声写单字节
       if (!isQuery && !isEchoBlob && !isEchoByte) {
+        // ★ 审计发现（2026-10-09）：原实现在此处log +解 armed + xm1WriteDisabled()
+        //   之后**仍然执行 realSend()** —— 即「拦截」只是抛异常让后续流程中断，
+        //   **那条非常规报文本身已经发给了设备**。
+        //   与上方注释宣称的「一律拦截」矛盾，且直接违反本闸门的设计依据
+        //   （2026-10-09 事故：发送 0xA0 全零1024B blob 导致 DPI/CPI 清零）。
+        //   throw 只能阻止「后续动作」，阻止不了「已发生的发送」。
+        // 所以拦截必须**不发送**：显式 return，不落到下面的 realSend。
+        // 保留 xm1WriteDisabled() 的抛异常——它负责 banner 提示与文案，
+        // 让调用方知道「本次写入已被拒绝」，而不是静默失败。
         log(`✗ XM1 拦截：非常规发送（reportId=${reportId}, len=${u8?.length}, cmd=${u8?.[0] ?? "?"}, armed=${S.xm1Armed}）`);
         S.xm1Armed = false;
-        xm1WriteDisabled();
+        return xm1WriteDisabled();
       }
       return realSend(reportId, data);
     };
