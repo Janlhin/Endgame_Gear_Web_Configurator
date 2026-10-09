@@ -10,7 +10,9 @@
     "dev": "node build.mjs --watch",
     "test": "node re/run_test.mjs",
     "check:i18n": "node re/i18n_audit.mjs",
-    "check:ui": "python re/layout_check.py && python re/i18n_check.py && python re/render_check.py && python re/reset_check.py"
+    "check:ui": "python re/layout_check.py && python re/i18n_check.py && python re/render_check.py && python re/reset_check.py",
+    "verify": "npm run check && npm run test && npm run check:i18n && npm run check:ui && npm run build",
+    "verify:ci": "npm run check && npm run test && npm run check:i18n && npm run build"
   },
   "devDependencies": {
     "esbuild": "^0.24.2",
