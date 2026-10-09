@@ -15,7 +15,7 @@
 
 - 网页工具：`index.html`（双击用 Chrome/Edge 打开，走 WebHID，**不能在内置预览面板里**）。
 - 官方软件：XM1 Configuration Software v1.09（已装）。
-- 差分脚本：`re/xm1_diff.py`（Python 3，只读分析，不碰设备）。
+- 差分脚本：`re/archive/xm1_diff.py`（Python 3，只读分析，不碰设备）。
 - 备选：离线分析器 `tools/blob-studio.html` —— 粘两份 hex 自动差分，不用连设备。
 
 ## 一、通用流程（每个实验都一样，只改「改哪一项」）
@@ -29,7 +29,7 @@
 6. 跑差分：
 
    ```bash
-   python re/xm1_diff.py re/xm1_base.bin re/xm1_<实验名>.bin
+   python re/archive/xm1_diff.py re/xm1_base.bin re/xm1_<实验名>.bin
    ```
 
 7. 把输出**整段贴回会话**。脚本会标注哪些偏移是"已知可写"、哪些是"新候选"。

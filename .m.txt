@@ -1,56 +1,44 @@
-build: 接入 knip 做死代码自动检测，并记录首份报告的结论
+refactor: re/ 下11 个逆向探查脚本归档到 re/archive/，文档路径同步
 
-T-110。判据：`npm run knip` 可执行并输出报告；结论写入 DECISIONS.md。
+S-101。判例四已授权「逐个评估后归档，不删除」（用户裁决 2026-10-09）。
 
-## 为什么需要它
+## 为什么归档而不删
 
-ESLint 的 `no-unused-vars` 只能看**单个文件内**的未使用变量，查不出
-「整个文件/某个导出没人用」。T-111那 49 处是逐个人工核实出来的，
-而「导出但无人 import」正是重构残留最典型的信号。
+这些脚本是对**官方 Windows 客户端二进制**做逆向分析的工具，价值不在代码，
+而在**可复现的证据链**——协议文档里每个结论都标注了「用哪个脚本、扫哪个
+RVA 区间得到的」。删掉它们，那些结论就退化成「某人某天看到的」，
+无法被第二个人复核。
 
-## ★ 配置要点：裸跑的结果几乎全是误报
+## 归档判据
 
-首次裸跑 `npx knip` 报出 14 个「未使用文件」——**里面 11 个是测试文件、
-4 个是 SCSS**，没有一个是真死代码。原因是本项目的入口不止 src/main.ts：
-  · re/test_*.ts 由 re/run_test.mjs 用 ENTRIES 数组**动态 import**，
-    knip 的静态分析看不见；
-  · scss/*.scss 由 build.mjs 里的 sass.compile 加载，不是 TS import。
+先按「是否被门禁调用」把 18 个脚本分成两类：
 
-配置声明这些入口后，误报归零，报告只剩 51 个未使用导出。
+**门禁脚本（留在 re/ 根目录，7 个）**
+    check_verify.mjs / run_test.mjs / layout_check.py /
+    render_check.py / reset_check.py / i18n_check.py / i18n_audit.mjs
 
-**一个满是误报的报告等于没有报告** —— 这是本次最重要的一条经验。
+**纯探查脚本（移入 re/archive/，11 个）**
+    dias.py / obj_scan.py / obj_scan2.py / cmd_scan.py / const_scan.py /
+    imm_scan.py / xref_scan.py / reportid_scan.py /
+    xm1_blob_analysis.py / xm1_blob_struct.py / xm1_diff.py
 
-## 两个环境坑
+判据是「package.json / CI / pre-commit 里有没有引用」——
+不靠「看起来像不像工具」，而是机器可判定的。
 
-1. **knip 只认 knip.json[c] / knip.(js|ts) / knip.config.(js|ts)**，
-   **不认 .mjs**（实测写成 knip.config.mjs 会被完全忽略，等于裸跑无配置）。
-   与 Stylelint 的要求一致。
-2. 配置字段名不能凭记忆写：写 `rules: { files: "unused files" }` 与
-   `includeDependencies` / `reporters` 都被 schema 拒绝
-   （ERROR: Invalid input）。正确字段读自 node_modules/knip/schema.json。
-   rules 的值是 `"error" | "warn" | "off"`，不是 `"unused files"` 这类描述。
+新增 re/archive/README.md：逐个记录用途、产出沉淀在哪个笔记文件、
+以及依赖 re/upstream/ 下已 gitignore 的官方二进制。
 
-## 首份报告的结论（写入 DECISIONS.md）
+## 归档的真实成本：文档路径引用
 
-51 个未使用导出里，**大部分是误报**——knip 只看 TS import 关系，
-看不到 index.html 里通过事件绑定/字符串调用的那些。已抽样核实：
-`transact` 在 device-4k.ts 与 xm2we.ts 有真实调用；`isSafeToOpen` /
-`openGuarded` 在 xm2we-ui.ts 有调用。
+归档让 5 处文档引用失效（docs/xm1-diff-kit.md 2 处、re/XM1_NOTES.md 2 处、
+TODO.md 1 处），已全部改为 re/archive/ 路径并核对归零。
 
-**确认无人调用的**（已记入 T-111 待处置）：
-  confirmBeta / armBeta      —— 写入闸门确认框（可能是有意未接线）
-  pollAck8k                  —— 8k STORE 的 ACK 轮询
-  fillSelect                 —— render.ts 的下拉填充
-  fwStr                      —— session.ts 的固件版本格式化
+**这正是归档不是免费的原因**——脚本移走容易，引用它的文档不会自动跟着走。
+不修正就会留下一批指向不存在文件的文档，比不归档更糟。
 
-⚠️ 这批**不作为门禁**（rules.exports 设为 warn），
-   因为误报率还高，加进 verify 只会诱导人忽略整个报告。
-   等 T-111 逐项核实完、误报清零后再考虑升为 error。
+核对方式：grep 全部「re/<脚本名>.py」形式，确认无遗漏。
+另有 3 处形似但实为误报（xm1-diff-kit.md 用连字符、§一 是章节号、
+xm1_blob_2026-10-09 是数据文件名非脚本）。
 
-## 顺带修 .gitignore 的真实缺口
-
-本轮实验（给 run_test.mjs 加 sourcemap 试覆盖率）产生了两类文件，
-发现 .gitignore 都没覆盖：re/.test_*.mjs.map 与 coverage/。
-已补齐——否则一旦有人试覆盖率就会误提交几十个文件。
-
-验证：npm run verify 九段全绿；npm run knip 退出码 0 且输出无配置冗余提示。
+验证：npm run verify 九段全绿；test_repo_hygiene 29 项不受影响
+（它只检查 re/upstream/ 的 .gitignore 规则，不涉及 re/ 根目录结构）。

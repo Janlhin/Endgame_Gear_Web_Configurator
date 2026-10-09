@@ -382,7 +382,7 @@ UI 现在明确提示：XM1 仅识别型号，**不做任何读取或写入**，
 3. 网页重新读取 → 导出
 4. 对比两份 blob，**变化的字节即该字段的确切偏移**
 
-分析脚本：`re/xm1_blob_struct.py`（结构发现）、`re/xm1_blob_analysis.py`（首轮启发式）。
+分析脚本：`re/archive/xm1_blob_struct.py`（结构发现）、`re/archive/xm1_blob_analysis.py`（首轮启发式）。
 
 ## 6.7 ★★ XM1 完整字段表（三次差分实测确凿，2026-10-09）
 
