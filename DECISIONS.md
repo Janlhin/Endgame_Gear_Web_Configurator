@@ -524,3 +524,24 @@ typescript-eslint 的 peer 上限覆盖 TS7 后，删掉两个别名、恢复
 - **影响范围**：任何用 PAT 的自动化。判例十六是它的上游——
   十六说「要看消费者实际用的那一份凭据」，本条说「选定那一份之后，
   还要确认它对目标仓库有权」——**两级都要验**。
+
+### 判例十九：`permissions` 字段涵盖仓库读写，但不含 workflows（2026-10-09）
+
+- **实测**：fine-grained PAT 对目标仓库返回
+  `permissions: {admin: true, maintain: true, push: true, triage: true, pull: true}`，
+  **看起来权限齐备**，但 `git push` 仍 403。
+- **根因**：该字段涵盖的是**仓库内容权限**，而 **`Workflows` 是独立权限项**，
+  默认 `No access`，**不会因为给了 Contents 就自动带上**。
+  本项目要推 `.github/workflows/{verify,deploy}.yml`，故必须有它。
+  这解释了「明明有 push 权限却推不动」——**权限不是一个整体，是分项的**。
+- **重要修正**：本次还发现此前「仓库是私密的」结论**不成立**。
+  实测网页 HTTP 200，API 返回 `private: false`；而匿名 API 的 403
+  是 **`API rate limit exceeded`**——对照公开仓库 `microsoft/vscode` 同样 403。
+  **即：把「一个渠道失败」直接写成事实结论，与判例十五同源。**
+  `curl` 无返回/403 有多种成因（速率限制、私密、网络），
+  **必须用对照仓库 + 读响应体来区分**。
+- **附带**：GitHub 对无权限资源返回 **404 而非 403**（`/repos/<repo>/contents`
+  与 `/workflows` 实测均 404），故**不能靠「哪个端点报错」反推缺哪个权限**，
+  排查必须以令牌配置页为准。
+- **影响范围**：凡涉及 `.github/workflows/` 的仓库（即所有用 Actions/CI 的仓库）
+  推送时都需要该权限项。

@@ -79,12 +79,19 @@ workflow 文件，属于用更大的问题换小问题。
   实测有**两个 gh**（`C:\Program Files\GitHub CLI\gh.exe` 2.102.0、
   PortableGit 自带 2.88.1），只是**都不在 Git Bash 的 PATH 里**，
   `where gh` 报「无法找到文件」，故 bash 检测得到的是**假阴性**。
-- **★ 第三次尝试：fine-grained PAT 亦被拒（403）**（2026-10-09）——
-  新建 `github_pat_` 令牌，`/user` 验证**有效、身份正确**，但 push 报
-  `Permission to <repo>.git denied to <user>`。**根因**：fine-grained PAT 的权限
-  **绑定到具体仓库**，创建时必须显式选中本仓库，否则一律 403 且**报错不提示缺什么**。
-  **教训：「令牌有效」≠「有权访问目标仓库」，两级都要验**（判例十八）。
-  ⚠️ 另实测：本仓库当前为**私密**（匿名 API 查询无返回；早期记录为「公开」）。
+- **★ 第三次尝试：fine-grained PAT 仍 403——缺 `Workflows` 权限项**（2026-10-09）——
+  该令牌 `/user` 有效，且 `GET /repos/<repo>` 返回
+  `permissions: {admin: true, push: true, ...}`（**看似权限齐备**），
+  但 push 仍报 `Permission denied`。**根因**：`permissions` 字段只涵盖
+  **仓库内容权限**，而 **`Workflows` 是独立权限项、默认 No access**，
+  不会因给了 Contents 自动带上——这正是「有 push 权限却推不动」的原因。
+  **判例十九**。
+- **⚠️ 本轮更正两处错误结论**：
+  ① 「仓库是私密的」**不成立**——实测网页 HTTP 200、带认证 `private: false`；
+     匿名 API 的 403 实为 **`API rate limit exceeded`**（对照公开仓库
+     `microsoft/vscode` 同样 403）。**把「一个渠道失败」当成事实结论，与判例十五同源。**
+  ② GitHub 对无权限资源返回 **404 而非 403**，故不能靠端点报错反推缺哪个权限。
+
 - **解除方式**（须人操作，见 `docs/推送前需授权.md`）：
   ① 编辑该 fine-grained PAT，勾选仓库 `Endgame_Gear_Web_Configurator`
      并给 `Contents` / `Workflows` 读写权限；或
