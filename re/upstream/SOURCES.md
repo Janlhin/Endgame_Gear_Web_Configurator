@@ -207,7 +207,7 @@ gen1 与 gen2 的 CPI 处理是**同一处代码、同一偏移**，只有常量
 | OP1-8k-v2 v1.00 | 0x1978 | 0x0A | 0x7530 | 同 ÷10 | 同上 |
 | OP1-8k PF v1.11 | 0x1976 | 0x32 | — | 同 ÷50 | 同 gen1 |
 
-工具：（capstone）；二进制按  + `fetch.sh` 取回。
+工具：`re/upstream/disasm.py`（capstone）；二进制按 `MANIFEST.md` + `fetch.sh` 取回。
 完整代码片段与结论见 `re/PROTOCOL_NOTES.md`「官方 CPI 规则」。
 
 **推翻了此前两条第三方说法**：① v2 不存在「>10000 用 50」的分段；
