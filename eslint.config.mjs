@@ -112,6 +112,31 @@ export default tseslint.config(
     },
   },
 
+  // ---- 协议边界：any 已清零，升级为 error ----
+  {
+    // 这四个文件是 HID 数据进入代码的唯一入口，也是 XM1 配置清零事故的所在层。
+    // T-109 已把它们的 any 全部收敛（97 → 0），因此这里可以设 error：
+    // 往后任何人在这层写 any，门禁会立刻拦住。
+    //
+    // 覆盖范围严格限定在这四个文件，其余 14 个文件仍是 warn。
+    // 理由见文件末尾「分级口径」注释。
+    files: [
+      "src/connect.ts",
+      "src/device-8k.ts",
+      "src/device-xm1.ts",
+      "src/blob.ts",
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      // unused-vars 在这四文件仍是 warn：实测 4 处（connect.ts 的 sleep/hex、
+      // device-8k.ts 的 buildBlob8k、device-xm1.ts 的 xm1GuardEchoByte）。
+      // 它们属T-111「逐个确认意图后再处置」的范围，**不能由 lint 自动删**——
+      // buildBlob8k 尤其可疑：它与 store8k 在同一文件，可能是漏接线的写入函数。
+      // 等 T-111 处置完毕后再把这一条也升为 error。
+      "@typescript-eslint/no-unused-vars": "warn",
+    },
+  },
+
   // ---- 测试与逆向脚本：放宽 any，但不允许完全关闭类型通道 ----
   {
     // re/ 下是回归测试与逆向探查脚本。它们大量构造畸形输入来验证

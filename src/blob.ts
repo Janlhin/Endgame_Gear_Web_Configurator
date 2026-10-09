@@ -4,7 +4,7 @@
  *  「档位/回报率」的取值域）。XM1 的线上布局同构，但字段语义未逐字节核实，
  *  因此 xm1Parse 只做「不猜」的解析：整体带出原始字节供显示与导出对照。
  */
-import { S, newStage } from "./state.js";
+import { S, newStage, type Stage, type Xm1Edit } from "./state.js";
 import { XM1_MAX_STAGES } from "./protocol.js";
 
 export function looksLikeBlob(b: Uint8Array, isXm1Dev = false) {
@@ -37,7 +37,11 @@ export function mmToLodByte(mm: number, glass?: boolean) {
 }
 
 export function parseBlob() {
-  const b = S.blob; const s: any = newStage();
+  const b = S.blob;
+  // 类型是 Stage 而非 any —— 于是下面每一次字段赋值都受类型检查约束。
+  // 新增字段必须先在 Stage 接口里声明（含未核实字段 raw/ unknown/ unk7，
+  // 它们的语义见 state.ts 的注释），否则 tsc 会报错。
+  const s: Stage = newStage();
 
   /* XM1（VID 0x22D4）：blob 布局与 4k 族同构，但字段语义**尚未逐字节核实**
      ——官方内部布局与线上布局之间还有一层重排（函数 0x40FD60，298 条搬运）。
@@ -74,8 +78,11 @@ export function parseBlob() {
     const o = 0x37 + 7 * n;
     s.buttons.push({ type: b[o], code: b[o+1], key: b[o+2], filter: b[o+6] });
   }
+  // glass 在blob 里是 0/1（占位字节），而 lodByteToMm / mmToLodByte
+  // 的形参是 boolean —— 这里显式转换，而不是把 Stage.glass 声明成 number
+  // 后到处传数字。类型通道要表达真实语义，不靠调用方蒙混过关。
   s.glass = (S.gen === 2 && b[0x6F]) ? 1 : 0;
-  s.lodMM = lodByteToMm(s.lod, s.glass);
+  s.lodMM = lodByteToMm(s.lod, s.glass === 1);
   S.stage = s;
 }
 
@@ -83,7 +90,7 @@ export function buildSensorPayload() {
   const p = new Uint8Array(28);
   p[0] = S.stage.unk7 ?? 0;                           // 透传 blob[7]（勿清零——语义未知，官方工具原样回写）
   p[1] = S.stage.ledLiftoff;
-  p[2] = mmToLodByte(S.stage.lodMM, S.stage.glass);
+  p[2] = mmToLodByte(S.stage.lodMM, S.stage.glass === 1);
   p[3] = S.stage.angleSnap; p[4] = S.stage.ripple;
   /* ★ p[5]（角度调校）**原样透传读到的值**，不写 0、也不接受 UI 编辑。
      理由：该字段在 v2 上位置有两说 —— 4k 分块写的 payload[5] ↔ blob[0x01]（本项目此前采用）
@@ -126,7 +133,7 @@ export function buildPowerPayload() {
   return p;
 }
 
-export function xm1Parse(b: Uint8Array) {
+export function xm1Parse(b: Uint8Array): Xm1Edit {
   const u16 = (o: number) => b[o] | (b[o + 1] << 8);
   const lodRaw = b[XM1_F.lod];
   return {

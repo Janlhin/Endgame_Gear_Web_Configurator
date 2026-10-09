@@ -11,7 +11,7 @@ import { errMsg } from "./err.js";
  */
 import { $, sleep, hex, log, banner } from "./util.js";
 import { t } from "./i18n.js";
-import { S } from "./state.js";
+import { S, type Xm1Edit } from "./state.js";
 import { rawReceive } from "./transport.js";
 import { RPT_CMD, RPT_BULK, XM1_SETTLE_MS, buildXm1BlobReport, buildXm1ByteReport, xm1GuardEchoByte } from "./protocol.js";
 import { looksLikeBlob, xm1Parse, XM1_F, XM1_STAGE_ON, xm1LodToMm, xm1MmToLod, cpiClamp } from "./blob.js";
@@ -153,7 +153,11 @@ export function xm1Snapshot(label: string) {
   if (b) b.textContent = t("xm1Undo") + " (" + S.xm1Snaps.length + ")";
 }
 
-export function xm1PatchEdit(ref: Uint8Array, e: any): Uint8Array {
+/** 把编辑状态打补丁到参考 blob 上，返回新的 blob。
+ *  ⚠️ 这是 XM1 写入路径的核心：调用方必须先过xq 闸门（xm1GuardEchoByte
+   与 23 个可写偏移的白名单），本函数本身**不做安全检查**，只负责按偏移拼装。
+ *  改动这里的偏移前，务必重读 re/XM1_NOTES.md 的 6.7 节（真机差分证据）。 */
+export function xm1PatchEdit(ref: Uint8Array, e: Xm1Edit): Uint8Array {
   const out = ref.slice();
   const clamp = cpiClamp;   // 不传 gen ⇒ 默认 50–30000/步进 50（XM1 实测确认的档位）
   out[XM1_F.active] = (e.active | 0) & 3;

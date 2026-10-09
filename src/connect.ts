@@ -82,7 +82,7 @@ export async function openDevice(d: HIDDevice) {
   S.xm1 = isXm1(d.vendorId);
   S.eightK = !S.xm1 && is8k(d.productId);
   S.family4 = !S.xm1 && !S.eightK && (isFamily4(d.productId)
-            || (d.collections || []).some((c: any) => c.usagePage === USAGE_FAMILY4.page));
+            || (d.collections || []).some((c) => c.usagePage === USAGE_FAMILY4.page));
   S.wired = S.xm1 || S.eightK || S.family4 || !DONGLE_PIDS.includes(d.productId);
   S.lastFrame = null; S.frameAligned = false;
   /* ★ XM1 发送白名单（防止再次损坏配置）
@@ -104,7 +104,10 @@ export async function openDevice(d: HIDDevice) {
   if (S.xm1) {
     const realSend = d.sendFeatureReport.bind(d);
     const echo = () => S.xm1LastRead;
-    d.sendFeatureReport = async (reportId: number, data: any) => {
+    d.sendFeatureReport = async (reportId: number, data: BufferSource) => {
+      // 只接受 Uint8Array：HID 的 sendFeatureReport 虽签名 BufferSource，
+      // 但本项目的报文一律是 Uint8Array。其他类型一律视为非常规发送并拦截
+      //（u8 为 null ⇒ 三个 guard 全部返回 false ⇒ 落入拦截分支）。
       const u8 = data instanceof Uint8Array ? data : null;
       // 校验全部来自 protocol.ts（与构造函数同一源头，并有单元测试覆盖）
       const ref = echo();
@@ -118,7 +121,12 @@ export async function openDevice(d: HIDDevice) {
       }
       return realSend(reportId, data);
     };
-    (d as any).__realSend = realSend;
+    // __realSend：原始 sendFeatureReport 的旁路句柄。
+    // 用途——re/test_write_gates.ts 需要验证「闸门本身没被改坏」：
+    // 它要绕过闸门发一次报文，对照闸门逻辑前后行为是否一致。
+    // ⚠️ 这是给回归测试留的后门，**生产路径不得调用**。
+    // 用扩展类型而非 any：只有这一个属性，且名字自带注释含义。
+    (d as HIDDevice & { __realSend?: HIDDevice["sendFeatureReport"] }).__realSend = realSend;
     log("⚠ XM1：读查询常驻放行；写 blob 仅允许「原样回声」（逐字节校验），其余一律拦截");
   }
   S.dev.addEventListener("inputreport", (e: HIDInputReportEvent) => {
@@ -136,7 +144,10 @@ export async function openDevice(d: HIDDevice) {
 /** 原生确认框的包装：Node（离线测试）里没有 window.confirm，
  *  此时一律当作"用户未确认" —— 测试环境绝不可能意外放行写入。 */
 export function confirmBeta(msg: string): boolean {
-  const w: any = typeof globalThis !== "undefined" ? (globalThis as any).window : null;
+  // window 在 Node 里不存在（re/*.ts 离线跑时无 DOM），故先typeof 探测。
+  // 关键：**探测不到就返回 false**，绝不能因为「拿不到 window」就默认放行写入。
+  if (typeof globalThis === "undefined") return false;
+  const w = (globalThis as { window?: { confirm?: (m: string) => boolean } }).window;
   if (!w || typeof w.confirm !== "function") return false;
   return !!w.confirm(msg);
 }
@@ -144,7 +155,9 @@ export function confirmBeta(msg: string): boolean {
 /** 打开实验写入：置位 + 强制先导出一份备份（写坏了还有得救）。 */
 export function armBeta() {
   S.betaArmed = true;
-  try { ($("btnSave") as any)?.click?.(); } catch (_) { /* 导出失败不阻断，仅记录 */ }
+  // $() 的返回类型尚未收敛（见 TASKS.md T-112），故此处仍需断言。
+  // 语义要保住：**按钮不存在时不阻断**（导出失败不该卡住授权流程）。
+  try { ($("btnSave") as HTMLElement | null)?.click?.(); } catch (_) { /* 导出失败不阻断，仅记录 */ }
   banner("warn", t("betaArmed"));
   log("⚠ 实验写入已开启（仅本次连接）：" + t("betaBackup"));
 }

@@ -7,7 +7,7 @@ import { errMsg } from "./err.js";
  */
 import { sleep, hex, log } from "./util.js";
 import { t } from "./i18n.js";
-import { S } from "./state.js";
+import { S, type Stage } from "./state.js";
 import { rawReceive } from "./transport.js";
 import { RPT_CMD, RPT_BULK, buildBlob8k, build8kStoreData } from "./protocol.js";
 import { looksLikeBlob8k } from "./blob.js";
@@ -56,7 +56,9 @@ export async function store8k(newBlob: Uint8Array): Promise<boolean> {
   if (!S.lastFrame || !S.frameAligned)
     throw new Error(t("b8kNoFrame"));
   const data = build8kStoreData(S.lastFrame, newBlob);
-  let lastErr: any = null;
+  // 记录最后一次失败的原因，供 4 次重试后判断。类型从any 收窄为 unknown——
+  // 只需要 log(errMsg(e)) 能处理任意值，不需要具体类型。
+  let lastErr: unknown = null;
   for (let a = 0; a < 4; a++) {
     try { await S.dev.sendFeatureReport(RPT_BULK, data); lastErr = null; break; }
     catch (e) { lastErr = e; await sleep(50); }
@@ -66,7 +68,10 @@ export async function store8k(newBlob: Uint8Array): Promise<boolean> {
   return pollAck8k(8);
 }
 
-export function verifySensor8k(w: any): string[] {
+/** 回读校验：把「写之前想要的值」（want）与「写之后读回的值」逐项对比。
+ *  参数是写入前的快照（session.ts 的 snapSensor / snapPerf），
+ *  类型为 Stage —— 与 S.stage 同构，故能直接与读回值对照。 */
+export function verifySensor8k(w: Stage): string[] {
   const bad: string[] = [];
   for (let n = 0; n < 4; n++) {
     const a = S.stage.cpi[n] || [0, 0, 0];
@@ -82,7 +87,7 @@ export function verifySensor8k(w: any): string[] {
   return bad;
 }
 
-export function verifyPerf8k(w: any): string[] {
+export function verifyPerf8k(w: Stage): string[] {
   const bad: string[] = [];
   const f = S.stage.flags | 0;
   if (w.polling !== S.stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}→0x${S.stage.polling.toString(16)}`);
