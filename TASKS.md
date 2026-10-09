@@ -66,7 +66,7 @@
 
 **新遇到的阻塞**：`git push -u origin main` 被 GitHub 拒绝：
 
-```
+```text
 ! [remote rejected] main -> main (refusing to allow an OAuth App to create
   or update workflow `.github/workflows/deploy.yml` without `workflow` scope)
 ```
@@ -75,6 +75,7 @@
 而 `.github/workflows/` 下的 `verify.yml` 与 `deploy.yml` 均需该权限。
 
 **推送前已完成的检查**（全部通过）：
+
 - 远端可达（HTTP 200），确认仓库存在但为空，从未推送过
 - 工作树干净，HEAD = `3aa2aee`
 - 无大文件（>1MB）被追踪
