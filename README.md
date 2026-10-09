@@ -205,7 +205,7 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 `{0x15, 0x17, 0x1D, 0x57, 0x65B}` 按 50 ms 间隔重试 4 次——在官方 4k 工具与 XM1 主程序里
 逐字节一致。详见 `re/PROTOCOL_NOTES.md` 与 `re/XM1_NOTES.md`。
 
-## 逆向验证（v1.2 / v1.3）
+## 逆向验证
 
 协议实现已对照官方 `Endgame Gear XM2w 4k v2 Configuration Tool v1.02` 二进制逐字节核验：
 命令表/目标/长度、0x16 双块写入、blob 布局（CPI 档 `0x23+5n`、按键 `0x37+7n`、玻璃模式 `0x6F`）、
@@ -254,6 +254,10 @@ zlib/deflate/LZMA/BZ2 全部解不开），用 `pawstas80/Unpacker` 剥出真实
 `eggweb_protocol.js`（**AGPL-3** © qsxcv）仅作研究存档、不参与构建；
 `docs/community-code-scan.md` 是全社区扫描与合规结论。协议事实本身不受版权保护，
 但请尊重各上游项目的许可证条款。
+
+## 变更记录
+
+见 **[CHANGELOG.md](CHANGELOG.md)**（v1.3 起）。
 
 ## 路线图
 
