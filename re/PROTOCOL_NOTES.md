@@ -330,3 +330,71 @@ VID `0x3367` + **usagePage `0xFFA1` / usage `0x00A5`**，协议与三族都不�
 
 LOD：v1 = `0.7 / 1 / 2 mm`；v2 = `0.7 → 1.7 mm` 共 11 档（本项目 gen2 编码
 `round(mm×10) − 7` 与之吻合）；玻璃模式 = `1.0 / 2.0 mm` 两档。
+
+---
+
+## ★★ 官方 CPI 规则（2026-10-09 直接从官方工具二进制还原）
+
+起因：此前 CPI 的分档规则来自第三方实现（@openmouse/protocol 的设备表），
+其中两条与**官方工具自己的代码**不符。本节以反汇编为准。
+方法：`re/upstream/disasm.py`（capstone）扫 `.text` 找立即数并还原上下文；
+六款工具由 `re/upstream/fetch.sh` 按 MANIFEST 的 URL 取回并校验 SHA256。
+
+| 官方工具 | tag / 版本 | 目标型号 | CPI 下限 | CPI 上限 | 对齐算法 |
+|---|---|---|---|---|---|
+| XM2w-4k | Firmware_1.10 / v1.04 | `0x1968` | `0x32` = 50 | **`0x6590` = 26000** | ÷50 → 余数 ≥ `0x19`(25) 进位 → ×50 |
+| OP1w-4k | Firmware_1.10 / v1.04 | `0x1972` | 50 | 26000 | 同上 |
+| XM2w-4k-v2 | Firmware_1.03 / v1.01 | `0x1982` | **`0x0A` = 10** | **`0x7530` = 30000** | ÷10 → 余数 ≥ 5 进位 → ×10 |
+| OP1w-4k-v2 | Firmware_1.03 / v1.00 | `0x1984` | 10 | 30000 | 同上 |
+| OP1-8k-v2 | Firmware_1.04 / v1.00 | `0x1978` | 10 | 30000 | 同上 |
+| OP1-8k Purple Frost LE | Firmware_1.25 / v1.11 | `0x1976` | 50 | — | ÷50 → ×50（**gen1 规则**） |
+
+### 关键代码（两代唯一差别就是常量与魔数）
+
+gen1（XM2w-4k，`0x4013DA`）：
+```
+mov  ecx, [esi+0x300]      ; v
+cmp  ecx, 0x32              ; < 50 ?
+jae  +
+mov  eax, 0x32              ; → 50
+jmp  end
+cmp  ecx, 0x6590            ; > 26000 ?
+jbe  +
+mov  eax, 0x6590            ; → 26000
+jmp  end
+mov  eax, 0x51eb851f        ; 魔数 ≈ 2^37/50
+mul  ecx                    ; edx:eax = M·v
+shr  edx, 4                 ; q = v/50
+imul edx, edx, 0x32         ; 50q
+sub  ecx, edx              ; r = v % 50
+cmp  ecx, 0x19              ; r ≥ 25 ?
+jb   +
+inc  eax                    ; q++
+imul eax, eax, 0x32         ; 50·round(v/50)
+end:
+```
+
+gen2（XM2w-4k-v2，**同一处代码、同一偏移**，常量与魔数全换）：
+```
+cmp  ecx, 0x0A   /  mov eax, 0x0A       ; 下限 10
+cmp  ecx, 0x7530 /  mov eax, 0x7530     ; 上限 30000
+mov  eax, 0xcccccccd                     ; 魔数 ≈ 2^35/10
+mul  ecx / shr edx, 3                    ; q = v/10
+lea  edx,[edx+edx*4] / add edx,edx       ; 10q
+sub  ecx, edx                            ; r = v % 10
+cmp  ecx, 5 / jb + / inc eax             ; r ≥ 5 进位
+lea  eax,[eax+eax*4] / add eax,eax       ; 10·round(v/10)
+```
+
+### 三条结论（已落进 `src/blob.ts` 的 `cpiClamp`）
+
+1. **gen=2 全程对齐 10，不存在「>10000 改用 50」的分段。**
+   此前按第三方设备表实现过分段，官方代码里没有任何对应分支。
+2. **gen=1 的上限是 26000，不是 30000。** 物理上也对得上（PAW33xx 传感器上限）。
+3. **`0x1976` Purple Frost 属 gen1 规则。** 此前按第三方设备表填成 gen2，
+   官方 PF 工具的 CPI 代码是 ÷50 那一套。注意它是**混合体**：CPI 走 gen1，
+   但第三方设备表称它另有玻璃模式（LOD 两档）—— 本项目按 v1 处理，未验证；
+   因其写入被闸门禁用，这个不确定只影响只读界面上的显示项。
+
+XM1（2020 代）官方工具是 InstallShield 包，需解包才能取到真程序（未做）；
+它的 50 步进是 2026-10-08 **真机实测**确认的（官方软件拒绝 1234、接受 1150）。

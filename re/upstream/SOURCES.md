@@ -192,3 +192,23 @@ Start-Process -FilePath <tool>.exe -Wait -PassThru -ArgumentList `
 
 体积处理：400MB+ 的 Electron 应用目录与安装包**已清理**（按上表 URL 可重新下载），
 只保留 `we_series_cfg.ini`、`family4_comtype.txt` 与 `vidpid_hunt.py`（通用 VID/PID 猎取脚本）。
+
+
+## 官方 CPI 规则（2026-10-09 反汇编实证）
+
+CPI 的分档规则此前依据第三方设备表，2026-10-09 改为**直接还原官方工具的 x86 代码**：
+六款工具（MFC，有 `CFixedCPI` / `GetCPInfo` / `Set_dpi_settings` 符号）中，
+gen1 与 gen2 的 CPI 处理是**同一处代码、同一偏移**，只有常量与除法魔数不同：
+
+| 工具 | 型号 | 下限 | 上限 | 魔数（÷N） | 对齐 |
+|---|---|---|---|---|---|
+| XM2w-4k v1.04 / OP1w-4k v1.04 | 0x1968 / 0x1972 | 0x32 | **0x6590** | 0x51EB851F（÷50） | 余数 ≥ 0x19 进位 |
+| XM2w-4k-v2 v1.01 / OP1w-4k-v2 v1.00 | 0x1982 / 0x1984 | **0x0A** | **0x7530** | 0xCCCCCCCD（÷10） | 余数 ≥ 5 进位 |
+| OP1-8k-v2 v1.00 | 0x1978 | 0x0A | 0x7530 | 同 ÷10 | 同上 |
+| OP1-8k PF v1.11 | 0x1976 | 0x32 | — | 同 ÷50 | 同 gen1 |
+
+工具：（capstone）；二进制按  + `fetch.sh` 取回。
+完整代码片段与结论见 `re/PROTOCOL_NOTES.md`「官方 CPI 规则」。
+
+**推翻了此前两条第三方说法**：① v2 不存在「>10000 用 50」的分段；
+② `0x1976` Purple Frost 的 CPI 属 **gen1** 规则（曾被填成 gen2）。
