@@ -1,6 +1,6 @@
 import { errMsg } from "./err.js";
 // 应用主体：全局状态 / 传输层 / blob 读写解析 / UI 渲染 / 连接与事件绑定
-import { $, sleep, hex, log, banner } from "./util.js";
+import { $el, sleep, hex, log, banner } from "./util.js";
 import { LANG, t, applyI18n } from "./i18n.js";
 /* 协议常量与判定函数只import 本文件真正用到的那些。
    2026-10-09 清理：上一轮把连接与读写逻辑拆到 connect.ts / session.ts /
@@ -297,7 +297,7 @@ document.addEventListener("visibilitychange", () => {
 
 
 
-$("btnConnect").onclick = async () => {
+$el("btnConnect").onclick = async () => {
   log("→ 连接点击: WebHID 可用=" + ("hid" in navigator) + " 安全上下文=" + window.isSecureContext);
   if (!("hid" in navigator)) {
     const why = !window.isSecureContext && location.protocol !== "file:"
@@ -375,13 +375,13 @@ $("btnConnect").onclick = async () => {
     await openDevice(pick);
   } catch (e) { banner("err", t("bConnectFail") + errMsg(e)); log("✗ " + errMsg(e)); }
 };
-$("btnRefresh").onclick = () => isXm2weOpen() ? refreshWe() : refreshAll();
+$el("btnRefresh").onclick = () => isXm2weOpen() ? refreshWe() : refreshAll();
 /* 护栏：4k 族的写操作绝不能对 XM2we 族执行（协议族完全不同，会写坏 EEPROM）。
    正常路径下卡片已隐藏，这里再挡一次以防脚本/控制台误调。 */
 
-$("btnApplySensor").onclick = () => { try { guard4k(); } catch { return; } applySensor().catch(e => banner("err", t("errWrite") + errMsg(e))); };
-$("btnApplyPerf").onclick = () => { try { guard4k(); } catch { return; } applyPerf().catch(e => banner("err", t("errWrite") + errMsg(e))); };
-$("btnPair").onclick = async () => {
+$el("btnApplySensor").onclick = () => { try { guard4k(); } catch { return; } applySensor().catch(e => banner("err", t("errWrite") + errMsg(e))); };
+$el("btnApplyPerf").onclick = () => { try { guard4k(); } catch { return; } applyPerf().catch(e => banner("err", t("errWrite") + errMsg(e))); };
+$el("btnPair").onclick = async () => {
   try { guard4k(false); } catch { return; }   // 0x70 零负载
   if (!confirm(t("cfPair"))) return;
   try { await guarded(0x70, 0x00, null, { pace: 300 }); log("✓ pair cmd sent"); banner("ok", t("bPairSent")); await sleep(2000); await refreshAll(); }
@@ -390,13 +390,13 @@ $("btnPair").onclick = async () => {
 /* 0x71 = Pair Default（恢复默认配对，零负载，官方发后等 300ms）
    0x72 = Get Pair Data（读取配对数据，官方等 350ms 后收，负载偏移 16 起 16 字节）
    —— 均来自官方 v1.02 工具逆向，见 re/PROTOCOL_NOTES.md */
-$("btnPairDefault").onclick = async () => {
+$el("btnPairDefault").onclick = async () => {
   try { guard4k(false); } catch { return; }
   if (!confirm(t("cfPairDefault"))) return;
   try { await guarded(0x71, 0x00, null, { pace: 300 }); log("✓ pair-default cmd sent"); banner("ok", t("bPairDefaultOk")); await sleep(2000); await refreshAll(); }
   catch (e) { banner("err", errMsg(e)); }
 };
-$("btnPairData").onclick = async () => {
+$el("btnPairData").onclick = async () => {
   try { guard4k(); } catch { return; }
   try {
     const r = await guarded(0x72, 0x00, null, { pace: 350 });
@@ -405,7 +405,7 @@ $("btnPairData").onclick = async () => {
     banner("ok", t("bPairDataOk") + " " + hex(d, 16));
   } catch (e) { banner("err", errMsg(e)); }
 };
-$("btnReset").onclick = async () => {
+$el("btnReset").onclick = async () => {
   try { guard4k(false); } catch { return; }   // 0x13 零负载，不需要先读配置
   if (!confirm(t("cfReset1"))) return;
   if (!confirm(t("cfReset2"))) return;
@@ -414,7 +414,7 @@ $("btnReset").onclick = async () => {
 };
 /* XM1 一键回退：把上一份快照（写入前 / 上一次读取）原样写回。
    快照之间的差异同样只落在已核实字段内，所以走的还是同一个白名单。 */
-$("btnXm1Undo").onclick = async () => {
+$el("btnXm1Undo").onclick = async () => {
   if (S.xm1Snaps.length < 2) return banner("warn", t("xm1NoSnap"));
   const prev = S.xm1Snaps[S.xm1Snaps.length - 2];
   if (!window.confirm(t("xm1UndoConfirm").replace("{0}", new Date(prev.at).toLocaleTimeString()))) return;
@@ -433,7 +433,7 @@ $("btnXm1Undo").onclick = async () => {
   }
 };
 
-$("btnSave").onclick = () => {
+$el("btnSave").onclick = () => {
   if (!S.blob) return banner("err", t("cfgNoRead"));
   // 附带可读的 hex dump，便于人工比对与差分分析
   const hexLines: string[] = [];
@@ -450,7 +450,7 @@ $("btnSave").onclick = () => {
 };
 /* XM1 原样写回测试：发送的每个字节都必须等于刚读回的那份（白名单强制）。
    成功后再读一次比对 —— 一致即说明「读=写同一套布局」闭环成立。 */
-$("btnXm1Echo").onclick = async () => {
+$el("btnXm1Echo").onclick = async () => {
   if (!S.xm1LastRead) return banner("err", t("bRead"));
   if (!window.confirm(t("xm1EchoConfirm"))) return;
   const before = S.xm1LastRead.slice();
@@ -469,18 +469,18 @@ $("btnXm1Echo").onclick = async () => {
   }
 };
 
-$("btnBlob").onclick = () => { if (S.blob) download(new Blob([S.blob]), `egg-mouse-blob-${Date.now()}.bin`); };
+$el("btnBlob").onclick = () => { if (S.blob) download(new Blob([S.blob]), `egg-mouse-blob-${Date.now()}.bin`); };
 /* 测试数据包：型号 / PID / 固件 / 接口集合 / 完整 blob / 通讯日志一次带走，
    外加一份回报模板。给远程志愿者用 —— 他们手里正是我们没有的型号。 */
-$("btnDiag").onclick = () => {
+$el("btnDiag").onclick = () => {
   try {
     download(JSON.stringify(buildDiag(), null, 2), `egg-mouse-diag-${Date.now()}.json`, "application/json");
     banner("ok", t("diagSaved"));
     log("✓ 测试数据包已导出（含 blob 与通讯日志）");
   } catch (e) { banner("err", t("cfgNoRead") + errMsg(e)); }
 };
-$("btnLoad").onclick = () => $("fileLoad").click();
-$("fileLoad").onchange = async (e: Event) => {
+$el("btnLoad").onclick = () => $el("fileLoad").click();
+$el("fileLoad").onchange = async (e: Event) => {
   const f = (e.target as HTMLInputElement).files?.[0]; if (!f) return;
   /* ★ 导入配置同样是写入（0x14 + 0x15 + 0x16×2），必须过同一道闸门。
      此前这里没有 guard4k() —— 单靠按钮 disabled 是不设防的：
@@ -527,7 +527,7 @@ function download(data: any, name: string, type = "application/octet-stream") {
   a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type }));
   a.download = name; a.click(); URL.revokeObjectURL(a.href);
 }
-$("btnLog").onclick = () => { const l = $("log"); l.style.display = l.style.display === "none" ? "block" : "none"; };
+$el("btnLog").onclick = () => { const l = $el("log"); l.style.display = l.style.display === "none" ? "block" : "none"; };
 bindXm2weUI(download);
 
 /* ================= 主题切换 =================
@@ -536,12 +536,12 @@ bindXm2weUI(download);
    内联脚本提前设好，避免闪白。 */
 function applyThemeButton() {
   const dark = document.documentElement.dataset.theme === "dark";
-  const b = $("btnTheme");
+  const b = $el<HTMLButtonElement>("btnTheme");
   if (!b) return;
   b.textContent = t(dark ? "themeDark" : "themeLight");
   b.title = t("themeTip");
 }
-$("btnTheme").onclick = () => {
+$el("btnTheme").onclick = () => {
   const dark = document.documentElement.dataset.theme === "dark";
   if (dark) delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = "dark";

@@ -3,7 +3,7 @@
  *  事件绑定就地写在渲染函数里（控件是渲染时动态建出来的，每次渲染后重绑），
  *  所以本模块引用 device-xm1 的 xm1Apply。依赖方向是 render → device，单向。
  */
-import { $, banner } from "./util.js";
+import { $, $el, banner } from "./util.js";
 import { LANG, t } from "./i18n.js";
 import { S } from "./state.js";
 import { xm1Apply } from "./device-xm1.js";
@@ -31,7 +31,7 @@ export const BTN_NAMES: Record<string, string[]> = {
 };
 export const FILTER_OPTS = [["off","off"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"],["9","9"],["10","10"],["11","11"],["12","12"],["13","13"],["14","14"],["15","15"]];
 
-export function setConn(on: boolean, text: string) { const p = $("connState"); p.className = "status-pill" + (on ? "" : " off"); p.textContent = text; }
+export function setConn(on: boolean, text: string) { const p = $el("connState"); p.className = "status-pill" + (on ? "" : " off"); p.textContent = text; }
 
 export function fillSelect(sel: HTMLSelectElement, opts: (string | number)[][], val: string | number) {
   sel.innerHTML = "";
@@ -42,16 +42,16 @@ export function fillSelect(sel: HTMLSelectElement, opts: (string | number)[][], 
 }
 
 export function renderXm1() {
-  $("iModel").textContent = S.mouseName;
-  $("iMouseFw").textContent = "—";
-  $("iDongleFw").textContent = t("noDongleWired");
-  $("iBattery").textContent = "—";
-  $("iConn").textContent = t("wiredMode");
-  $("iGen").textContent = "2020 (XM1)";
+  $el("iModel").textContent = S.mouseName;
+  $el("iMouseFw").textContent = "—";
+  $el("iDongleFw").textContent = t("noDongleWired");
+  $el("iBattery").textContent = "—";
+  $el("iConn").textContent = t("wiredMode");
+  $el("iGen").textContent = "2020 (XM1)";
 
   // 表头由 layout.ts 的 applyLayout("xm1") 设置（XM1 是单值 CPI，固件只读 X）
 
-  const tb = $("cpiRows");
+  const tb = $el<HTMLTableSectionElement>("cpiRows");
   tb.innerHTML = "";
   if (!S.blob || !S.blob.length || !S.xm1Edit) {
     const tr = document.createElement("tr");
@@ -71,13 +71,13 @@ export function renderXm1() {
     tb.appendChild(tr);
   });
   // 事件：直接改编辑状态，不立即写设备
-  tb.querySelectorAll("input[data-on]").forEach((el: HTMLInputElement) => {
+  tb.querySelectorAll<HTMLInputElement>("input[data-on]").forEach((el) => {
     el.onchange = () => { S.xm1Edit.stages[+el.dataset.on!].on = el.checked ? 1 : 0; };
   });
-  tb.querySelectorAll("input[data-act]").forEach((el: HTMLInputElement) => {
+  tb.querySelectorAll<HTMLInputElement>("input[data-act]").forEach((el) => {
     el.onchange = () => { S.xm1Edit.active = +el.dataset.act!; };
   });
-  tb.querySelectorAll("input[data-x]").forEach((el: HTMLInputElement) => {
+  tb.querySelectorAll<HTMLInputElement>("input[data-x]").forEach((el) => {
     el.oninput = () => { S.xm1Edit.stages[+el.dataset.x!].x = +el.value || 0; };
   });
   const note = document.createElement("tr");
@@ -85,22 +85,28 @@ export function renderXm1() {
   tb.appendChild(note);
 
   // LOD / Ripple：XM1 只有这两个传感器项已核实
-  const lodSel = $("lod");
+  const lodSel = $el<HTMLSelectElement>("lod");
   if (lodSel) {
     fillSelect(lodSel, [[1, "1 mm"], [2, "2 mm"], [3, "3 mm"]], Math.round(S.xm1Edit.lodMM));
     lodSel.disabled = false;
     lodSel.onchange = () => { S.xm1Edit.lodMM = +lodSel.value; };
   }
-  const rip = $("ripple");
+  const rip = $el<HTMLSelectElement>("ripple");
   if (rip) {
-    rip.checked = !!S.xm1Edit.ripple;
+    // ★ 这里原先写的是 `rip.checked`——但 ripple 是 <select>（见 index.html：
+    //   <select id="ripple"><option value="0">关</option><option value="1">开</option></select>），
+    //   <select> 没有 checked 属性，那两行等于给一个不存在的属性赋值，
+    //   **XM1 视图的波纹开关因此从未生效**。
+    //   收敛 $ 的类型时被抓出来（TS2339: Property 'checked' does not exist on
+    //   type 'HTMLSelectElement'）。现按 4k 视图（L223）的同一写法改为 .value。
+    rip.value = String(S.xm1Edit.ripple ? 1 : 0);
     rip.disabled = false;
-    rip.onchange = () => { S.xm1Edit.ripple = rip.checked ? 1 : 0; };
+    rip.onchange = (e: Event) => { S.xm1Edit.ripple = +(e.target as HTMLSelectElement).value; };
   }
   // 档位数：XM1 固定 4 档（官方 UI 也是 4 张卡片），只读展示
-  const lv = $("cpiLevels");
+  const lv = $el<HTMLSelectElement>("cpiLevels");
   if (lv) { lv.value = "4"; lv.disabled = true; }
-  const act = $("cpiActive");
+  const act = $el<HTMLSelectElement>("cpiActive");
   if (act) { act.disabled = true; }        // 激活档用表内单选，避免两处入口
   const note2 = $("cpiActiveNote");
   if (note2) note2.textContent = "";
@@ -109,14 +115,15 @@ export function renderXm1() {
   for (const id of ["btnApplyPerf", "glass", "angleSnap", "ledLiftoff", "angleTune",
                     "polling", "motionSync", "slamclick", "jitter", "maxFps", "multiclick",
                     "powerSaving", "deepSleep", "btnReset", "btnLoad"]) {
-    const el = $(id); if (el) el.disabled = true;
+    const el = $(id);
+    if (el) (el as HTMLButtonElement).disabled = true;
   }
-  const apply = $("btnApplySensor");
+  const apply = $el<HTMLButtonElement>("btnApplySensor");
   if (apply) { apply.disabled = !S.xm1LastRead; apply.onclick = () => { void xm1Apply(); }; }
-  const save = $("btnSave"); if (save) save.disabled = false;
-  const echoBtn = $("btnXm1Echo");
+  const save = $el<HTMLButtonElement>("btnSave"); if (save) save.disabled = false;
+  const echoBtn = $el<HTMLButtonElement>("btnXm1Echo");
   if (echoBtn) { echoBtn.style.display = ""; echoBtn.disabled = !S.xm1LastRead; }
-  const undo = $("btnXm1Undo");
+  const undo = $el<HTMLButtonElement>("btnXm1Undo");
   if (undo) {
     undo.style.display = "";
     undo.disabled = S.xm1Snaps.length < 2;
@@ -125,27 +132,27 @@ export function renderXm1() {
 }
 
 export function renderInfoOnly() {
-  $("iModel").textContent = S.mouseName;
-  $("iMouseFw").textContent = "—";
-  $("iDongleFw").textContent = "—";
-  $("iBattery").textContent = "—";
-  $("iConn").textContent = t("wiredMode");
-  $("iGen").textContent = t("family4Name");
+  $el("iModel").textContent = S.mouseName;
+  $el("iMouseFw").textContent = "—";
+  $el("iDongleFw").textContent = "—";
+  $el("iBattery").textContent = "—";
+  $el("iConn").textContent = t("wiredMode");
+  $el("iGen").textContent = t("family4Name");
 }
 
 export function render() {
   /* XM1：字段已实测确认，走 renderXm1() 的受限编辑器（写入只涉及 23 个已核实字节）。 */
   if (S.xm1) return renderXm1();
 
-  $("iModel").textContent = S.mouseName;
-  $("iMouseFw").textContent = S.mouseFw;
-  $("iDongleFw").textContent = S.wired ? t("noDongleWired") : S.dongleFw;
-  $("iBattery").textContent = S.battery === null ? "—"
+  $el("iModel").textContent = S.mouseName;
+  $el("iMouseFw").textContent = S.mouseFw;
+  $el("iDongleFw").textContent = S.wired ? t("noDongleWired") : S.dongleFw;
+  $el("iBattery").textContent = S.battery === null ? "—"
     : (S.wired && S.battery < 100 ? t("charging", S.battery) : S.battery + " %");
-  $("iConn").textContent = S.wired ? t("wiredMode") : t("wirelessMode");
-  $("iGen").textContent = S.eightK ? t("gen8k") : (S.gen ? `v${S.gen}` : "—");
+  $el("iConn").textContent = S.wired ? t("wiredMode") : t("wirelessMode");
+  $el("iGen").textContent = S.eightK ? t("gen8k") : (S.gen ? `v${S.gen}` : "—");
 
-  const tb = $("cpiRows"); tb.innerHTML = "";
+  const tb = $el<HTMLTableSectionElement>("cpiRows"); tb.innerHTML = "";
   for (let n = 0; n < 4; n++) {
     const tr = document.createElement("tr");
     const dis = n >= S.stage.levels ? "disabled" : "";
@@ -159,7 +166,7 @@ export function render() {
       <td><input type="number" data-y="${n}" min="${bd.min}" max="${bd.max}" step="${bd.step}" value="${yv}" ${xyOn && !dis ? "" : "disabled"}></td>`;
     tb.appendChild(tr);
   }
-  tb.querySelectorAll("input[data-xy]").forEach((el: HTMLInputElement) => el.onchange = () => {
+  tb.querySelectorAll<HTMLInputElement>("input[data-xy]").forEach((el) => el.onchange = () => {
     const n = +el.dataset.xy!; S.stage.cpi[n][0] = el.checked ? 1 : 0;
     const yEl: any = tb.querySelector(`input[data-y="${n}"]`);
     yEl.disabled = !el.checked;
@@ -167,7 +174,7 @@ export function render() {
        不留下"开关关着、两个值却不同"的中间状态。 */
     if (!el.checked) { S.stage.cpi[n][2] = S.stage.cpi[n][1]; yEl.value = String(S.stage.cpi[n][1]); }
   });
-  tb.querySelectorAll("input[data-x],input[data-y]").forEach((el: HTMLInputElement) => el.onchange = () => {
+  tb.querySelectorAll<HTMLInputElement>("input[data-x],input[data-y]").forEach((el) => el.onchange = () => {
     const n = +((el.dataset.x ?? el.dataset.y)!); const ax = el.dataset.x ? 1 : 2;
     /* ★ CPI 归一化走 blob.ts 的单一来源（默认 50–30000/步进 50；
         gen=2 的 paw3950 族放宽到 10–30000、≤10000 步进 10）。 */
@@ -191,15 +198,15 @@ export function render() {
   hint.innerHTML = `<td colspan="5" class="muted">${t("xyHint")}</td>`;
   tb.appendChild(hint);
 
-  $("cpiLevels").value = String(S.stage.levels);
-  $("cpiLevels").onchange = (e: Event) => S.stage.levels = +(e.target as HTMLSelectElement).value;
-  const actSel = $("cpiActive");
+  $el<HTMLSelectElement>("cpiLevels").value = String(S.stage.levels);
+  $el("cpiLevels").onchange = (e: Event) => S.stage.levels = +(e.target as HTMLSelectElement).value;
+  const actSel = $el<HTMLSelectElement>("cpiActive");
   fillSelect(actSel, [[0,"CPI 1"],[1,"CPI 2"],[2,"CPI 3"],[3,"CPI 4"]], S.stage.active);
   actSel.disabled = S.gen === 1;
-  $("cpiActiveNote").textContent = S.gen === 1 ? t("v1StageNote") : "";
+  $el("cpiActiveNote").textContent = S.gen === 1 ? t("v1StageNote") : "";
   actSel.onchange = (e: Event) => S.stage.active = +(e.target as HTMLSelectElement).value;
 
-  const lodSel = $("lod");
+  const lodSel = $el<HTMLSelectElement>("lod");
   if (S.gen === 1 || S.stage.glass) {
     fillSelect(lodSel, [[1,"1.0 mm"],[2,"2.0 mm"]], Math.round(S.stage.lodMM));
   } else {
@@ -208,9 +215,9 @@ export function render() {
     fillSelect(lodSel, opts, +S.stage.lodMM.toFixed(1));
   }
   lodSel.onchange = (e: Event) => S.stage.lodMM = +(e.target as HTMLSelectElement).value;
-  $("glass").value = String(S.stage.glass);
-  $("glass").disabled = S.gen !== 2;
-  $("glass").onchange = (e: Event) => {
+  $el<HTMLSelectElement>("glass").value = String(S.stage.glass);
+  $el<HTMLSelectElement>("glass").disabled = S.gen !== 2;
+  $el("glass").onchange = (e: Event) => {
     const g = +(e.target as HTMLSelectElement).value; const old = S.stage.glass;
     S.stage.glass = g;
     if (g !== old) {
@@ -219,17 +226,17 @@ export function render() {
     }
     render();
   };
-  $("angleSnap").value = String(S.stage.angleSnap); $("angleSnap").onchange = (e: Event) => S.stage.angleSnap = +(e.target as HTMLSelectElement).value;
-  $("ripple").value = String(S.stage.ripple); $("ripple").onchange = (e: Event) => S.stage.ripple = +(e.target as HTMLSelectElement).value;
-  $("ledLiftoff").value = String(S.stage.ledLiftoff); $("ledLiftoff").onchange = (e: Event) => S.stage.ledLiftoff = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("angleSnap").value = String(S.stage.angleSnap); $el<HTMLSelectElement>("angleSnap").onchange = (e: Event) => S.stage.angleSnap = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("ripple").value = String(S.stage.ripple); $el<HTMLSelectElement>("ripple").onchange = (e: Event) => S.stage.ripple = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("ledLiftoff").value = String(S.stage.ledLiftoff); $el<HTMLSelectElement>("ledLiftoff").onchange = (e: Event) => S.stage.ledLiftoff = +(e.target as HTMLSelectElement).value;
   /* ★ 角度调校**只读**：v2 专属字段的位置存在两说（4k 分块写的 payload[5] ↔
      blob[0x01] 与 8k 交叉印证的 blob[0x70]）。读写若指向不同字节，就是"读 A 写 B"——
      设备拿到的是我们从未展示过的值。真机改值回读定论前，这里不开放编辑。 */
-  $("angleTune").value = S.stage.angleTune;
-  $("angleTune").disabled = true;
-  $("angleTune").title = t("angleTuneNote");
+  $el<HTMLInputElement>("angleTune").value = S.stage.angleTune;
+  $el<HTMLInputElement>("angleTune").disabled = true;
+  $el("angleTune").title = t("angleTuneNote");
 
-  const pollSel = $("polling");
+  const pollSel = $el<HTMLSelectElement>("polling");
   const isEn = LANG === "en";
   const ps = isEn ? "power saving" : "省电", of = isEn ? "office" : "办公";
   /* 8k 有线：divider 1/2/4/8 → 8000/4000/2000/1000 Hz（egctl 与官方工具一致）。
@@ -241,31 +248,31 @@ export function render() {
       : [[0x02,"4000 Hz"],[0x04,"2000 Hz"],[0x08,"1000 Hz"],[0x80,`1000 Hz (${ps})`],[0x40,`125 Hz (${of})`]];
   fillSelect(pollSel, pollOpts, S.stage.polling);
   if (S.eightK || !(S.gen === 1 && ![0x02,0x04,0x08].includes(S.stage.polling))) pollSel.value = String(S.stage.polling);
-  $("pollNote").textContent = S.wired ? t("pollWiredNote") : "";
+  $el("pollNote").textContent = S.wired ? t("pollWiredNote") : "";
   pollSel.onchange = (e: Event) => S.stage.polling = +(e.target as HTMLSelectElement).value;
-  $("motionSync").value = String(S.stage.motionSync); $("motionSync").onchange = (e: Event) => S.stage.motionSync = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("motionSync").value = String(S.stage.motionSync); $el<HTMLSelectElement>("motionSync").onchange = (e: Event) => S.stage.motionSync = +(e.target as HTMLSelectElement).value;
   S.stage.slamclick = !!(S.stage.flags & 1);
-  $("slamclick").value = S.stage.slamclick ? "1" : "0"; $("slamclick").onchange = (e: Event) => S.stage.slamclick = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("slamclick").value = S.stage.slamclick ? "1" : "0"; $el<HTMLSelectElement>("slamclick").onchange = (e: Event) => S.stage.slamclick = +(e.target as HTMLSelectElement).value;
   /* 注意：行级显示（rowV1Jitter / rowV2Max / rowV2Multi 等）**统一由 layout.ts 负责**，
      这里不再设置 display —— 两处各自切换会互相打架（8k 就同时踩到这一点）。 */
   S.stage.jitter = !!(S.stage.flags & 0x10);
-  $("jitter").value = S.stage.jitter ? "1" : "0"; $("jitter").onchange = (e: Event) => S.stage.jitter = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("jitter").value = S.stage.jitter ? "1" : "0"; $el<HTMLSelectElement>("jitter").onchange = (e: Event) => S.stage.jitter = +(e.target as HTMLSelectElement).value;
   S.stage.maxFps = !!(S.stage.flags & 0x40);
-  $("maxFps").value = S.stage.maxFps ? "1" : "0"; $("maxFps").onchange = (e: Event) => S.stage.maxFps = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("maxFps").value = S.stage.maxFps ? "1" : "0"; $el<HTMLSelectElement>("maxFps").onchange = (e: Event) => S.stage.maxFps = +(e.target as HTMLSelectElement).value;
   S.stage.multiclick = !!(S.stage.flags & 0x20);
-  $("multiclick").value = S.stage.multiclick ? "1" : "0"; $("multiclick").onchange = (e: Event) => S.stage.multiclick = +(e.target as HTMLSelectElement).value;
+  $el<HTMLSelectElement>("multiclick").value = S.stage.multiclick ? "1" : "0"; $el<HTMLSelectElement>("multiclick").onchange = (e: Event) => S.stage.multiclick = +(e.target as HTMLSelectElement).value;
   const toOpts: [string | number, string][] = [["off", t("minutes") === "min" ? "Off" : "关闭"]];
   for (let i = 1; i <= 120; i++) toOpts.push([i, t("minutesFmt", i)]);;
-  fillSelect($("powerSaving"), toOpts, S.stage.powerSaving); $("powerSaving").value = String(S.stage.powerSaving);
-  $("powerSaving").onchange = (e: Event) => S.stage.powerSaving = (e.target as HTMLSelectElement).value === "off" ? "off" : +(e.target as HTMLSelectElement).value;
-  fillSelect($("deepSleep"), toOpts, S.stage.deepSleep); $("deepSleep").value = String(S.stage.deepSleep);
-  $("deepSleep").onchange = (e: Event) => S.stage.deepSleep = (e.target as HTMLSelectElement).value === "off" ? "off" : +(e.target as HTMLSelectElement).value;
+  fillSelect($el<HTMLSelectElement>("powerSaving"), toOpts, S.stage.powerSaving); $el<HTMLSelectElement>("powerSaving").value = String(S.stage.powerSaving);
+  $el("powerSaving").onchange = (e: Event) => S.stage.powerSaving = (e.target as HTMLSelectElement).value === "off" ? "off" : +(e.target as HTMLSelectElement).value;
+  fillSelect($el<HTMLSelectElement>("deepSleep"), toOpts, S.stage.deepSleep); $el<HTMLSelectElement>("deepSleep").value = String(S.stage.deepSleep);
+  $el("deepSleep").onchange = (e: Event) => S.stage.deepSleep = (e.target as HTMLSelectElement).value === "off" ? "off" : +(e.target as HTMLSelectElement).value;
 
-  const br = $("btnRows"); br.innerHTML = "";
+  const br = $el("btnRows"); br.innerHTML = "";
   S.stage.buttons.forEach((btn: any, i: number) => {
     br.insertAdjacentHTML("beforeend", `<tr><td>${BTN_NAMES[LANG]?.[i] ?? i + 1}</td><td>${describeMap(btn)}</td><td>${btn.filter === 0xF0 ? t("gxSafe") : btn.filter === 0xF1 ? t("gxSpeed") : (btn.filter & 0x7F)}</td></tr>`);
   });
-  const fr = $("filterRows"); fr.innerHTML = "";
+  const fr = $el("filterRows"); fr.innerHTML = "";
   (BTN_NAMES[LANG] ?? []).slice(0, 5).forEach((name: string, i: number) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${name}</td><td><select data-f="${i}"></select></td>`;
@@ -284,13 +291,15 @@ export function render() {
      确认后才放行。这是远程志愿者唯一能帮我们验证 8k 写入的入口，不能置灰堵死。 */
   const canWrite = !!S.blob && !S.unverified && (S.eightK || !!S.gen);
   for (const id of ["btnApplySensor", "btnApplyPerf", "btnReset"]) {
-    const el = $(id); if (el) el.disabled = !canWrite;
+    const el = $(id);
+    if (el) (el as HTMLButtonElement).disabled = !canWrite;
   }
   /* 导入与配对对 8k 一律关掉，与确认无关：
      · 导入 = 整块覆盖，导入别型号的 blob 等于把未知偏移全改写（XM1 事故的形态）；
      · 配对 = 无线专属命令，对有线 8k 没有意义，行为未知。 */
   for (const id of ["btnLoad", "btnPair", "btnPairDefault"]) {
-    const el = $(id); if (el) el.disabled = !canWrite || !!S.eightK;
+    const el = $(id);
+    if (el) (el as HTMLButtonElement).disabled = !canWrite || !!S.eightK;
   }
 
   /* 未真机验证的型号：禁用全部写入入口（guard4k 还会再兜一层）。
@@ -299,11 +308,12 @@ export function render() {
     for (const id of ["btnApplySensor", "btnApplyPerf", "btnReset", "btnLoad",
                       "cpiLevels", "cpiActive", "lod", "glass", "angleSnap", "ripple",
                       "ledLiftoff", "angleTune"]) {
-      const el = $(id); if (el) el.disabled = true;
+      const el = $(id);
+    if (el) (el as HTMLButtonElement).disabled = true;
     }
     /* 表内的 CPI 输入框也要禁掉 —— 否则用户能改数字却点不动"应用"，
        像是页面坏了，而不是"这个型号暂不支持写入"。 */
-    document.querySelectorAll("#cpiRows input").forEach((el: any) => { el.disabled = true; });
+    document.querySelectorAll<HTMLInputElement>("#cpiRows input").forEach((el) => { el.disabled = true; });
   }
 }
 
@@ -358,8 +368,8 @@ export function renderHelp() {
       `<label class="presetLabel" style="min-width:auto">${t("preset")}</label>` +
       PRESETS.map((p, i) => `<button class="ghost" data-preset="${i}" title="${t(p.desc)}">${t(p.name)}</button>`).join("") +
       `<span class="muted">${t("presetNote")}</span>`;
-    bar.querySelectorAll("button[data-preset]").forEach((el: any) => {
-      el.onclick = () => applyPreset(PRESETS[+el.dataset.preset]);
+    bar.querySelectorAll<HTMLButtonElement>("button[data-preset]").forEach((el) => {
+      el.onclick = () => applyPreset(PRESETS[+(el.dataset.preset ?? 0)]);
     });
   }
   const fill = (id: string, keys: string[]) => {

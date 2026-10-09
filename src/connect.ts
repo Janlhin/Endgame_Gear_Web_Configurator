@@ -6,7 +6,7 @@
  *    规则：filter 必须精确限定到厂商集合、open() 前后各查一次、
  *    宁可拒绝连接也不要猜。
  */
-import { $, log, banner } from "./util.js";
+import { $, $el, log, banner } from "./util.js";
 import { t } from "./i18n.js";
 import { S } from "./state.js";
 import { setConn, render } from "./render.js";
@@ -136,7 +136,7 @@ export async function openDevice(d: HIDDevice) {
     else if (code === 0xB1) { log(v === 1 ? "⚡ radio link: up" : "⚡ radio link: down (mouse asleep)"); }
   });
   setConn(true, S.wired ? t("connectedWired") : t("connectedWireless"));
-  $("btnRefresh").disabled = false;
+  $el<HTMLButtonElement>("btnRefresh").disabled = false;
   log(`✓ opened ${d.productName} VID=0x${d.vendorId.toString(16)} PID=0x${d.productId.toString(16)}`);
   await refreshAll();
 }

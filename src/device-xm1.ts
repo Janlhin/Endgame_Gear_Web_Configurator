@@ -9,7 +9,7 @@ import { errMsg } from "./err.js";
  *  ★ 这里直接调 readBlobXm1 而非 readBlob：后者是「按族分发」的调度，
  *    对 XM1 而言本来就是转调本函数 —— 直接调用可让本模块不依赖 device-4k。
  */
-import { $, sleep, hex, log, banner } from "./util.js";
+import { $el, sleep, hex, log, banner } from "./util.js";
 import { t } from "./i18n.js";
 import { S, type Xm1Edit } from "./state.js";
 import { rawReceive } from "./transport.js";
@@ -151,7 +151,7 @@ export function xm1Snapshot(label: string) {
   if (last && last.blob.length === S.xm1LastRead.length && last.blob.every((v: number, i: number) => v === S.xm1LastRead![i])) return;
   S.xm1Snaps.push({ at: Date.now(), label, blob: S.xm1LastRead.slice() });
   if (S.xm1Snaps.length > 20) S.xm1Snaps.shift();
-  const b = $("btnXm1Undo");
+  const b = $el<HTMLButtonElement>("btnXm1Undo");
   if (b) b.textContent = t("xm1Undo") + " (" + S.xm1Snaps.length + ")";
 }
 

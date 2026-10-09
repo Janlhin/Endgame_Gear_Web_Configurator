@@ -22,7 +22,7 @@ import { errMsg } from "./err.js";
  *  与 layout.ts 的 #layout= 预览共存的注意点：预览布局下并没有设备，
  *  因此「从没在位过」的位永远不会被判丢失（见 Target.seen）。
  */
-import { $, log, banner } from "./util.js";
+import { $, $el, log, banner } from "./util.js";
 import { t } from "./i18n.js";
 import { S, newStage } from "./state.js";
 import { applyLayout } from "./layout.js";
@@ -60,7 +60,7 @@ export function resetToInitial(reasonKey: LostReason, detail?: string) {
   /* 2) 收起全部设备卡片（applyLayout 是白名单式，一次设置全部）*/
   applyLayout("none");
   setConn(false, t("notConnected"));
-  const rf = $("btnRefresh");
+  const rf = $el<HTMLButtonElement>("btnRefresh");
   if (rf) rf.disabled = true;
 
   /* 3) 抹掉可能残留的数据行 / 数值 —— 卡片虽然收起了，但若将来某个入口

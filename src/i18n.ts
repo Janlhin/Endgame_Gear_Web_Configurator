@@ -1,5 +1,5 @@
 // i18n 词典 / 翻译 / 应用
-import { $ } from "./util.js";
+import { $el } from "./util.js";
 // 各语言词条独立成文件：189 条 × 8 种语言放进单文件已不可维护。
 // 键名一致性由 re/i18n_audit.mjs 逐个校验（缺键/多键/{0} 占位符不符都会报错）。
 import de from "./i18n/de.js";
@@ -373,10 +373,10 @@ export function applyI18n() {
     if (v != null) el.textContent = v;  // 查不到就保留 HTML 原文，绝不显示键名
   });
   document.documentElement.lang = LANG;
-  $("langSel").value = LANG;
+  $el<HTMLSelectElement>("langSel").value = LANG;
 }
 
-$("langSel").onchange = (e: Event) => {
+$el("langSel").onchange = (e: Event) => {
   LANG = (e.target as HTMLSelectElement).value;
   localStorage.setItem("xm2w-lang", LANG);
   applyI18n();

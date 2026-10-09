@@ -2,7 +2,7 @@ import { errMsg } from "./err.js";
 // XM2we（2020 有线/2.4G 代）UI 控制器
 /* 与 4k 族完全隔离：本文件只认 Xm2weSession，不触碰 blob / 0xA1 命令表。
  * 协议依据：okms/xm2we-linux PROTOCOL.md（真机验证），存档于 re/upstream/。 */
-import { $, sleep, log, banner } from "./util.js";
+import { $, $el, sleep, log, banner } from "./util.js";
 import { t } from "./i18n.js";
 import { applyLayout } from "./layout.js";
 import { resetToInitial, watchDisconnect, watchPresence } from "./presence.js";
@@ -20,7 +20,7 @@ let reading = false;
 /* 卡片可见性统一交给 layout.ts：XM2we 走 "we" 布局（只显示它那四张卡片），
    关闭时回到 "none"（全部收起）。这样两族的显示规则只有一个来源。 */
 function setConn(on: boolean, text: string) {
-  const p = $("connState");
+  const p = $el("connState");
   p.className = "status-pill" + (on ? "" : " off");
   p.textContent = text;
 }
@@ -77,7 +77,7 @@ function ensureWeArmed(): boolean {
   }
   setWeWrites(true);
   try { ($("btnWeExport") as any)?.click?.(); } catch (_) { /* 导出失败不阻断 */ }
-  for (const id of ["btnWeApplyCpi", "btnWeApplyPerf"]) { const el = $(id); if (el) el.disabled = false; }
+  for (const id of ["btnWeApplyCpi", "btnWeApplyPerf"]) { const el = $<HTMLButtonElement>(id); if (el) el.disabled = false; }
   banner("warn", t("betaArmed"));
   log("⚠ 实验写入已开启（仅本次连接）：" + t("betaBackup"));
   return true;
@@ -104,7 +104,7 @@ export async function openXm2we(d: any) {
   log(`  usage pages: ` + (d.collections || []).map((c: any) => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
   if (bat) log(`⚡ battery ${bat.pct}%${bat.charging ? " (charging)" : ""}`);
   renderInfo();
-  $("btnRefresh").disabled = false;
+  $el<HTMLButtonElement>("btnRefresh").disabled = false;
   await refreshWe();
   /* 只读警告必须常驻：这一族从未接过真机，界面不能假装它是"完全可用"的。 */
   if (!WE_WRITES_ENABLED) banner("warn", t("weUnverified"));
@@ -140,18 +140,18 @@ if (typeof window !== "undefined") {
 
 function renderInfo() {
   if (!sess) return;
-  $("weModel").textContent = model;
-  $("weConn").textContent = wired ? t("wiredMode") : t("wirelessMode");
+  $el("weModel").textContent = model;
+  $el("weConn").textContent = wired ? t("wiredMode") : t("wirelessMode");
   const b = sess.battery;
-  $("weBattery").textContent = b ? (b.charging ? t("charging", b.pct) : b.pct + "%") : "—";
+  $el("weBattery").textContent = b ? (b.charging ? t("charging", b.pct) : b.pct + "%") : "—";
   const l = sess.linkUp;
-  $("weLink").textContent = l === null ? t("weLinkUnknown") : l ? t("weLinkUp") : t("weLinkDown");
+  $el("weLink").textContent = l === null ? t("weLinkUnknown") : l ? t("weLinkUp") : t("weLinkDown");
 }
 
 /* ---------- 渲染 ---------- */
 function renderCpi() {
   const s = sess; if (!s) return;
-  const tb = $("weCpiRows"); tb.innerHTML = "";
+  const tb = $el("weCpiRows"); tb.innerHTML = "";
   const table = s.cpiTable();
   const leds = s.ledColors();
   if (!table.length) {
@@ -174,7 +174,7 @@ function renderCpi() {
     tb.appendChild(tr);
   }
 
-  const pol = $("wePolling");
+  const pol = $el<HTMLSelectElement>("wePolling");
   pol.innerHTML = "";
   for (const hz of WE_POLL_OPTS) {
     const o = document.createElement("option");
@@ -185,14 +185,14 @@ function renderCpi() {
   pol.value = cur !== null && POLLING_BY_MASK[0] !== undefined ? String(cur) : "";
   if (cur === null) { const o = document.createElement("option"); o.value = ""; o.textContent = "—"; pol.prepend(o); }
 
-  const db = $("weDebounce");
+  const db = $el<HTMLInputElement>("weDebounce");
   const d = s.debounce();
   if (document.activeElement !== db) db.value = d === null ? "" : String(d);
 }
 
 function renderKeys() {
   const s = sess; if (!s) return;
-  const tb = $("weBtnRows"); tb.innerHTML = "";
+  const tb = $el("weBtnRows"); tb.innerHTML = "";
   for (const r of s.keyTable()) {
     const tr = document.createElement("tr");
     const [typ, code, param] = r.raw;
@@ -210,11 +210,11 @@ export async function refreshWe() {
   if (!sess) return;
   if (reading) return;
   reading = true;
-  $("btnRefresh").disabled = true;
+  $el<HTMLButtonElement>("btnRefresh").disabled = true;
   try {
     log(`→ EEPROM read (0x${(0xB4 + 1).toString(16)} bytes, ~${Math.ceil(0xB5 / 10)} frames)`);
     await sess.readConfig((done, total) => {
-      const b = $("banner");
+      const b = $el("banner");
       if (done < total) { b.className = "banner warn"; b.textContent = t("weReadProgress", done, total); }
     });
     await sess.readBattery();
@@ -230,7 +230,7 @@ export async function refreshWe() {
     log("✗ " + errMsg(e));
   } finally {
     reading = false;
-    $("btnRefresh").disabled = false;
+    $el<HTMLButtonElement>("btnRefresh").disabled = false;
   }
 }
 
@@ -244,7 +244,7 @@ async function applyCpi() {
     const leds = sess.ledColors();
     let n = 0;
     for (const r of slots) {
-      const ix = $("weCx" + r.slot), iy = $("weCy" + r.slot);
+      const ix = $<HTMLInputElement>("weCx" + r.slot), iy = $<HTMLInputElement>("weCy" + r.slot);
       const x = parseInt(ix?.value ?? "", 10), y = parseInt(iy?.value ?? "", 10);
       if (!isFinite(x) || !isFinite(y)) continue;
       if (x !== r.x || y !== r.y) { await sess.writeCpiSlot(r.slot, x, y); log(`✓ CPI slot ${r.slot} → ${x}x${y}`); n++; await sleep(120); }
@@ -264,12 +264,12 @@ async function applyPerf() {
   if (!sess) return banner("err", t("weNoDevice"));
   if (!ensureWeArmed()) return;
   try {
-    const hz = parseInt($("wePolling").value, 10);
+    const hz = parseInt($el<HTMLSelectElement>("wePolling").value, 10);
     if (isFinite(hz) && hz > 0) {
       await sess.writePolling(hz);
       log(`✓ polling rate → ${hz} Hz (mask 0x${(1000 / hz).toString(16)})`);
     }
-    const dbEl = $("weDebounce");
+    const dbEl = $el<HTMLInputElement>("weDebounce");
     if (document.activeElement !== dbEl) {
       const db = parseInt(dbEl.value, 10);
       if (isFinite(db) && db >= 0) { await sess.writeDebounce(db); log(`✓ debounce → ${db} ms`); }
@@ -281,21 +281,21 @@ async function applyPerf() {
 
 /* ---------- 事件绑定（启动时调用一次） ---------- */
 export function bindXm2weUI(download: (data: any, name: string, type?: string) => void) {
-  $("btnWeApplyCpi").onclick = () => applyCpi();
-  $("btnWeApplyPerf").onclick = () => applyPerf();
+  $el("btnWeApplyCpi").onclick = () => applyCpi();
+  $el("btnWeApplyPerf").onclick = () => applyPerf();
   /* ★ 按钮保持可点：点下去会先弹确认（ensureWeArmed），确认才真的写。
      置灰反而堵死了远程志愿者参与验证的唯一入口；协议层 writeRecord 的闸门仍在。 */
-  $("btnWeExport").onclick = () => {
+  $el("btnWeExport").onclick = () => {
     if (!sess?.mem.size) return banner("err", t("weNoDevice"));
     const head = `# XM2we EEPROM dump — ${model} — ${new Date().toISOString()}\n` +
                  `# 0x55-complement records; a valid checksum proves record boundaries only.\n`;
     download(head + sess.dumpHex(), `xm2we-eeprom-${Date.now()}.txt`, "text/plain");
   };
-  $("btnWeExportJson").onclick = () => {
+  $el("btnWeExportJson").onclick = () => {
     if (!sess?.mem.size) return banner("err", t("weNoDevice"));
     download(JSON.stringify(sess.toJSON(), null, 2), `xm2we-config-${Date.now()}.json`, "application/json");
   };
-  $("btnWeDiag").onclick = () => {
+  $el("btnWeDiag").onclick = () => {
     if (!sess?.mem.size) return banner("err", t("weNoDevice"));
     try {
       download(JSON.stringify(buildWeDiag(sess, model), null, 2), `xm2we-diag-${Date.now()}.json`, "application/json");
@@ -303,8 +303,8 @@ export function bindXm2weUI(download: (data: any, name: string, type?: string) =
       log("✓ 测试数据包已导出（含 EEPROM 转储、解码表与通讯日志）");
     } catch (e) { banner("err", errMsg(e)); }
   };
-  $("btnWeLog").onclick = () => {
-    const l = $("log");
+  $el("btnWeLog").onclick = () => {
+    const l = $el("log");
     l.style.display = l.style.display === "none" ? "block" : "none";
   };
   document.addEventListener("langchange", () => { renderInfo(); renderCpi(); renderKeys(); });
