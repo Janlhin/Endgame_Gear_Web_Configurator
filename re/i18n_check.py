@@ -11,15 +11,16 @@ navigator.languages（已实测：--accept-lang=en-US,en → "en-US" / ["en-US",
 ⚠️ 未自动覆盖的一项（靠代码审查保证）：localStorage 里已有用户手动选择的值时
 应优先于浏览器语言。无头环境下难以预置 file:// 的 localStorage，故不测。
 """
-import re, subprocess, sys
+import os, re, subprocess, sys
 
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-BASE = "file:///C:/Users/Janlhin/WorkBuddy/2026-10-08-19-20-54/xm2w-web/index.html"
+# 仓库根按脚本位置推导 —— 目录改名后不必再改这里（2026-10-09 踩过：写死路径导致四个检查同时失效）
+BASE = "file:///" + os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "index.html")).replace(os.sep, "/")
 
 # 各语言 appTitle 里的判别片段（相互之间不能有包含关系）
 T = {
-    "zh-CN": "网页版驱动",
-    "zh-TW": "網頁版驅動",
+    "zh-CN": "网页版配置器",
+    "zh-TW": "網頁版配置器",
     "en": "Web Configurator",
     "de": "Web-Konfigurator",
     "fr": "Configurateur web",

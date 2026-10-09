@@ -10,10 +10,11 @@
 不连接任何设备。
 用法：python re/reset_check.py
 """
-import re, subprocess, sys
+import os, re, subprocess, sys
 
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-BASE = "file:///C:/Users/Janlhin/WorkBuddy/2026-10-08-19-20-54/xm2w-web/index.html"
+# 仓库根按脚本位置推导 —— 目录改名后不必再改这里（2026-10-09 踩过：写死路径导致四个检查同时失效）
+BASE = "file:///" + os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "index.html")).replace(os.sep, "/")
 
 CARDS_4K = ["cardInfo", "cardSensor", "cardPerf", "cardBtns", "cardTools"]
 ALL_CARDS = CARDS_4K + ["cardWeInfo", "cardWeCpi", "cardWeBtns", "cardWeTools"]

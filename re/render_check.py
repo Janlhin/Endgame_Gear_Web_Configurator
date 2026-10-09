@@ -12,7 +12,8 @@
 import os, re, subprocess, sys, tempfile
 
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-SRC = r"C:\Users\Janlhin\WorkBuddy\2026-10-08-19-20-54\xm2w-web\index.html"
+# 仓库根按脚本位置推导 —— 目录改名后不必再改这里（2026-10-09 踩过：写死路径导致四个检查同时失效）
+SRC = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "index.html"))
 
 PROBE = """
 <script>

@@ -2,7 +2,7 @@
  *  键名必须与 zh-CN / en 完全一致 —— re/i18n_audit.mjs 会逐个校验。
  *  用语按台湾习惯：滑鼠 / 設定 / 韌體 / 軟體 / 硬體 / 檔案，而非「鼠標 / 配置 / 固件 / 軟件」。 */
 export default {
-  appTitle: "Endgame Gear 網頁版驅動", notConnected: "未連線", connectedWired: "已連線（有線）", connectedWireless: "已連線（無線）",
+  appTitle: "Endgame Gear 網頁版配置器", notConnected: "未連線", connectedWired: "已連線（有線）", connectedWireless: "已連線（無線）",
   connect: "連接裝置", refresh: "重新讀取",
   themeLight: "淺色", themeDark: "深色", themeTip: "切換淺色 / 深色主題",
   xm1Echo: "XM1 實驗：原樣寫回測試",

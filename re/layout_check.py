@@ -2,10 +2,11 @@
 不连接任何设备，纯静态渲染验证。
 用法：python re/layout_check.py
 """
-import io, re, subprocess, sys
+import io, os, re, subprocess, sys
 
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-BASE = "file:///C:/Users/Janlhin/WorkBuddy/2026-10-08-19-20-54/xm2w-web/index.html"
+# 仓库根按脚本位置推导 —— 目录改名后不必再改这里（2026-10-09 踩过：写死路径导致四个检查同时失效）
+BASE = "file:///" + os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "index.html")).replace(os.sep, "/")
 
 # 期望：每类布局下应可见的卡片 / 行（与 src/layout.ts 的 LAYOUT 对应）
 CARDS_4K = ["cardInfo", "cardSensor", "cardPerf", "cardBtns", "cardTools"]
