@@ -149,3 +149,30 @@ git config core.hooksPath .husky/_
 每两週一次（与代码清理同一时间点），产出独立的 `chore:` 提交：
 过期文档章节（含引用它的地方一并处理）、投机性抽象、空转包装层、重复实现。
 没有固定节点的清理等于不会发生。
+
+### 类型通道的现状与遗留（2026-10-09）
+
+`npm run lint` 现在的规则分级：
+
+| 规则 | 级别 | 覆盖 |
+|---|---|---|
+| `@typescript-eslint/no-unused-vars` | **error** | 全项目，已清零 |
+| `@typescript-eslint/no-explicit-any` | **error** | 协议边界四文件（connect / device-8k / device-xm1 / blob） |
+| `@typescript-eslint/no-explicit-any` | warn + 阈值 | 其余 14 个文件 |
+| `no-useless-assignment` / `prefer-const` / `eqeqeq` / `no-var` | error | 全项目 |
+
+**两处已升级为 error 的原因**（改动前请读）：
+
+- `no-unused-vars`：49 处存量已逐个核实并清除（判据见 TASKS.md 的
+  「死代码判定的三种手段」）。往后留下未使用的导入，提交会被直接拒绝。
+  仍放行两类：`^_` 前缀（约定）与 catch 参数（语言强制无法省略）。
+- 协议边界的 `no-explicit-any`：那里是 HID 数据进入代码的唯一入口，
+  也是 XM1 配置清零事故的所在层。这层不允许再有 `any`。
+
+**阈值的含义**：`--max-warnings 88` 等于当前存量，**不是随手填的**。
+多写一处 `any` 会让 `npm run verify` 立刻失败——这是设计意图。
+改动前先跑 `npx eslint src`看真实计数，清理一批就要同步下调。
+
+**最大的遗留**：`util.ts` 里 `const $ = (id: string): any => document.getElementById(id)`
+是 121 处 DOM 调用的类型源头，`S` 本身也是 `any`。这两处构成剩余 85 处 `any`
+的主要来源（TASKS.md 的 T-112）。在它收敛之前，`$("x").anything` 不会报错。

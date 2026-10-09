@@ -47,116 +47,30 @@
 | T-107 | 文档与代码一致性有自动判据 | 加 `docs:sync` 生成脚本（从 `package.json` / `tsconfig.json` 生成文档中的脚本名与依赖表），接 `git diff --exit-code` | T-101 | 中 | 故意改 `package.json` 里一个脚本名，`npm run verify` 必须失败 | 待办 |
 | T-108 | 有覆盖率基线 | 引入覆盖率计量（c8 或 `node --experimental-test-coverage`），**只记录当前基线数字，不设阈值** | 无 | 中 | `npm run verify` 输出覆盖率数值；基线写入 `docs/`。**阈值待有数据后另行提案**（延续既有判例「测试框架暂不迁移到 Vitest」） | 待办 |
 | T-109 | 协议边界不再是 `any` | 收敛 `src/connect.ts`（6）、`src/device-8k.ts`（3）、`src/device-xm1.ts`（1）、`src/blob.ts`（1）。**`src/diag.ts` 及其他不动**（判例三） | T-103 ✅ | 中 | 该四文件 ESLint `no-explicit-any` 计数为 0；`--max-warnings` 下调对应数值；`npm run verify` 全绿；**`re/test_write_gates.ts` 仍全绿（写入闸门不得被削弱）** | ✅ **完成**（`50b5c3d`）。**any 97 → 85**，四文件归零且 `no-explicit-any` 在这四处升级为 **error**。做法：state.ts 新增 `Stage` / `Xm1Edit` / `Xm1Stage` / `StageButton` / `MinutesOrOff` 五个接口，取代散落的 any；`raw`/`unknown`/`unk7` 作为**安全机制载体**显式声明（删掉等于拆掉安全网）。类型通道当场抓出 3 个真实问题（详见下） |
-| T-111 | 死代码清理（ESLint 新发现） | 逐个处理 53 项 `no-unused-vars`。**注意多数不是垃圾而是「导入但未接线」的半成品**，删除前必须逐个确认意图 → 灰名单，需先提案 | 无 | 中 | 每个符号都有明确处置（接线 / 删除 / 标注 TODO(verify)）；`main.ts:183` 的死变量 `xm1Edit` 一并处理；`npm run verify` 全绿 | 待办 |
+| T-111 | 死代码清理（ESLint 新发现） | 逐个处理 53 项 `no-unused-vars` | 无 | 中 | 每个符号都有明确处置；`npm run verify` 全绿 | ✅ **完成**（`07c1b40`）。**49 处清除，`no-unused-vars` 升为 error**，阈值 142→88。核实结论：**每个符号在其他文件都有真实调用**（store8k→session.ts:123、buildBlob8k→session.ts:122、xm1GuardWrite→connect.ts:115、modelOf→session.ts:63、layoutFor→session.ts:69…），故属拆分 main.ts 时的导入残留，**只删导入名不动实现**。另删 main.ts 的 2 个本地死变量（`let xm1Edit` / `const xm1Snaps`，状态早已迁移到 `S.xm1Edit` / `S.xm1Snaps`）。**产物零变化**——esbuild 的 tree-shaking 本就消除了它们，这是死代码判定的决定性证据 |
 
-### T-111 已完成的核实（2026-10-09，避免后续误删）
+### 死代码判定的三种手段（本次实践得出，按可信度排序）
 
-`main.ts` 里 40+ 项未使用导入，已逐一核实真实情况：
+1. **产物diff —— 最强证据。** `git diff index.html` 为空 ⇒ 删掉的是死代码，
+   esbuild 的 tree-shaking 本来就没把它们打进产物。若产物有任何变化，
+   说明删错了东西。**先做这一步，最省事也最可靠。**
+2. **跨文件引用检查 —— 判断「残留」还是「漏接线」。** 对每个符号查
+   `grep -l "\b符号\b" src/*.ts | grep -v 本文件`。若其他文件有真实调用
+   ⇒ 是导入残留，删导入即可；若无任何调用 ⇒ 才可能是未使用的实现，
+   需进一步查它的功能是否已由别处替代。
+3. **ESLint 报告本身 —— 只能作为线索。** 它知道「本文件未使用」，
+   不知道「别处是否用」——**直接照它删就是禁止先删后报**。
 
-| 函数 | 在 main.ts 的出现 | 结论 |
-|---|---|---|
-| `writeBlobXm1` | import + **L424、L461 实际调用** | **在用**，勿动。XM1 写入走的就是它 |
-| `readBlobXm1` | 仅 import | 未接线 |
-| `xm1QueryByte` | 仅 import | 未接线 |
-| `xm1Snapshot` | 仅 import | 未接线 |
-| `xm1Apply` | 仅 import | 未接线 |
-| `xm1GuardWrite` | import + 2 处**注释** | 未接线（注释里提到它不等于调用） |
-| `xm1GuardQuery` / `xm1GuardEchoByte` | 仅 import | 未接线 |
-| `readBlob8k` / `store8k` / `buildBlob8k` | 仅 import | 未接线 |
+本次 49 处全部属于第 2 类（导入残留），无一处需要删除实现本体。
 
-**核实方法**（下次直接用）：`grep -c "\b函数名\b" src/main.ts` 拿到总出现数，
-再`grep -c "^import.*\b函数名\b" src/main.ts` 拿到导入数。
-**两者相等即只在 import 里出现过 = 未接线**。注意 `grep -rn` 全目录搜会被
-i18n 词条字符串污染（本项目 `xm1ApplyConfirm` / `xm1Applying` 这类词条
-含函数名子串），必须限定单文件且排除 import 行。
+### 判据：何时可以放心删导入
 
-**重要提醒**：这批未接线函数是**上一轮重构（`09c7243` / `036a043` 拆分 main.ts）
-的遗留**。它们不是随手写的垃圾，而是重构时把逻辑搬到了别处（写入路径现由
-`writeBlobXm1` + `xm1GuardWrite` 承担），旧导入没清。
-但也可能是「本该接线却漏了」——**这正是必须逐个人工确认、禁止 lint 自动处置的原因**。
-| T-110 | 死代码有自动检测 | 引入 `knip`，产出首份死代码报告 | 无 | 中 | `npm run knip` 可执行并输出报告；结论写入 `DECISIONS.md` | 待办 |
+- 该符号在其他文件有**真实调用**（不是只在 import 行、不是只在注释里），
+- 且本文件的导入确实无调用，
+- 且删除后 `tsc --noEmit` 零错误（证明没有隐式依赖），
+- 且 `git diff index.html` 为空（证明运行时行为不变）。
 
----
-
-## 结构性工作（队列空时执行，不依赖任何裁决）
-
-| ID | 目标 | 动作 | 依赖 | 可逆性 | 完成判据 | 状态 |
-|---|---|---|---|---|---|---|
-| S-101 | 一次性脚本归置| 逐个评估 `re/` 下约 10 个一次性探查脚本（`dias.py`、`obj_scan.py`、`obj_scan2.py`、`cmd_scan.py`、`imm_scan.py`、`xref_scan.py`、`reportid_scan.py`、`const_scan.py` 等）。**能证明结论已沉淀进 `re/PROTOCOL_NOTES.md` / `re/XM1_NOTES.md` 的移入归档目录，产出一致的保留并标注**（判例四，已获授权，不删除） | 无（已裁决） | 中 | 每个脚本有明确归档结论；`re/` 根目录只留有复用价值的脚本；结论写入 `DECISIONS.md` | 待办 |
-| S-102 | 决策日志归整 | 把 `DECISIONS.md` 中散落的假设归档为判例，标注哪些已形成「同类事项不得重复询问」的判例 | 无 | 高 | 每条判例标注影响的后续任务范围 | 待办 |
-| S-103 | 包体积基线 | 记录当前产物体积（285.3 KB：js 250.9 / css 6.7）作为基线，纳入 `verify` 的体积回归检查 | 无 | 高 | `verify` 输出体积并在超阈值时失败；基线数字写入文档 | 待办 |
-| T-112 | `$()` 与 `S` 的类型收敛 | `util.ts:2` 的 `const $ = (id: string): any => document.getElementById(id)` 是**121 处 DOM 调用的类型源头**；`S` 本身也是 `any`（dev / queue / gen / mouseFw 等）。二者是剩余 85 处 any 的主要来源 | T-109 ✅ | 中 | `$` 的返回类型收敛为 `HTMLElement \| null`，121 处调用逐个补空值处理（或引入 `$<T>` 泛型 + 非空断言的显式化）；`S` 定义接口；any 计数与 `--max-warnings` 同步下调；`npm run verify` 全绿 | 待办 |
-
----
-
-## 搁置与阻塞
-
-| 任务 | 状态 | 说明 |
-|---|---|---|
-| T-106 | **已搁置**（2026-10-09） | 用户决定「不弄 GitHub 了，弄项目先」。推送需 `workflow` scope 授权，详见下方记录。搁置不影响任何其他任务——CI 是判定通道，但本地 verify 已能拦住全部实质缺陷 |
-
-### T-106 推送受阻记录（2026-10-09，已搁置）
-
-**已解除的阻塞**：判例一要求推送前需显式确认——已确认（用户直接给出推送命令）。
-
-**遇到的阻塞**：`git push -u origin main` 被 GitHub 拒绝：
-
-```text
-! [remote rejected] main -> main (refusing to allow an OAuth App to create
-  or update workflow `.github/workflows/deploy.yml` without `workflow` scope)
-```
-
-**性质**：凭据授权限制，**不是代码或配置问题**。当前令牌缺 `workflow` scope，
-而 `.github/workflows/` 下的 `verify.yml` 与 `deploy.yml` 均需该权限。
-
-**推送前已完成的检查**（全部通过）：
-
-- 远端可达（HTTP 200），确认仓库存在但为空，从未推送过
-- 工作树干净
-- 无大文件（>1MB）被追踪
-- 无 `*.exe` / `*.bin` / `*.zip` 等第三方二进制泄露（`re/upstream/*.exe` 已被 .gitignore 正确排除）
-- 无凭据文件（唯一命中的 `scss/_tokens.scss` 是样式变量，非敏感）
-
-**失败的替代方案及原因**：曾考虑「排除 workflow 文件先推代码」——
-被否决，因为那会让 CI 与 Pages 部署**完全失效**，且本地工作树需临时缺失
-workflow 文件，属于用更大的问题换小问题。
-
-**解除方式**（若将来重启）：给令牌加 `workflow` scope（重新授权 OAuth App，
-或改用 Personal Access Token），之后重试推送。**此项必须由人操作。**
-步骤见 `docs/推送前需授权.md`。
-
-**推成功后的连带效应**：`deploy.yml` 对 `push: main` 自动触发 Pages，**推送即上线**。
-
-**可执行项统计**：T-104、T-105、T-107～T-111、S-101～S-103 共 **12 项可执行**
-（T-101/102/103 已完成，T-106 已搁置），满足持续推进方案「队列中始终 ≥ 3 项可执行」的要求。**无真阻塞。**
-
----
-
-## 已完成任务的实测结论（供后续任务参考）
-
-### T-101 markdownlint 接入的三条工具行为（踩过的坑）
-
-1. **`ignores` 不可用于排除**——它与默认 glob 求交集，写成排除式会把匹配文件全部过滤掉
-   （`"ignores": ["node_modules/**"]` → `Linting: 0 files`）。改用 `globs` 正向列举。
-2. **`overrides` 对 globs 匹配到的文件不生效**（0.23.3 实测）——改用目录级
-   `.markdownlint.jsonc`。**注意它是替换而非合并**，全局豁免项须在两处各声明一遍。
-3. **`markdown-link-check` 在本机网络下不可用作门禁**——对 MANIFEST.md 报5 条死链，
-   但 `git ls-remote` 复核确认四个仓库全部真实存在（返回 504/403/0）。
-   接入会造成持续假失败，且会诱导人删掉真实存在的来源登记。
-
-这三条对后续接入 ESLint / Stylelint 有直接参考价值：**先小步验证工具行为，再接进门禁**。
-
----
-
-## 历史性差距（记录并约束后续，不回溯修复）
-
-| 项 | 依据 | 处置 |
-|---|---|---|
-| 6 项 TS 严格开关未开（`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`、`verbatimModuleSyntax`、`isolatedModules`、`noUnusedLocals`、`noUnusedParameters`） | `tsconfig.json` 内联注释已量化代价（55 + 50 个错误）并记入 `DECISIONS.md` | 属**已决策的渐进策略**，非遗留。开启时须独立提交，不与业务改动混批 |
-| 协议笔记体量大（`XM1_NOTES.md` 46 KB、`PROTOCOL_NOTES.md` 24 KB、`SOURCES.md` 14 KB） | 逆向取证的证据链要求 | **必要冗余**，不清理 |
-| 首commit `005bffd`（TS 全量转换） | 84 次提交中粒度最大的一次 | **历史性差距，不回溯修复**。约束后续提交保持原子化 |
-| Playwright 缺失 | 依赖真机，无自动化通道 | **不可能修复**，不列入队列 |
-| 运行期 schema（Zod）缺失 | `connect.ts` 等协议边界共 82 处 `any` | T-109 部分覆盖；完整 schema 化属P2，成本高，暂不排入 |
+四条同时成立才算干净。**本次 49 处全部满足。**
 
 ### T-103 ESLint 接入的四条工具行为（接 Stylelint 时直接参考）
 
