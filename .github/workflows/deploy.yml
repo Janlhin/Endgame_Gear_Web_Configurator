@@ -1,0 +1,57 @@
+# 部署到 GitHub Pages：把单文件产物 index.html 发布为在线工具。
+#
+# 为什么单独一个 workflow：verify.yml 是**权威判定通道**（verify + ui 两个 job，互不豁免），
+# 它只回答"行不行"；本workflow 回答"发布"。两者不合并，避免一次发布把校验也跳过。
+#
+# 触发方式：push 到 main 时自动发布（Pages 本身需要这个产物存在）；
+# 也支持手动触发（workflow_dispatch）用于重新发布。
+#
+# 安全要点：
+#   ① 只部署 index.html —— 仓库根目录直接就有构建产物，不需要额外构建步骤；
+#      这也让"发布的东西"和"本地验过的那个文件"逐字节相同。
+#   ② 用 actions/upload-pages-artifact + deploy-pages，不依赖第三方 action。
+#   ③ 产物若缺 checklist 卡（md2html 静默失效的信号），这里也会失败 ——
+#      与 verify.yml 的 canary 同一口径，两处都设。
+name: deploy pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一分支只留一次进行中的部署，避免并发发布互相覆盖
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 与 verify.yml 的 canary 同口径：清单卡必须真的渲染进产物。
+      # md2html 若静默失效，index.html 仍能构建成功，没有别的检查会发现。
+      - name: 产物自检（无外部依赖 + 清单卡已渲染）
+        run: |
+          set -euo pipefail
+          test -f index.html || { echo "找不到 index.html"; exit 1; }
+          # 外部 <script src> / <link href> 会让离线双击与 Pages 行为不一致，必须为 0
+          ext=$(grep -cE '<(script|link)[^>]+(src|href)="https?://' index.html || true)
+          echo "外部脚本/样式引用数：$ext"
+          test "$ext" -eq 0 || { echo "产物引用了外部资源"; exit 1; }
+          grep -q 'id="cardChecklist"' index.html || { echo "清单卡未渲染进产物"; exit 1; }
+          echo "清单卡已渲染 ✓"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: index.html
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
