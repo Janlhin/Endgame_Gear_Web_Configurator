@@ -11,11 +11,15 @@
     "test": "node re/run_test.mjs",
     "check:i18n": "node re/i18n_audit.mjs",
     "check:ui": "python re/layout_check.py && python re/i18n_check.py && python re/render_check.py && python re/reset_check.py",
-    "verify": "npm run check && npm run test && npm run check:i18n && npm run check:ui && npm run build",
-    "verify:ci": "npm run check && npm run test && npm run check:i18n && npm run build"
+    "lint:docs": "markdownlint-cli2",
+    "lint:docs:fix": "markdownlint-cli2 --fix",
+    "verify": "npm run check && npm run lint:docs && npm run test && npm run check:i18n && npm run check:ui && npm run build",
+    "verify:ci": "npm run check && npm run lint:docs && npm run test && npm run check:i18n && npm run build"
   },
   "devDependencies": {
     "esbuild": "^0.24.2",
+    "markdown-link-check": "^3.15.0",
+    "markdownlint-cli2": "^0.23.3",
     "sass": "^1.105.1",
     "typescript": "^7.0.2"
   }

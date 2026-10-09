@@ -1,0 +1,38 @@
+{
+  // 校验对象：本仓库自有的 Markdown 文档。
+  //
+  // 用 globs 显式列举而非 ignores 排除：markdownlint-cli2 的 ignores
+  // 会与默认 glob 求交集，写成排除式会把匹配到的文件全部过滤掉
+  //（实测 "ignores": ["node_modules/**"] 会让 Linting: 0 files）。
+  "globs": [
+    "*.md",
+    "docs/**/*.md",
+    "re/*.md"
+  ],
+  "config": {
+    // 默认启用的规则保持markdownlint 原样，此处只做三项全局调整，
+    // 每项写明理由 —— 豁免必须显式、可审计、可穷举。
+    //
+    // MD013 line-length：关闭。文档大量使用中文宽字符与表格，
+    // 80 列限制会迫使作者把一句话拆成多行，反而降低可读性；
+    // 协议笔记里的 blob 偏移与命令片段需要整行呈现才便于核对。
+    // 行长不受约束不等于表格失控 —— MD055/MD056/MD058 仍然生效。
+    "MD013": false,
+
+    // MD060 table-column-style：关闭。本项目表格以「人工对齐可读」为优先，
+    // 作者按内容长度手工对齐管道符；compact 风格要求严格紧凑，
+    // 与该意图直接冲突。MD055/MD056 仍管管道风格与列数一致性。
+    "MD060": false,
+
+    // MD033 no-inline-html：关闭。README 里有 <kbd>、<br>、<sub>
+    // 等排版标签，以及协议偏移表的 <br> 换行。禁止内联 HTML 在此是错误约束。
+    "MD033": false,
+
+    // MD009 no-trailing-spaces：容忍行尾空格。Markdown 用行尾空格表达硬换行，
+    // 本项目多处刻意在语义边界折行（TODO.md 顶部引用块内还有 `> ` 续行）。
+    // 报错会迫使作者把这些换行改成 <br>，反而降低可维护性。
+    "MD009": false
+  }
+  // 按文件的差异化配置放在 docs/.markdownlint.jsonc（就近生效）。
+  // 实测 0.23.3 的 overrides 对 globs 匹配到的文件不生效，故不用它。
+}
