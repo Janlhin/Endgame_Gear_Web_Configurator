@@ -32,7 +32,7 @@
 | ID | 目标 | 动作 | 依赖 | 可逆性 | 完成判据 | 状态 |
 |---|---|---|---|---|---|---|
 | T-101 | 文档层有 lint 通道 | 加`markdownlint-cli2` + `markdown-link-check` 两个 devDep，接入 `verify` 与 CI | 无 | 高 | `npm run verify` 通过；`markdownlint-cli2 "**/*.md"` 零error；CI绿 | ✅ **完成 2026-10-09**（`0bbb2b2` + `c18d42e`）。实测拦下 2 处真实文档缺陷：TODO.md 表格被换行截断、web-driver-extra-features 表格缺状态列。`markdown-link-check` 经复核**不接入**（网络假阳性，证据见 MANIFEST.md），降级为可选工具 |
-| T-102 | 提交前有本地门禁 | 加 Husky + lint-staged + commitlint，接入 `pre-commit` / `commit-msg` | 无 | 高 | 故意写一条不符 Conventional Commits 的提交，`commit-msg` 必须拒绝；`npm run verify` 通过 | 待办 |
+| T-102 | 提交前有本地门禁 | 加 Husky + lint-staged + commitlint，接入 `pre-commit` / `commit-msg` | 无 | 高 | 故意写一条不符 Conventional Commits 的提交，`commit-msg` 必须拒绝；`npm run verify` 通过 | ✅ **完成**（`81b4a26`）。**lint-staged 未装**——本项目无格式化工具（Prettier 不在裁决范围内），无可暂存处理；`pre-commit` 直接跑 `tsc` + `markdownlint --fix`。已实测：违规提交被拒（exit 1，HEAD 未变）、类型错误被 pre-commit 拦住（TS2322） |
 | T-103 | `any` 有 lint 拦截 | 加 ESLint flat config + `typescript-eslint`，`@typescript-eslint/no-explicit-any` 设为 `error` | 无 | 高 | `npm run lint` 对当前 82 处 `any` 报错（先配置不修）；`npm run verify` 其余段全绿 | 待办 |
 | T-104 | 样式硬编码有拦截 | 加 Stylelint + `stylelint-config-standard-scss`，含 `color-no-hex`（`_tokens.scss` 走 overrides 放行） | 无 | 高 | `npm run stylelint` 通过；故意在业务 SCSS 写一个字面量颜色，该命令必须失败 | 待办 |
 | T-105 | esbuild 漏洞有结论 | 单独提交升级 esbuild 0.24.2 → 0.28.x，跑完整 verify 确认产物仍零外部引用 | 无 | 中 | `npm audit` 无moderate；`npm run verify` 全绿；产物外部引用计数仍为 0；`cardChecklist` canary 仍命中 | 待办 |

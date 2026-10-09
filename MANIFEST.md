@@ -15,6 +15,9 @@
 | `typescript` | 7.0.2 | Apache-2.0 | 类型检查（`tsc --noEmit`） | 唯一的静态类型通道 |
 | `markdownlint-cli2` | 0.23.3 | MIT | Markdown 结构校验（`npm run lint:docs`） | 主规范指定的文档 lint 通道，MIT、无原生编译。实测拦下 2 处真实文档缺陷（表格列数缺失、表格被换行截断） |
 | `markdown-link-check` | 3.15.0 | MIT | 断链检查（**暂未接入**，见下方说明） | 主规范指定的断链通道。在本机网络下会把真实存在的链接判为死链，故只列为可选工具 |
+| `husky` | 9.1.7 | MIT | Git 钩子管理（`pre-commit` / `commit-msg`） | 提交门禁的落地方式。用现成工具而非手写 `.git/hooks`——手写的钩子不会被版本管理跟踪，换机器就失效 |
+| `@commitlint/cli` | 21.2.3 | MIT | 提交信息校验（Conventional Commits） | 主规范强制「Conventional Commits + commitlint」。MIT、无原生编译 |
+| `@commitlint/config-conventional` | 21.2.3 | MIT | commitlint 的 Conventional Commits 规则集 | 与 cli 配套；类型枚举在 `commitlint.config.cjs` 里按本项目需要扩展 |
 
 > **`markdown-link-check` 未接入 `verify` 的原因**（2026-10-09 实测）：
 > 对 `MANIFEST.md` 跑出5 条"死链"，但用 `git ls-remote`逐个复核后，

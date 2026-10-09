@@ -80,6 +80,51 @@ ubuntu 跑 `verify:ci`，windows-latest 跑 `check:ui` —— **两条都跑，�
 - 机械性变更（重命名、格式化、依赖升级）单独成提交。
 - 交付说明四项缺一不可：**改了什么 / 验证证据（实际跑的命令与结果）/ 未验证项（不得隐去）/ 遗留项**。
 
+### 提交前门禁（Husky，2026-10 起生效）
+
+`git commit` 会自动跑两个钩子，**不需要手动执行**：
+
+| 钩子 | 做什么 | 为什么放这里 |
+|---|---|---|
+| `pre-commit` | `tsc --noEmit` → `markdownlint --fix` → `tsc --noEmit` | 只放秒级检查。`test` / `check:i18n` / `check:ui` / `build` 要编译、要起无头 Edge，整套十几秒，留在 CI |
+| `commit-msg` | `commitlint` 校验 Conventional Commits | 当场拦截，不必等 CI 才发现 |
+
+`tsc` 跑两次是有意的：markdownlint 的 `--fix` 会动文件，需要确认它没把类型改坏。
+
+允许的提交类型：`feat` `fix` `docs` `refactor` `chore` `perf` `test` `build` `ci`
+`research` `re`。
+
+- `research` = 调研与交叉验证，无代码产出；`re` = 协议取证，有产出但不属于产品功能。
+- 这两个类型在历史里各用过3 次，语义贴切。不用它们而硬塞进 `docs`，
+  会让「逆向结论」与「文档整理」在历史里混为一谈——两者审查方式不同。
+- **注意**：CI 那条 `git log -1| grep` 检查口径**更窄**，只认前9 个类型。
+  这是有意的：CI 只查最近一次提交作为最终判定，本地不必与它一致。
+  改动类型枚举时，`commitlint.config.cjs` 与 `.github/workflows/verify.yml`
+  两处要同步。
+
+**禁止 `--no-verify`。** 若钩子因环境问题误报，先修钩子，不要绕过。
+
+### 环境注意事项：husky 的 `_` 目录
+
+husky 9 的自动初始化需要 Node能`spawn git`。若 `npm run prepare` 报
+`git command not found`，钩子不会生效——**`git commit` 将静默跳过门禁**，
+看起来一切正常，实际没有任何拦截。
+
+自查方法：`git config core.hooksPath` 应输出 `.husky/_`（不是 `.husky`）。
+若输出为空或为 `.husky`，说明初始化没成功，需手动补齐：
+
+```bash
+mkdir -p .husky/_ && printf '*' > .husky/_/.gitignore
+cp node_modules/husky/husky .husky/_/h
+for h in pre-commit commit-msg prepare-commit-msg pre-push post-checkout \
+         post-merge post-rewrite pre-rebase post-commit applypatch-msg \
+         pre-applypatch post-applypatch pre-merge-commit pre-auto-gc; do
+  printf '#!/usr/bin/env sh\n. "$(dirname "$0")/h"' > ".husky/_/$h"
+done
+printf 'echo "husky - DEPRECATED"\n' > .husky/_/husky.sh
+git config core.hooksPath .husky/_
+```
+
 ## 6. 歧义与检索（通用规范在此项目落地）
 
 - **查得到的不许问**（代码里能读到、官方文档/包注册表能查到）；**要什么的必须问**，
