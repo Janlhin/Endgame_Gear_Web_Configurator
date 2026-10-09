@@ -14,11 +14,12 @@ window.addEventListener("unhandledrejection", e => {
   try { log("✗ promise: " + (e.reason && e.reason.message || e.reason)); } catch (_) {}
 });
 
-function log(msg) {
+
+function log(msg: string) {
   const el = $("log");
   el.textContent += new Date().toLocaleTimeString() + "  " + msg + "\n";
   el.scrollTop = el.scrollHeight;
 }
-function banner(cls, text) { const b = $("banner"); b.className = "banner " + cls; b.textContent = text || ""; }
+function banner(cls: string, text?: string) { const b = $("banner"); b.className = "banner " + cls; b.textContent = text || ""; }
 
 export { $, sleep, hex, log, banner };

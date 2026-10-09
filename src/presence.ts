@@ -1,3 +1,4 @@
+import { errMsg } from "./err.js";
 /** 设备在位监测：设备一旦「不在了」，界面自动回到初始态（未连接）。
  *
  *  为什么需要：设备拔掉/断电之后，页面原本仍显示着旧数据与「已连接」，
@@ -116,7 +117,7 @@ export function watchDisconnect(d: any, onLost: (reason: LostReason) => void) {
     });
   } catch (e) {
     /* 极老的实现没有该事件 —— 交给定时清点兜底 */
-    log("⋯ 无法监听 disconnect 事件（" + e.message + "），改由清点检测");
+    log("⋯ 无法监听 disconnect 事件（" + errMsg(e) + "），改由清点检测");
   }
 }
 
@@ -125,7 +126,7 @@ export function watchDisconnect(d: any, onLost: (reason: LostReason) => void) {
 async function deviceList(): Promise<any[] | null> {
   const hid: any = (navigator as any).hid;
   if (!hid || typeof hid.getDevices !== "function") return null;
-  try { return await hid.getDevices(); } catch (e) { log("⋯ getDevices 失败：" + e.message); return null; }
+  try { return await hid.getDevices(); } catch (e) { log("⋯ getDevices 失败：" + errMsg(e)); return null; }
 }
 
 /** 同一个设备的判断：优先对象身份，退化为三元组匹配（浏览器可能返回新对象）。 */

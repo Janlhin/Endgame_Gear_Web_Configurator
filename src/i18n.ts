@@ -317,7 +317,7 @@ const FALLBACK_LANG = "zh-CN";
 /** 把浏览器给的语言标签归一化到本工具支持的语言之一；不认识返回 null。
  *  容错：剥掉 "en-US;q=0.9" 这类权重后缀，并把下划线写法（zh_CN）当连字符处理。
  *  ⚠️ 繁体必须在通用 zh- 之前判定，否则 zh-TW / zh-HK / zh-Hant 会被吞成简体。 */
-function normalizeLang(tag) {
+function normalizeLang(tag?: string | null) {
   if (!tag) return null;
   const s = String(tag).toLowerCase().split(";")[0].trim().replace(/_/g, "-");
   if (s === "zh-hant" || s.indexOf("zh-hant-") === 0 ||
@@ -359,15 +359,16 @@ function detectLang() {
 }
 
 let LANG = detectLang();
-function t(key, ...args) {
+function t(key: string, ...args: (string | number)[]) {
   let s = (I18N[LANG] && I18N[LANG][key]) || I18N["zh-CN"][key] || key;
-  args.forEach((a, i) => s = s.replace(`{${i}}`, a));
+  args.forEach((a, i) => { s = s.replace(`{${i}}`, String(a)); });
   return s;
 }
 
 export function applyI18n() {
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const k = (el as HTMLElement).dataset.i18n;
+    if (!k) return;                      // 没有 data-i18n 的元素：不是词条占位，跳过
     const v = (I18N[LANG] && I18N[LANG][k]) || I18N["zh-CN"][k];
     if (v != null) el.textContent = v;  // 查不到就保留 HTML 原文，绝不显示键名
   });
@@ -375,7 +376,7 @@ export function applyI18n() {
   $("langSel").value = LANG;
 }
 
-$("langSel").onchange = e => {
+$("langSel").onchange = (e: Event) => {
   LANG = (e.target as HTMLSelectElement).value;
   localStorage.setItem("xm2w-lang", LANG);
   applyI18n();

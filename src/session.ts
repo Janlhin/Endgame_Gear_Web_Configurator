@@ -1,3 +1,4 @@
+import { errMsg, errCode } from "./err.js";
 /** 写入流程与刷新：把编辑后的设置下发到设备，再回读校验。
  *
  *  这一层是调度 —— 按当前设备族选写命令，写完统一走 refreshAll 重读比对。
@@ -16,7 +17,7 @@ import { layoutFor, applyLayout } from "./layout.js";
 import { probe, guarded } from "./transport.js";
 import { buildBlob8k, PID_FAMILY4, PID_8K, VID_22D4, MOUSE_PIDS, modelOf } from "./protocol.js";
 
-export function fwStr(v) { const h = v.toString(16).padStart(4, "0"); return `${parseInt(h.slice(0, 2), 16)}.${parseInt(h.slice(2), 16)}`; }
+export function fwStr(v: number) { const h = v.toString(16).padStart(4, "0"); return `${parseInt(h.slice(0, 2), 16)}.${parseInt(h.slice(2), 16)}`; }
 
 export async function refreshAll() {
   banner("warn", "");
@@ -47,8 +48,8 @@ export async function refreshAll() {
         log("✓ 8k blob 已读取（写回为整块读-改-写，未确认字段原样保留）");
       } catch (e) {
         render();
-        banner("err", t("bRead") + e.message);
-        log("✗ " + e.message);
+        banner("err", t("bRead") + errMsg(e));
+        log("✗ " + errMsg(e));
       }
       return;
     }
@@ -79,14 +80,14 @@ export async function refreshAll() {
         log(`✓ XM1 blob 已读取（可编辑 23 个已核实字段）`);
       } catch (e) {
         renderXm1();
-        banner("err", t("bRead") + e.message);
-        log("✗ XM1 读取失败: " + e.message);
+        banner("err", t("bRead") + errMsg(e));
+        log("✗ XM1 读取失败: " + errMsg(e));
       }
       return;
     }
 
     try { const r = await guarded(0x0D, 0x00, null, { pace: 150 }); S.dongleFw = fwStr(r[16] | (r[17] << 8)); }
-    catch (e) { if (e.code !== 0x07) throw e; S.dongleFw = "—"; }
+    catch (e) { if (errCode(e) !== 0x07) throw e; S.dongleFw = "—"; }
     let mouseOk = false;
     try {
       const r = await guarded(0x0E, 0x00, null, { pace: 150 });
@@ -102,7 +103,7 @@ export async function refreshAll() {
       }
       S.mouseFw = fwStr(r[22] | (r[23] << 8));
       mouseOk = true;
-    } catch (e) { if (![0x08, 0x11].includes(e.code)) throw e; }
+    } catch (e) { const c = errCode(e); if (c === undefined || ![0x08, 0x11].includes(c)) throw e; }
     try { const r = await guarded(0xB4, 0x00, null, { pace: 150 }); S.battery = r[16]; } catch (e) { S.battery = null; }
     /* 界面按型号裁剪：v1 不显示 v2 专属项，反之亦然。 */
     applyLayout(layoutFor({ unverified: S.unverified, gen: S.gen }));
@@ -113,7 +114,7 @@ export async function refreshAll() {
       else banner("ok", t("bReadOk"));
     }
     else { render(); banner("warn", t("bSleep")); }
-  } catch (e) { banner("err", t("bRead") + e.message); log("✗ " + e.message); }
+  } catch (e) { banner("err", t("bRead") + errMsg(e)); log("✗ " + errMsg(e)); }
 }
 
 export async function apply8k() {

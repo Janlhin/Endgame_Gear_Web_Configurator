@@ -1,3 +1,4 @@
+import { errMsg } from "./err.js";
 // 应用主体：全局状态 / 传输层 / blob 读写解析 / UI 渲染 / 连接与事件绑定
 import { $, sleep, hex, log, banner } from "./util.js";
 import { LANG, t, applyI18n } from "./i18n.js";
@@ -327,7 +328,7 @@ $("btnConnect").onclick = async () => {
          而不是让用户看到"找不到兼容设备"。只读、不发送任何报文。 */
       { vendorId: VID,     usagePage: USAGE_FAMILY4.page, usage: USAGE_FAMILY4.usage },
     ];
-    let devs = await (navigator as any).hid.requestDevice({ filters });
+    let devs: HIDDevice[] = await navigator.hid.requestDevice({ filters });
     if (!devs.length) {
       /* 精确 filter 全落空 → 回退到**只列厂商用法页**的集合（仍然不会暴露鼠标指针）。
          注意：不能退到 filters:[]，那会把键盘/鼠标/摄像头全列出来，
@@ -373,19 +374,19 @@ $("btnConnect").onclick = async () => {
     if (DONGLE_PIDS.includes(pick.productId))
       log("ℹ 已选择接收器。若鼠标此刻插着 USB 线，无线链路是断开的——请改选鼠标设备（或拔线后再连）。");
     await openDevice(pick);
-  } catch (e) { banner("err", t("bConnectFail") + e.message); log("✗ " + e.message); }
+  } catch (e) { banner("err", t("bConnectFail") + errMsg(e)); log("✗ " + errMsg(e)); }
 };
 $("btnRefresh").onclick = () => isXm2weOpen() ? refreshWe() : refreshAll();
 /* 护栏：4k 族的写操作绝不能对 XM2we 族执行（协议族完全不同，会写坏 EEPROM）。
    正常路径下卡片已隐藏，这里再挡一次以防脚本/控制台误调。 */
 
-$("btnApplySensor").onclick = () => { try { guard4k(); } catch { return; } applySensor().catch(e => banner("err", t("errWrite") + e.message)); };
-$("btnApplyPerf").onclick = () => { try { guard4k(); } catch { return; } applyPerf().catch(e => banner("err", t("errWrite") + e.message)); };
+$("btnApplySensor").onclick = () => { try { guard4k(); } catch { return; } applySensor().catch(e => banner("err", t("errWrite") + errMsg(e))); };
+$("btnApplyPerf").onclick = () => { try { guard4k(); } catch { return; } applyPerf().catch(e => banner("err", t("errWrite") + errMsg(e))); };
 $("btnPair").onclick = async () => {
   try { guard4k(false); } catch { return; }   // 0x70 零负载
   if (!confirm(t("cfPair"))) return;
   try { await guarded(0x70, 0x00, null, { pace: 300 }); log("✓ pair cmd sent"); banner("ok", t("bPairSent")); await sleep(2000); await refreshAll(); }
-  catch (e) { banner("err", e.message); }
+  catch (e) { banner("err", errMsg(e)); }
 };
 /* 0x71 = Pair Default（恢复默认配对，零负载，官方发后等 300ms）
    0x72 = Get Pair Data（读取配对数据，官方等 350ms 后收，负载偏移 16 起 16 字节）
@@ -394,7 +395,7 @@ $("btnPairDefault").onclick = async () => {
   try { guard4k(false); } catch { return; }
   if (!confirm(t("cfPairDefault"))) return;
   try { await guarded(0x71, 0x00, null, { pace: 300 }); log("✓ pair-default cmd sent"); banner("ok", t("bPairDefaultOk")); await sleep(2000); await refreshAll(); }
-  catch (e) { banner("err", e.message); }
+  catch (e) { banner("err", errMsg(e)); }
 };
 $("btnPairData").onclick = async () => {
   try { guard4k(); } catch { return; }
@@ -403,14 +404,14 @@ $("btnPairData").onclick = async () => {
     const d = r.slice(16, 32);
     log("✓ pair data: " + hex(d, 16));
     banner("ok", t("bPairDataOk") + " " + hex(d, 16));
-  } catch (e) { banner("err", e.message); }
+  } catch (e) { banner("err", errMsg(e)); }
 };
 $("btnReset").onclick = async () => {
   try { guard4k(false); } catch { return; }   // 0x13 零负载，不需要先读配置
   if (!confirm(t("cfReset1"))) return;
   if (!confirm(t("cfReset2"))) return;
   try { await guarded(0x13, 0x00, null, { pace: resetSettle() }); log("✓ factory reset done"); await refreshAll(); banner("ok", t("bResetOk")); }
-  catch (e) { banner("err", e.message); }
+  catch (e) { banner("err", errMsg(e)); }
 };
 /* XM1 一键回退：把上一份快照（写入前 / 上一次读取）原样写回。
    快照之间的差异同样只落在已核实字段内，所以走的还是同一个白名单。 */
@@ -428,17 +429,17 @@ $("btnXm1Undo").onclick = async () => {
     banner("ok", t("xm1UndoOk"));
     log("✓ 已回退到快照（" + new Date(prev.at).toLocaleTimeString() + "，" + prev.label + "）");
   } catch (e) {
-    banner("err", t("xm1WriteFail") + e.message);
-    log("✗ 回退失败：" + e.message);
+    banner("err", t("xm1WriteFail") + errMsg(e));
+    log("✗ 回退失败：" + errMsg(e));
   }
 };
 
 $("btnSave").onclick = () => {
   if (!S.blob) return banner("err", t("cfgNoRead"));
   // 附带可读的 hex dump，便于人工比对与差分分析
-  const hexLines = [];
+  const hexLines: string[] = [];
   for (let o = 0; o < S.blob.length; o += 16) {
-    const row = [];
+    const row: string[] = [];
     for (let i = 0; i < 16 && o + i < S.blob.length; i++) row.push(S.blob[o + i].toString(16).padStart(2, "0"));
     hexLines.push(o.toString(16).padStart(4, "0") + ": " + row.join(" "));
   }
@@ -460,12 +461,12 @@ $("btnXm1Echo").onclick = async () => {
     await writeBlobXm1();
     log("✓ 回声写回已发送，正在回读比对…");
     await readBlob();
-    const same = !!S.blob && S.blob.length === before.length && S.blob.every((v, i) => v === before[i]);
+    const same = !!S.blob && S.blob.length === before.length && S.blob.every((v: number, i: number) => v === before[i]);
     if (same) { banner("ok", t("xm1EchoOk")); log("✓ 回读与写前逐字节一致 —— 布局闭环成立，可以进入下一步"); }
     else { banner("warn", t("xm1EchoDiff")); log(`⋯ 回读与写前不同：${hex(S.blob, 32)}`); }
   } catch (e) {
-    banner("err", t("xm1EchoFail") + e.message);
-    log("✗ 回声写回失败：" + e.message);
+    banner("err", t("xm1EchoFail") + errMsg(e));
+    log("✗ 回声写回失败：" + errMsg(e));
   }
 };
 
@@ -477,18 +478,18 @@ $("btnDiag").onclick = () => {
     download(JSON.stringify(buildDiag(), null, 2), `egg-mouse-diag-${Date.now()}.json`, "application/json");
     banner("ok", t("diagSaved"));
     log("✓ 测试数据包已导出（含 blob 与通讯日志）");
-  } catch (e: any) { banner("err", t("cfgNoRead") + e.message); }
+  } catch (e) { banner("err", t("cfgNoRead") + errMsg(e)); }
 };
 $("btnLoad").onclick = () => $("fileLoad").click();
-$("fileLoad").onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
+$("fileLoad").onchange = async (e: Event) => {
+  const f = (e.target as HTMLInputElement).files?.[0]; if (!f) return;
   /* ★ 导入配置同样是写入（0x14 + 0x15 + 0x16×2），必须过同一道闸门。
      此前这里没有 guard4k() —— 单靠按钮 disabled 是不设防的：
      只要 handler 能被触发（旧文件选择器、脚本调用），只读型号就会被写。 */
-  try { guard4k(); } catch { e.target.value = ""; return; }
+  try { guard4k(); } catch { (e.target as HTMLInputElement).value = ""; return; }
   /* 8k 的写是整块写：导入一个来自别的型号的 blob 等于把未知偏移整体覆盖 ——
      这正是 XM1 事故的形态。故 8k 暂不支持导入（导出不受影响）。 */
-  if (S.eightK) { banner("err", t("b8kNoImport")); e.target.value = ""; return; }
+  if (S.eightK) { banner("err", t("b8kNoImport")); (e.target as HTMLInputElement).value = ""; return; }
   try {
     const j = JSON.parse(await f.text());
     /* ★ 跨代拦截：不同 gen 的字段编码不同（LOD：gen1 整毫米 / gen2 round(mm×10)−7；
@@ -519,8 +520,8 @@ $("fileLoad").onchange = async e => {
     await refreshAll();
     const bad = [...verifySensor(wantSensor), ...verifyPerf(wantPerf), ...verifyButtons(wantBtns)];
     reportVerify("bImportOk", bad);
-  } catch (err) { banner("err", t("bImportFail") + err.message); }
-  e.target.value = "";
+  } catch (err) { banner("err", t("bImportFail") + errMsg(err)); }
+  (e.target as HTMLInputElement).value = "";
 };
 function download(data: any, name: string, type = "application/octet-stream") {
   const a = document.createElement("a");

@@ -58,7 +58,8 @@ console.log("\n按 LANG 直接取用的表（src/render.ts）：");
 const renderSrc = read("render.ts");
 const langs = Object.keys(blocks);
 for (const name of ["STAGE_COLORS", "BTN_NAMES"]) {
-  const seg = renderSrc.split(`const ${name} = {`)[1];
+  // 类型标注可能是 `const X = {` 或 `const X: Record<string, string[]> = {` —— 两种都要认
+  const seg = renderSrc.split(new RegExp(`const ${name}(?::[^=]+)? = {`))[1];
   if (!seg) { console.log(`  ${name.padEnd(13)} 未找到  FAIL`); fails++; continue; }
   const got = new Set([...seg.split("\n};")[0].matchAll(/"([a-zA-Z-]+)":/g)].map((m) => m[1]));
   const missing = langs.filter((l) => !got.has(l));

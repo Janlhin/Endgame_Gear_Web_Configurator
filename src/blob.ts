@@ -25,13 +25,13 @@ export function looksLikeBlob8k(b: Uint8Array) {
       && polling >= 1 && polling <= 64 && cpi1 >= 10 && cpi1 <= 30000;
 }
 
-export function lodByteToMm(v, glass) {
+export function lodByteToMm(v: number, glass?: boolean) {
   if (S.gen === 1) return v === 1 ? 1.0 : 2.0;
   if (glass) return v === 1 ? 1.0 : 2.0;
   return (v + 7) / 10;
 }
 
-export function mmToLodByte(mm, glass) {
+export function mmToLodByte(mm: number, glass?: boolean) {
   if (S.gen === 1 || glass) return Math.round(mm);
   return Math.round(mm * 10) - 7;
 }
@@ -119,8 +119,8 @@ export function buildPowerPayload() {
   return p;
 }
 
-export function xm1Parse(b) {
-  const u16 = (o) => b[o] | (b[o + 1] << 8);
+export function xm1Parse(b: Uint8Array) {
+  const u16 = (o: number) => b[o] | (b[o + 1] << 8);
   const lodRaw = b[XM1_F.lod];
   return {
     active: b[XM1_F.active],
@@ -158,8 +158,8 @@ export const XM1_F = {
 /* 实测：启用标志 0x00 = On，0xFF = Off（与直觉相反，但两次差分均一致） */
 export const XM1_STAGE_ON = 0x00;
 /** Lift Cut-Off 编码 ⇄ 毫米（实测 3mm=11、2mm=6 ⇒ 5×mm−4） */
-export const xm1LodToMm = (raw) => raw ? (raw + 4) / 5 : 0;
-export const xm1MmToLod = (mm) => Math.round(mm * 5) - 4;
+export const xm1LodToMm = (raw: number) => raw ? (raw + 4) / 5 : 0;
+export const xm1MmToLod = (mm: number) => Math.round(mm * 5) - 4;
 
 /** CPI 归一化 —— 全局**单一来源**（UI 输入、XM1 写回、4k 写回都用它）。
  *
@@ -184,7 +184,7 @@ export const xm1MmToLod = (mm) => Math.round(mm * 5) - 4;
  *     它的 50 步进是 2026-10-08 真机实测确认的（官方软件拒绝 1234、接受 1150），
  *     上限按同族收紧到 26000（PAW33xx 传感器物理上限同为 26000）。
  */
-export function cpiClamp(v, gen?: number | null) {
+export function cpiClamp(v: number | string, gen?: number | null) {
   const v2 = gen === 2;
   const min = v2 ? 10 : 50, max = v2 ? 30000 : 26000, step = v2 ? 10 : 50;
   return Math.max(min, Math.min(max, Math.round((+v || 0) / step) * step));

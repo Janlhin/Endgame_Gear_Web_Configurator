@@ -1,3 +1,4 @@
+import { errMsg } from "./err.js";
 /** 4k 无线族（XM2w 4k / OP1w 4k 及 v2）的配置读取。
  *
  *  命令 0x12 请求 1024B blob；两种响应格式见下面的注释。
@@ -27,7 +28,7 @@ export async function readBlob() {
     for (let i = 0; i < 3; i++) {
       let u8;
       try { u8 = await rawReceive(RPT_BULK); }
-      catch (e) { log(`✗ 读 0xA0 失败: ${e.message}`); await sleep(120); continue; }
+      catch (e) { log(`✗ 读 0xA0 失败: ${errMsg(e)}`); await sleep(120); continue; }
       let status = u8[1], off = 16;
       if (u8[1] === 0xA1 && u8[2] === 0x01) { status = 0x01; off = 17; }  // v2 回显格式
       if (status === 0x01 && u8.length >= off + 1024) {

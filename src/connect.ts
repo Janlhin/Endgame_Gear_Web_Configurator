@@ -40,7 +40,7 @@ export async function onDeviceLost(reason: LostReason) {
    XM2we 是另一个模块自己的设备，由 xm2we-ui.ts 单独登记 —— 两族不会同时打开。 */
 watchPresence("main", () => S.dev, reason => { void onDeviceLost(reason); });
 
-export function isSafeToOpen(d) {
+export function isSafeToOpen(d: HIDDevice) {
   const cols = d.collections || [];
   if (!cols.length) return { ok: false, why: t("bNoCollections") };
   // ① 致命项：鼠标指针 / 键盘 —— 独占会让系统输入设备失效
@@ -54,7 +54,7 @@ export function isSafeToOpen(d) {
   return { ok: true };
 }
 
-export async function openGuarded(d) {
+export async function openGuarded(d: HIDDevice) {
   const guard = isSafeToOpen(d);
   if (!guard.ok) {
     log("✗ 拒绝打开：" + guard.why);
@@ -73,7 +73,7 @@ export async function openGuarded(d) {
   return true;
 }
 
-export async function openDevice(d) {
+export async function openDevice(d: HIDDevice) {
   if (!(await openGuarded(d))) return;
   S.dev = d;
   /* 拔线/断电时浏览器会在该设备上触发 disconnect —— 比定时清点快得多。
@@ -121,7 +121,7 @@ export async function openDevice(d) {
     (d as any).__realSend = realSend;
     log("⚠ XM1：读查询常驻放行；写 blob 仅允许「原样回声」（逐字节校验），其余一律拦截");
   }
-  S.dev.addEventListener("inputreport", e => {
+  S.dev.addEventListener("inputreport", (e: HIDInputReportEvent) => {
     if (e.data.byteLength < 2) return;
     const code = e.data.getUint8(0), v = e.data.getUint8(1);
     if (code === 0xB4) { S.battery = e.data.getUint8(2); render(); log(`⚡ battery event: ${S.battery}%`); }

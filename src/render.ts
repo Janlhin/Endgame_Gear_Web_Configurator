@@ -12,13 +12,13 @@ import { XM1_MAX_STAGES } from "./protocol.js";
 
 /* ★ 这两张表按 LANG 直接取用（取不到就是 undefined → 崩）。
    新增语言时必须同步补齐 —— re/i18n_audit.mjs 会校验它们覆盖了全部语言。 */
-export const STAGE_COLORS = {
+export const STAGE_COLORS: Record<string, string[]> = {
   "zh-CN": ["蓝", "绿", "黄", "红"], "zh-TW": ["藍", "綠", "黃", "紅"],
   "en": ["Blue", "Green", "Yellow", "Red"], "de": ["Blau", "Grün", "Gelb", "Rot"],
   "fr": ["Bleu", "Vert", "Jaune", "Rouge"], "es": ["Azul", "Verde", "Amarillo", "Rojo"],
   "ja": ["青", "緑", "黄", "赤"], "ko": ["파랑", "초록", "노랑", "빨강"],
 };
-export const BTN_NAMES = {
+export const BTN_NAMES: Record<string, string[]> = {
   "zh-CN": ["左键", "右键", "中键", "后退", "前进", "特殊(CPI)", "滚轮上", "滚轮下"],
   "zh-TW": ["左鍵", "右鍵", "中鍵", "後退", "前進", "特殊(CPI)", "滾輪上", "滾輪下"],
   "en": ["Left", "Right", "Middle", "Back", "Forward", "Special (CPI)", "Wheel up", "Wheel down"],
@@ -30,12 +30,12 @@ export const BTN_NAMES = {
 };
 export const FILTER_OPTS = [["off","off"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"],["9","9"],["10","10"],["11","11"],["12","12"],["13","13"],["14","14"],["15","15"]];
 
-export function setConn(on, text) { const p = $("connState"); p.className = "status-pill" + (on ? "" : " off"); p.textContent = text; }
+export function setConn(on: boolean, text: string) { const p = $("connState"); p.className = "status-pill" + (on ? "" : " off"); p.textContent = text; }
 
-export function fillSelect(sel, opts, val) {
+export function fillSelect(sel: HTMLSelectElement, opts: (string | number)[][], val: string | number) {
   sel.innerHTML = "";
   for (const [v, tt] of opts) {
-    const o = document.createElement("option"); o.value = v; o.textContent = tt; sel.appendChild(o);
+    const o = document.createElement("option"); o.value = String(v); o.textContent = String(tt); sel.appendChild(o);
   }
   sel.value = String(val);
 }
@@ -59,7 +59,7 @@ export function renderXm1() {
     return;
   }
 
-  S.xm1Edit.stages.forEach((st, i) => {
+  S.xm1Edit.stages.forEach((st: any, i: number) => {
     const tr = document.createElement("tr");
     tr.innerHTML =
       `<td>CPI ${i + 1}</td>` +
@@ -70,13 +70,13 @@ export function renderXm1() {
     tb.appendChild(tr);
   });
   // 事件：直接改编辑状态，不立即写设备
-  tb.querySelectorAll("input[data-on]").forEach(el => {
+  tb.querySelectorAll("input[data-on]").forEach((el: HTMLInputElement) => {
     el.onchange = () => { S.xm1Edit.stages[+el.dataset.on!].on = el.checked ? 1 : 0; };
   });
-  tb.querySelectorAll("input[data-act]").forEach(el => {
+  tb.querySelectorAll("input[data-act]").forEach((el: HTMLInputElement) => {
     el.onchange = () => { S.xm1Edit.active = +el.dataset.act!; };
   });
-  tb.querySelectorAll("input[data-x]").forEach(el => {
+  tb.querySelectorAll("input[data-x]").forEach((el: HTMLInputElement) => {
     el.oninput = () => { S.xm1Edit.stages[+el.dataset.x!].x = +el.value || 0; };
   });
   const note = document.createElement("tr");
@@ -152,22 +152,22 @@ export function render() {
     const xyOn = S.stage.cpi[n][0] ? 1 : 0;
     const xv = S.stage.cpi[n][1], yv = xyOn ? S.stage.cpi[n][2] : S.stage.cpi[n][1];
     const bd = cpiInputBounds(S.gen);
-    tr.innerHTML = `<td>CPI ${n + 1}${n === S.stage.active ? t("current") : ""}</td><td>${STAGE_COLORS[LANG][n]}</td>
+    tr.innerHTML = `<td>CPI ${n + 1}${n === S.stage.active ? t("current") : ""}</td><td>${STAGE_COLORS[LANG]?.[n] ?? ""}</td>
       <td><input type="checkbox" data-xy="${n}" ${xyOn ? "checked" : ""} ${dis}></td>
       <td><input type="number" data-x="${n}" min="${bd.min}" max="${bd.max}" step="${bd.step}" value="${xv}" ${dis}></td>
       <td><input type="number" data-y="${n}" min="${bd.min}" max="${bd.max}" step="${bd.step}" value="${yv}" ${xyOn && !dis ? "" : "disabled"}></td>`;
     tb.appendChild(tr);
   }
-  tb.querySelectorAll("input[data-xy]").forEach(el => el.onchange = () => {
-    const n = +el.dataset.xy; S.stage.cpi[n][0] = el.checked ? 1 : 0;
+  tb.querySelectorAll("input[data-xy]").forEach((el: HTMLInputElement) => el.onchange = () => {
+    const n = +el.dataset.xy!; S.stage.cpi[n][0] = el.checked ? 1 : 0;
     const yEl: any = tb.querySelector(`input[data-y="${n}"]`);
     yEl.disabled = !el.checked;
     /* 取消独立 → 立刻回到单值语义：Y 同步为 X，
        不留下"开关关着、两个值却不同"的中间状态。 */
     if (!el.checked) { S.stage.cpi[n][2] = S.stage.cpi[n][1]; yEl.value = String(S.stage.cpi[n][1]); }
   });
-  tb.querySelectorAll("input[data-x],input[data-y]").forEach(el => el.onchange = () => {
-    const n = +(el.dataset.x ?? el.dataset.y); const ax = el.dataset.x ? 1 : 2;
+  tb.querySelectorAll("input[data-x],input[data-y]").forEach((el: HTMLInputElement) => el.onchange = () => {
+    const n = +((el.dataset.x ?? el.dataset.y)!); const ax = el.dataset.x ? 1 : 2;
     /* ★ CPI 归一化走 blob.ts 的单一来源（默认 50–30000/步进 50；
         gen=2 的 paw3950 族放宽到 10–30000、≤10000 步进 10）。 */
     const raw = +el.value || 400;
@@ -191,25 +191,26 @@ export function render() {
   tb.appendChild(hint);
 
   $("cpiLevels").value = String(S.stage.levels);
-  $("cpiLevels").onchange = e => S.stage.levels = +e.target.value;
+  $("cpiLevels").onchange = (e: Event) => S.stage.levels = +(e.target as HTMLSelectElement).value;
   const actSel = $("cpiActive");
   fillSelect(actSel, [[0,"CPI 1"],[1,"CPI 2"],[2,"CPI 3"],[3,"CPI 4"]], S.stage.active);
   actSel.disabled = S.gen === 1;
   $("cpiActiveNote").textContent = S.gen === 1 ? t("v1StageNote") : "";
-  actSel.onchange = e => S.stage.active = +e.target.value;
+  actSel.onchange = (e: Event) => S.stage.active = +(e.target as HTMLSelectElement).value;
 
   const lodSel = $("lod");
   if (S.gen === 1 || S.stage.glass) {
     fillSelect(lodSel, [[1,"1.0 mm"],[2,"2.0 mm"]], Math.round(S.stage.lodMM));
   } else {
-    const opts = []; for (let i = 7; i <= 17; i++) opts.push([i / 10, (i / 10).toFixed(1) + " mm"]);
+    const opts: [number, string][] = [];
+    for (let i = 7; i <= 17; i++) opts.push([i / 10, (i / 10).toFixed(1) + " mm"]);
     fillSelect(lodSel, opts, +S.stage.lodMM.toFixed(1));
   }
-  lodSel.onchange = e => S.stage.lodMM = +e.target.value;
+  lodSel.onchange = (e: Event) => S.stage.lodMM = +(e.target as HTMLSelectElement).value;
   $("glass").value = String(S.stage.glass);
   $("glass").disabled = S.gen !== 2;
-  $("glass").onchange = e => {
-    const g = +e.target.value; const old = S.stage.glass;
+  $("glass").onchange = (e: Event) => {
+    const g = +(e.target as HTMLSelectElement).value; const old = S.stage.glass;
     S.stage.glass = g;
     if (g !== old) {
       if (g === 1) S.stage.lodMM = S.stage.lodMM <= 0.8 ? 1 : 2;
@@ -217,12 +218,12 @@ export function render() {
     }
     render();
   };
-  $("angleSnap").value = String(S.stage.angleSnap); $("angleSnap").onchange = e => S.stage.angleSnap = +e.target.value;
-  $("ripple").value = String(S.stage.ripple); $("ripple").onchange = e => S.stage.ripple = +e.target.value;
-  $("ledLiftoff").value = String(S.stage.ledLiftoff); $("ledLiftoff").onchange = e => S.stage.ledLiftoff = +e.target.value;
+  $("angleSnap").value = String(S.stage.angleSnap); $("angleSnap").onchange = (e: Event) => S.stage.angleSnap = +(e.target as HTMLSelectElement).value;
+  $("ripple").value = String(S.stage.ripple); $("ripple").onchange = (e: Event) => S.stage.ripple = +(e.target as HTMLSelectElement).value;
+  $("ledLiftoff").value = String(S.stage.ledLiftoff); $("ledLiftoff").onchange = (e: Event) => S.stage.ledLiftoff = +(e.target as HTMLSelectElement).value;
   $("angleTune").value = S.stage.angleTune;
   $("angleTune").disabled = S.gen !== 2;
-  $("angleTune").onchange = e => S.stage.angleTune = Math.max(-30, Math.min(30, +e.target.value || 0));
+  $("angleTune").onchange = (e: Event) => S.stage.angleTune = Math.max(-30, Math.min(30, +(e.target as HTMLSelectElement).value || 0));
 
   const pollSel = $("polling");
   const isEn = LANG === "en";
@@ -237,39 +238,41 @@ export function render() {
   fillSelect(pollSel, pollOpts, S.stage.polling);
   if (S.eightK || !(S.gen === 1 && ![0x02,0x04,0x08].includes(S.stage.polling))) pollSel.value = String(S.stage.polling);
   $("pollNote").textContent = S.wired ? t("pollWiredNote") : "";
-  pollSel.onchange = e => S.stage.polling = +e.target.value;
-  $("motionSync").value = String(S.stage.motionSync); $("motionSync").onchange = e => S.stage.motionSync = +e.target.value;
+  pollSel.onchange = (e: Event) => S.stage.polling = +(e.target as HTMLSelectElement).value;
+  $("motionSync").value = String(S.stage.motionSync); $("motionSync").onchange = (e: Event) => S.stage.motionSync = +(e.target as HTMLSelectElement).value;
   S.stage.slamclick = !!(S.stage.flags & 1);
-  $("slamclick").value = S.stage.slamclick ? "1" : "0"; $("slamclick").onchange = e => S.stage.slamclick = +e.target.value;
+  $("slamclick").value = S.stage.slamclick ? "1" : "0"; $("slamclick").onchange = (e: Event) => S.stage.slamclick = +(e.target as HTMLSelectElement).value;
   /* 注意：行级显示（rowV1Jitter / rowV2Max / rowV2Multi 等）**统一由 layout.ts 负责**，
      这里不再设置 display —— 两处各自切换会互相打架（8k 就同时踩到这一点）。 */
   S.stage.jitter = !!(S.stage.flags & 0x10);
-  $("jitter").value = S.stage.jitter ? "1" : "0"; $("jitter").onchange = e => S.stage.jitter = +e.target.value;
+  $("jitter").value = S.stage.jitter ? "1" : "0"; $("jitter").onchange = (e: Event) => S.stage.jitter = +(e.target as HTMLSelectElement).value;
   S.stage.maxFps = !!(S.stage.flags & 0x40);
-  $("maxFps").value = S.stage.maxFps ? "1" : "0"; $("maxFps").onchange = e => S.stage.maxFps = +e.target.value;
+  $("maxFps").value = S.stage.maxFps ? "1" : "0"; $("maxFps").onchange = (e: Event) => S.stage.maxFps = +(e.target as HTMLSelectElement).value;
   S.stage.multiclick = !!(S.stage.flags & 0x20);
-  $("multiclick").value = S.stage.multiclick ? "1" : "0"; $("multiclick").onchange = e => S.stage.multiclick = +e.target.value;
-  const toOpts = [["off", t("minutes") === "min" ? "Off" : "关闭"]].concat(Array.from({length:120},(_,i)=>[i+1, t("minutesFmt", i+1)]));
+  $("multiclick").value = S.stage.multiclick ? "1" : "0"; $("multiclick").onchange = (e: Event) => S.stage.multiclick = +(e.target as HTMLSelectElement).value;
+  const toOpts: [string | number, string][] = [["off", t("minutes") === "min" ? "Off" : "关闭"]];
+  for (let i = 1; i <= 120; i++) toOpts.push([i, t("minutesFmt", i)]);;
   fillSelect($("powerSaving"), toOpts, S.stage.powerSaving); $("powerSaving").value = String(S.stage.powerSaving);
-  $("powerSaving").onchange = e => S.stage.powerSaving = e.target.value === "off" ? "off" : +e.target.value;
+  $("powerSaving").onchange = (e: Event) => S.stage.powerSaving = (e.target as HTMLSelectElement).value === "off" ? "off" : +(e.target as HTMLSelectElement).value;
   fillSelect($("deepSleep"), toOpts, S.stage.deepSleep); $("deepSleep").value = String(S.stage.deepSleep);
-  $("deepSleep").onchange = e => S.stage.deepSleep = e.target.value === "off" ? "off" : +e.target.value;
+  $("deepSleep").onchange = (e: Event) => S.stage.deepSleep = (e.target as HTMLSelectElement).value === "off" ? "off" : +(e.target as HTMLSelectElement).value;
 
   const br = $("btnRows"); br.innerHTML = "";
-  S.stage.buttons.forEach((btn, i) => {
-    br.insertAdjacentHTML("beforeend", `<tr><td>${BTN_NAMES[LANG][i]}</td><td>${describeMap(btn)}</td><td>${btn.filter === 0xF0 ? t("gxSafe") : btn.filter === 0xF1 ? t("gxSpeed") : (btn.filter & 0x7F)}</td></tr>`);
+  S.stage.buttons.forEach((btn: any, i: number) => {
+    br.insertAdjacentHTML("beforeend", `<tr><td>${BTN_NAMES[LANG]?.[i] ?? i + 1}</td><td>${describeMap(btn)}</td><td>${btn.filter === 0xF0 ? t("gxSafe") : btn.filter === 0xF1 ? t("gxSpeed") : (btn.filter & 0x7F)}</td></tr>`);
   });
   const fr = $("filterRows"); fr.innerHTML = "";
-  BTN_NAMES[LANG].slice(0, 5).forEach((name, i) => {
+  (BTN_NAMES[LANG] ?? []).slice(0, 5).forEach((name: string, i: number) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${name}</td><td><select data-f="${i}"></select></td>`;
     fr.appendChild(tr);
     const sel = tr.querySelector("select");
     const opts = FILTER_OPTS.slice();
     if (i <= 1) opts.push(["0xF0", t("gxSafe")],["0xF1", t("gxSpeed")]);
+    if (!sel) return;
     fillSelect(sel, opts, S.stage.filters[i]);
     sel.value = String(S.stage.filters[i]);
-    sel.onchange = e => S.stage.filters[i] = +(e.target as HTMLSelectElement).value;
+    sel.onchange = (e: Event) => S.stage.filters[i] = +(e.target as HTMLSelectElement).value;
   });
 
   /* 「没读到配置就不给写」的界面侧体现：按钮直接禁用，而不是等用户点了才弹错。
@@ -300,9 +303,9 @@ export function render() {
   }
 }
 
-export function describeMap(b) {
+export function describeMap(b: any) {
   switch (b.type) {
-    case 0x00: return { 1:"←",2:"→",4:"⌘",8:"↓",0x10:"↑" }[b.code] || t("mouseBtn", b.code.toString(16));
+    case 0x00: return ({ 1:"←",2:"→",4:"⌘",8:"↓",0x10:"↑" } as Record<number,string>)[b.code] || t("mouseBtn", b.code.toString(16));
     case 0x01: return b.code === 1 ? "↑" : "↓";
     case 0x02: return t("keyboardMap", b.code.toString(16), b.key.toString(16));
     case 0x09: return b.code === 0xF1 ? t("cpiCycle") : t("specialFn", b.code.toString(16));

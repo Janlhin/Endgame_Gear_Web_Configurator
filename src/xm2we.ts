@@ -1,3 +1,4 @@
+import { errMsg } from "./err.js";
 // XM2we / XM1（2020 有线·2.4G 代）协议层
 /* 依据 okms/xm2we-linux 的 PROTOCOL.md（真机验证）+ re/upstream/xm2we_linux.py 实现。
  *
@@ -10,6 +11,7 @@
  *   - 响应  ：走 **input report 事件**（异步推送），不是 feature report 回读
  *   - 休眠  ：鼠标空闲约 4 秒即睡，EEPROM 读写需要它醒着；0x03/0x04 由接收器缓存故仍能答
  */
+
 
 const WE_VID = 0x3367;
 /* ★ 来自官方 **WE 系列配置工具 v1.0** 的 Cfg.ini（2026-10-09 从官方 CDN 取出并静默安装）：
@@ -208,10 +210,10 @@ export class Xm2weSession {
         resolve: u8 => { clearTimeout(timer); resolve(u8); },
         reject: e => { clearTimeout(timer); reject(e); },
       };
-      this.dev.sendFeatureReport(RPT_OUT, data).catch(e => {
+      this.dev.sendFeatureReport(RPT_OUT, data).catch((e: unknown) => {
         if (this.pending && this.pending.opcode === opcode) this.pending = null;
         clearTimeout(timer);
-        reject(new Error("SET_REPORT 失败: " + e.message));
+        reject(new Error("SET_REPORT 失败: " + errMsg(e)));
       });
     });
   }

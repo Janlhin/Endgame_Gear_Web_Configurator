@@ -4,8 +4,22 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "strict": false,
-    "noImplicitAny": false,
+
+    /* ★ 类型通道的强度。2026-10-09 从 strict:false 改为 strict:true ——
+       此前这条通道基本是关着的（连 noImplicitAny 都是 false），等于没有类型校验。
+       开启时的 43 个错误里 33 个是 catch 变量的可空性，已用 util.ts 的
+       errMsg()/errCode() 做**收窄**修掉（不用 as any —— 那等于把通道又关掉）。 */
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* 以下选项尚未开启，代价已量化（2026-10-09），理由见 DECISIONS.md「strict 渐进开启」：
+       noUncheckedIndexedAccess                                              → 55 个错误
+       exactOptionalPropertyTypes / verbatimModuleSyntax /
+         isolatedModules / noUnusedLocals / noUnusedParameters              → 50 个
+       先开 strict 拿到主要收益，再逐项单独提案开启，避免一次提交混入上百处改动。 */
+
     "noEmit": true,
     "skipLibCheck": true,
     "allowJs": false

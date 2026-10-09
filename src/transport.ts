@@ -1,3 +1,4 @@
+import { errMsg } from "./err.js";
 /** HID 传输层：报文收发、事务串行化、探测/唤醒、状态判定。
  *
  *  从 main.ts 拆出来（原本 1678 行、12 个职责混在一起）。这是最底层的设备 I/O，
@@ -29,7 +30,7 @@ export function xm1WriteDisabled(): never {
    可能带 reportId、剥掉 reportId（payload-only）、或把 reportId 置 0（零占位）。
    参考 qsxcv/UnofficialEGGWebConfig 的 eggNormalizeFeature（re/upstream/）。
    v2 固件的 0xA0 响应首字节是 0xA1 回显，由 readBlob 的双格式分支处理。 */
-export async function rawReceive(reportId, size?: number) {
+export async function rawReceive(reportId: number, size?: number) {
   /* WebHID 的 receiveFeatureReport(reportId) 用 reportId 定位报告。
      ★ XM1 的 1041B 报告首字节是 **0xA1**，不是 0xA0！
        官方 0x40FC80：memset(1041B,0) / mov byte [buf], 0xA1 /
@@ -46,7 +47,7 @@ export async function rawReceive(reportId, size?: number) {
 }
 
 /** 4k 族的 64B 命令通道：发送 → 读状态 → 重试。所有命令经 S.queue 串行化。 */
-export async function transact(cmd, target = 0x00, payload = null, opt: any = {}) {
+export async function transact(cmd: number, target = 0x00, payload: number[] | null = null, opt: any = {}) {
   /* XM1 不走 4k 族的命令通道：它的命令表只有 4 条，报文形态也完全不同
      （读 = 0xA1 空请求 + GetFeature 读回，见 readBlobXm1）。
      4k 的 13 条命令若发给 XM1 会被当作乱码配置，故一律拒绝。
@@ -61,16 +62,16 @@ export async function transact(cmd, target = 0x00, payload = null, opt: any = {}
     if (payload) buf.set(payload, 15);               // 报告内偏移 16 = 去掉 ID 后的 15
     for (let attempt = 0; attempt < 4; attempt++) {
       try { await S.dev.sendFeatureReport(RPT_CMD, buf); }
-      catch (e) { log(`✗ SET fail (cmd 0x${cmd.toString(16)}): ${e.message}`); if (attempt === 3) throw e; await sleep(60); continue; }
+      catch (e) { log(`✗ SET fail (cmd 0x${cmd.toString(16)}): ${errMsg(e)}`); if (attempt === 3) throw e; await sleep(60); continue; }
       await sleep(opt.pace || 170);
       let u8;
       try { u8 = await rawReceive(RPT_CMD); }
-      catch (e) { log(`✗ GET fail: ${e.message}`); if (attempt === 3) throw e; await sleep(60); continue; }
+      catch (e) { log(`✗ GET fail: ${errMsg(e)}`); if (attempt === 3) throw e; await sleep(60); continue; }
       const status = u8[1];
       if (status === 0x01) { S.lastFail = false; return u8; }
       if (status === 0x03) { log(`⋯ busy, retry #${attempt + 1}`); await sleep(200 * (attempt + 1)); continue; }
       S.lastFail = true;
-      const map = { 0x07: "N/A on this connection", 0x08: "mouse asleep/unreachable", 0x11: "mouse asleep/unreachable" };
+      const map: Record<number, string> = { 0x07: "N/A on this connection", 0x08: "mouse asleep/unreachable", 0x11: "mouse asleep/unreachable" };
       log(`✗ cmd 0x${cmd.toString(16)} status=0x${status.toString(16)} (${map[status] || "unknown"})`);
       throw new StatusError(status, map[status] || "device error 0x" + status.toString(16));
     }
@@ -96,7 +97,7 @@ export async function probe() {
 }
 
 /** 带自愈的事务：上次失败过就先探一次，再重放本次命令。 */
-export async function guarded(cmd, target, payload: any = null, opt: any = {}) {
+export async function guarded(cmd: number, target: number, payload: any = null, opt: any = {}) {
   if (S.lastFail) { try { await probe(); } catch (e) { throw new StatusError(0x08, "mouse unreachable — move it and retry"); } }
   return transact(cmd, target, payload, opt);
 }

@@ -1,3 +1,4 @@
+import { errMsg } from "./err.js";
 /** 8k 有线族（XM2 8k / OP1 8k 及 v2 / PF / Raw）的读取与整块写。
  *
  *  与 4k 无线族的差异**只有写命令**：读仍是 0x12 + 1024B blob，blob 偏移逐字节相同。
@@ -16,7 +17,7 @@ export async function readBlob8k() {
   let last = "";
   for (let round = 1; round <= 3; round++) {
     try { await S.dev.sendFeatureReport(RPT_CMD, cmd); }
-    catch (e) { log(`✗ 8k LOAD 发送失败: ${e.message}`); await sleep(200); continue; }
+    catch (e) { log(`✗ 8k LOAD 发送失败: ${errMsg(e)}`); await sleep(200); continue; }
     await sleep(80);
     let delay = 60;
     for (let poll = 0; poll < 6; poll++) {

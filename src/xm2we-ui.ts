@@ -1,3 +1,4 @@
+import { errMsg } from "./err.js";
 // XM2we（2020 有线/2.4G 代）UI 控制器
 /* 与 4k 族完全隔离：本文件只认 Xm2weSession，不触碰 blob / 0xA1 命令表。
  * 协议依据：okms/xm2we-linux PROTOCOL.md（真机验证），存档于 re/upstream/。 */
@@ -12,7 +13,7 @@ import { buildWeDiag } from "./diag.js";
 const WE_POLL_OPTS = [125, 250, 500, 1000];
 
 let sess: Xm2weSession | null = null;
-let dev = null;                 // 打开的 HIDDevice
+let dev: any = null;          // HIDDevice；XM2we 会话期间才非空                 // 打开的 HIDDevice
 let model = "XM2we", wired = true;
 let reading = false;
 
@@ -27,7 +28,7 @@ function setConn(on: boolean, text: string) {
 /** 安全闸门：只拒绝鼠标指针 / 键盘集合；其余系统集合允许
  *  （厂商接口可能同时暴露消费者控制等集合，误拒会导致连不上）。
  *  详见 main.ts isSafeToOpen 的注释（事故背景）。 */
-function isSafeToOpen(d): { ok: boolean; why?: string } {
+function isSafeToOpen(d: HIDDevice): { ok: boolean; why?: string } {
   const cols = d.collections || [];
   if (!cols.length) return { ok: false, why: t("bNoCollections") };
   if (cols.some(c => c.usagePage === 0x0001 && c.usage === 0x0002))
@@ -223,10 +224,10 @@ export async function refreshWe() {
     log(`✓ EEPROM read OK — polling=${sess.polling() ?? "?"} debounce=${sess.debounce() ?? "?"} cpi=${sess.cpiTable().map(c => c.x).join("/")}`);
     for (const r of sess.cpiTable()) if (!r.ok) log(`⚠ CPI slot ${r.slot} checksum mismatch`);
     for (const r of sess.keyTable()) if (!r.ok) log(`⚠ key slot ${r.slot} checksum mismatch`);
-  } catch (e: any) {
-    const asleep = /asleep|timed out|超时/i.test(e.message);
-    banner("err", (asleep ? t("weWakeHint") + " " : "") + e.message);
-    log("✗ " + e.message);
+  } catch (e) {
+    const asleep = /asleep|timed out|超时/i.test(errMsg(e));
+    banner("err", (asleep ? t("weWakeHint") + " " : "") + errMsg(e));
+    log("✗ " + errMsg(e));
   } finally {
     reading = false;
     $("btnRefresh").disabled = false;
@@ -255,7 +256,7 @@ async function applyCpi() {
     log(n ? `✓ ${n} CPI record(s) written` : "✓ CPI unchanged");
     banner("ok", t("weApplyOk"));
     await refreshWe();
-  } catch (e: any) { banner("err", e.message); log("✗ " + e.message); }
+  } catch (e) { banner("err", errMsg(e)); log("✗ " + errMsg(e)); }
 }
 
 /** 应用回报率 + 去抖（成对标量：值 + 0x55 补码） */
@@ -275,7 +276,7 @@ async function applyPerf() {
     }
     banner("ok", t("weApplyOk"));
     await refreshWe();
-  } catch (e: any) { banner("err", e.message); log("✗ " + e.message); }
+  } catch (e) { banner("err", errMsg(e)); log("✗ " + errMsg(e)); }
 }
 
 /* ---------- 事件绑定（启动时调用一次） ---------- */
@@ -300,7 +301,7 @@ export function bindXm2weUI(download: (data: any, name: string, type?: string) =
       download(JSON.stringify(buildWeDiag(sess, model), null, 2), `xm2we-diag-${Date.now()}.json`, "application/json");
       banner("ok", t("diagSaved"));
       log("✓ 测试数据包已导出（含 EEPROM 转储、解码表与通讯日志）");
-    } catch (e: any) { banner("err", e.message); }
+    } catch (e) { banner("err", errMsg(e)); }
   };
   $("btnWeLog").onclick = () => {
     const l = $("log");

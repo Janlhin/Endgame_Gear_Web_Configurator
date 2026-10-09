@@ -1,3 +1,4 @@
+import { errMsg } from "./err.js";
 /** XM1 / XM1 RGB（VID 0x22D4，2020 有线变体）的配置读写。
  *
  *  ★ 这个模块承载本项目最重的一段安全约束：写入只允许「回声」——
@@ -25,7 +26,7 @@ export async function xm1QueryByte() {
   try {
     await S.dev.sendFeatureReport(RPT_CMD, xm1QueryReq(0x03));
   } catch (e) {
-    log(`✗ XM1 cmd 0x03 发送失败: ${e.message}`);
+    log(`✗ XM1 cmd 0x03 发送失败: ${errMsg(e)}`);
     return null;
   }
   await sleep(50);                     // 官方 Sleep(0x32)
@@ -37,7 +38,7 @@ export async function xm1QueryByte() {
       log(`  XM1 cmd 0x03 响应 (reportId 0x${rid.toString(16)}) ${u8.length} B  head: ${hex(u8, 32)}`);
       return u8;
     } catch (e) {
-      log(`  XM1 cmd 0x03 用 reportId 0x${rid.toString(16)} 读取失败: ${e.message}`);
+      log(`  XM1 cmd 0x03 用 reportId 0x${rid.toString(16)} 读取失败: ${errMsg(e)}`);
     }
   }
   return null;
@@ -50,8 +51,8 @@ export async function readBlobXm1() {
     try {
       await S.dev.sendFeatureReport(RPT_CMD, XM1_READ_REQ);
     } catch (e) {
-      log(`✗ XM1 空请求失败 (round ${round}): ${e.message}`);
-      lastDump = "send:" + e.message;
+      log(`✗ XM1 空请求失败 (round ${round}): ${errMsg(e)}`);
+      lastDump = "send:" + errMsg(e);
       await sleep(300);
       continue;
     }
@@ -67,8 +68,8 @@ export async function readBlobXm1() {
     let u8;
     try { u8 = await rawReceive(RPT_BULK); }
     catch (e) {
-      log(`✗ XM1 GetFeature(0xA0) 失败 (round ${round}): ${e.message}`);
-      lastDump = "recv:" + e.message;
+      log(`✗ XM1 GetFeature(0xA0) 失败 (round ${round}): ${errMsg(e)}`);
+      lastDump = "recv:" + errMsg(e);
       await sleep(250);
       continue;
     }
@@ -145,7 +146,7 @@ export async function writeBlobXm1(payloadIn?: Uint8Array) {
 export function xm1Snapshot(label: string) {
   if (!S.xm1LastRead) return;
   const last = S.xm1Snaps[S.xm1Snaps.length - 1];
-  if (last && last.blob.length === S.xm1LastRead.length && last.blob.every((v, i) => v === S.xm1LastRead![i])) return;
+  if (last && last.blob.length === S.xm1LastRead.length && last.blob.every((v: number, i: number) => v === S.xm1LastRead![i])) return;
   S.xm1Snaps.push({ at: Date.now(), label, blob: S.xm1LastRead.slice() });
   if (S.xm1Snaps.length > 20) S.xm1Snaps.shift();
   const b = $("btnXm1Undo");
@@ -225,8 +226,8 @@ export async function xm1Apply() {
     if (bad.length) { banner("warn", t("xm1VerifyFail") + bad.join("、")); log("⋯ 回读不一致：" + bad.join("、")); }
     else { banner("ok", t("xm1Applied")); log("✓ XM1 写入成功并已回读校验（" + diffs.length + " 个字节）"); }
   } catch (e) {
-    banner("err", t("xm1WriteFail") + e.message);
-    log("✗ XM1 写入失败：" + e.message);
+    banner("err", t("xm1WriteFail") + errMsg(e));
+    log("✗ XM1 写入失败：" + errMsg(e));
   }
 }
 
