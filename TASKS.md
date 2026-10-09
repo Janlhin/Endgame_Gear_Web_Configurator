@@ -31,9 +31,9 @@
 
 | 任务 | 状态 | 说明 |
 |---|---|---|
-| T-106 | **已搁置**（2026-10-09） | 用户决定「不弄 GitHub 了，弄项目先」。推送需 `workflow` scope 授权，详见下方记录。搁置不影响任何其他任务——CI 是判定通道，但本地 verify 已能拦住全部实质缺陷 |
+| T-106 | ⏸ **进行中**（2026-10-09 晚） | 用户指令「推」= 判例一要求的显式确认，已收到。推送已尝试两次，均被 GitHub 以 `without workflow scope` 拒绝（错误逐字相同，排除偶发）。**阻塞项：令牌缺 `workflow` scope，必须由人经浏览器授权**——本机无 `gh` CLI，故 `gh auth refresh` 路径不可用。远端零对象、未污染，可放心重试。授权步骤见 `docs/推送前需授权.md`。**推成功即上线**（`deploy.yml` 对 `push: main` 自动触发 Pages），用户已知悉 |
 
-### T-106 推送受阻记录（2026-10-09，已搁置）
+### T-106 推送受阻记录（2026-10-09，已尝试两次）
 
 **已解除的阻塞**：判例一要求推送前需显式确认——已确认（用户直接给出推送命令）。
 
@@ -62,6 +62,16 @@ workflow 文件，属于用更大的问题换小问题。
 **解除方式**（若将来重启）：给令牌加 `workflow` scope（重新授权 OAuth App，
 或改用 Personal Access Token），之后重试推送。**此项必须由人操作。**
 步骤见 `docs/推送前需授权.md`。
+
+**2026-10-09 第二次尝试（同日，用户指令「推」）**：错误**逐字相同**，实测结论更新——
+
+- 排除偶发解释（令牌已改 / 网络抖动）：两次拒绝原因完全一致。
+- **本机未安装 `gh` CLI**，故「`gh auth refresh -s workflow`」这条路径不可用，
+  只能走浏览器授权。新建带 `workflow` 的 PAT 是更直接的路径（见授权文档路线 B）。
+- 远端经 `git ls-remote origin` 复核为**零对象**，两次拒绝均发生在传输完成前，
+  **未污染远端**——可放心重试，不会留下半推送状态。
+- 待推送提交数 119；工作树干净；体检全过（大文件 / 第三方二进制 / 凭据 三项均为空）。
+- 阻塞性质不变：**凭据授权，非代码或配置问题**，不进入自动推进路径。
 
 **推成功后的连带效应**：`deploy.yml` 对 `push: main` 自动触发 Pages，**推送即上线**。
 
@@ -102,7 +112,7 @@ workflow 文件，属于用更大的问题换小问题。
 | T-103 | `any` 有 lint 拦截 | 加 ESLint flat config + `typescript-eslint`，`@typescript-eslint/no-explicit-any` 设为 `error` | 无 | 高 | `npm run lint` 对当前 82 处 `any` 报错（先配置不修）；`npm run verify` 其余段全绿 | ✅ **完成**（`3cef833`）。**解决了 TS7 冲突**：typescript-eslint 8 peer 上限 <6.1.0，本项目用 TS 7.0.2（Go 原生编译器，无编程 API）→ 采用官方双编译器方案（`typescript` → `@typescript/typescript6@6.0.2` 供工具读 API，`@typescript/native` → `typescript@7.0.2` 供 tsc）。实测 tsc=7.0.2 / tsc6=6.0.3。**实测 97 处 any**（比 grep 的 84 处更全，能识别 `<any>`/`any[]`）。规则分级：any 与 unused-vars 设 warn（直接设 error 会让 CI 永久红＝把门禁关掉），阈值 `--max-warnings 154` 拦截新增——**已实证注入新 any 后 lint 立即 exit 1** |
 | T-104 | 样式硬编码有拦截 | 加 Stylelint + `stylelint-config-standard-scss`，含 `color-no-hex`（`_tokens.scss` 走 overrides 放行） | 无 | 高 | `npm run stylelint` 通过；故意在业务 SCSS 写一个字面量颜色，该命令必须失败 |  ✅ **完成**（`80b92de`）。Stylelint 17 + stylelint-scss + postcss-scss。verify 7→8 段。核心规则 `declaration-property-value-disallowed-list` 锁死业务样式硬编码（令牌表豁免）。**判据双向实测**：业务 SCSS 写 `#f00`/`rgba()` 被拦（exit 2），令牌表豁免生效。三处踩坑已记入 stylelint.config.cjs 顶部（配置必须 .cjs、需 customSyntax、17 移除了 15 个 stylistic 规则） |
 | T-105 | esbuild 漏洞有结论 | 单独提交升级 esbuild 0.24.2 → 0.28.x，跑完整 verify 确认产物仍零外部引用 | 无 | 中 | `npm audit` 无moderate；`npm run verify` 全绿；产物外部引用计数仍为 0；`cardChecklist` canary 仍命中 |  ✅ **完成**（`5855c2d`）。esbuild 0.24→0.28.2（先读 CHANGELOG 确认破坏性变更不涉及）。安装遇 `spawnSync EBUSY`（本机沙箱环境问题），用 `--ignore-scripts` 绕过且二进制仍到位。产物 +9 字节已逐词确认语义等价。**moderate 归零**：`smol-toml` 靠 `overrides` 升到 1.9.0（上游 markdownlint-cli2 锁死 1.8.0）+ 实测 markdownlint 仍正常。剩余 13 个 high 已查证全在 devDependencies、产物命中 0 |
-| T-106 | 首次获得 CI 权威结论 | 推送 85 个提交到 origin，观察首次 CI 运行 | **凭据授权**：OAuth App 令牌缺 `workflow` scope（2026-10-09 推送被拒，见下方记录） | **低** | `verify` 与 `ui` 两个 job 在GitHub Actions 上均为绿；产物 canary 通过 | **已搁置**（2026-10-09，用户决定先做项目） |
+| T-106 | 首次获得 CI 权威结论 | 推送 119 个提交到 origin，观察首次 CI 运行 | **凭据授权**：OAuth App 令牌缺 `workflow` scope（2026-10-09 两次推送均被拒，见下方记录） | **低** | `verify` 与 `ui` 两个 job 在GitHub Actions 上均为绿；产物 canary 通过 | ⏸ **进行中**（2026-10-09 用户指令「推」，已确认推送；**阻塞于凭据授权——须人操作**，见 `docs/推送前需授权.md`） |
 | T-107 | 文档与代码一致性有自动判据 | 加 `docs:sync` 生成脚本（从 `package.json` / `tsconfig.json` 生成文档中的脚本名与依赖表），接 `git diff --exit-code` | T-101 | 中 | 故意改 `package.json` 里一个脚本名，`npm run verify` 必须失败 |  ✅ **完成**（`9f5e82a`）。新增 `re/check_verify.mjs` + `check:meta`，作为 verify 第一段。verify 9 段。**含自指检查**（否则删掉 check:meta 本身无人察觉）。判据实测：删一段 → exit 1；删 check:meta 自己 → 同样报错。副产品：发现 verify:ci 少一段是**有意设计**（CI 有独立 UI job 且多跑 reset_check.py） |
 | T-108 | 有覆盖率基线 | 引入覆盖率计量（c8 或 `node --experimental-test-coverage`），**只记录当前基线数字，不设阈值** | 无 | 中 | `npm run verify` 输出覆盖率数值；基线写入 `docs/`。**阈值待有数据后另行提案**（延续既有判例「测试框架暂不迁移到 Vitest」） |  🚫 **不可修复**（2026-10-09）。**实测证明拿不到有意义数字**：① NODE_V8_COVERAGE 记录的 URL 全是打包后的 `re/.test_*.mjs`，TS 源路径已丢失；② 加 sourcemap 后 `c8 --include="src/**"` 得 All files **0%**（c8 默认不做 source-map remapping）；③ 不带 include 能出数字但统计的是打包产物且**包含测试代码自身**。可行路径均代价过高（迁 Vitest 违反判例二 / 改 9 个测试加载方式 / main.ts 依赖 DOM 无法在 Node 跑）。详见 DECISIONS.md 判例十 |
 | T-109 | 协议边界不再是 `any` | 收敛 `src/connect.ts`（6）、`src/device-8k.ts`（3）、`src/device-xm1.ts`（1）、`src/blob.ts`（1）。**`src/diag.ts` 及其他不动**（判例三） | T-103 ✅ | 中 | 该四文件 ESLint `no-explicit-any` 计数为 0；`--max-warnings` 下调对应数值；`npm run verify` 全绿；**`re/test_write_gates.ts` 仍全绿（写入闸门不得被削弱）** | ✅ **完成**（`50b5c3d`）。**any 97 → 85**，四文件归零且 `no-explicit-any` 在这四处升级为 **error**。做法：state.ts 新增 `Stage` / `Xm1Edit` / `Xm1Stage` / `StageButton` / `MinutesOrOff` 五个接口，取代散落的 any；`raw`/`unknown`/`unk7` 作为**安全机制载体**显式声明（删掉等于拆掉安全网）。类型通道当场抓出 3 个真实问题（详见下） |
