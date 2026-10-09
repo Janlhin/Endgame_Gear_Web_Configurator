@@ -85,7 +85,14 @@ export function buildSensorPayload() {
   p[1] = S.stage.ledLiftoff;
   p[2] = mmToLodByte(S.stage.lodMM, S.stage.glass);
   p[3] = S.stage.angleSnap; p[4] = S.stage.ripple;
-  p[5] = S.gen === 2 ? (S.stage.angleTune & 0xFF) : 0;
+  /* ★ p[5]（角度调校）**原样透传读到的值**，不写 0、也不接受 UI 编辑。
+     理由：该字段在 v2 上位置有两说 —— 4k 分块写的 payload[5] ↔ blob[0x01]（本项目此前采用）
+     与 8k 三源交叉印证的 blob[0x70]（OpenMouse/egctl/niansa 一致）。
+     两者若不同，"读 A 写 B"会让设备收到一个我们从未展示过的值。
+     透传是三害之中最小的一个：写 0 会抹掉用户已有的角度，写 UI 值可能写错字节，
+     透传则保证**这一字节在改动前后完全不变**，无论我们对它的理解对不对。
+     与 p[0]（unk7）同一口径：语义未定的字节，读到什么写什么。 */
+  p[5] = S.stage.angleTune & 0xFF;
   p[6] = S.stage.levels;
   p[7] = S.stage.active;
   for (let n = 0; n < 4; n++) {

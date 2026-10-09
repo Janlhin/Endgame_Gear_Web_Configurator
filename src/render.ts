@@ -221,9 +221,12 @@ export function render() {
   $("angleSnap").value = String(S.stage.angleSnap); $("angleSnap").onchange = (e: Event) => S.stage.angleSnap = +(e.target as HTMLSelectElement).value;
   $("ripple").value = String(S.stage.ripple); $("ripple").onchange = (e: Event) => S.stage.ripple = +(e.target as HTMLSelectElement).value;
   $("ledLiftoff").value = String(S.stage.ledLiftoff); $("ledLiftoff").onchange = (e: Event) => S.stage.ledLiftoff = +(e.target as HTMLSelectElement).value;
+  /* ★ 角度调校**只读**：v2 专属字段的位置存在两说（4k 分块写的 payload[5] ↔
+     blob[0x01] 与 8k 交叉印证的 blob[0x70]）。读写若指向不同字节，就是"读 A 写 B"——
+     设备拿到的是我们从未展示过的值。真机改值回读定论前，这里不开放编辑。 */
   $("angleTune").value = S.stage.angleTune;
-  $("angleTune").disabled = S.gen !== 2;
-  $("angleTune").onchange = (e: Event) => S.stage.angleTune = Math.max(-30, Math.min(30, +(e.target as HTMLSelectElement).value || 0));
+  $("angleTune").disabled = true;
+  $("angleTune").title = t("angleTuneNote");
 
   const pollSel = $("polling");
   const isEn = LANG === "en";
