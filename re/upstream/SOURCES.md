@@ -148,7 +148,10 @@ SHA256 `82da585d0039c939…`，同内容 ZIP `ca99bad2…`）。
 | 接口 | **usage page 0xFF02 / usage 0x02**（不是 4k 系的 FF01） |
 | 报告 | **0x08**(出,17B) / **0x09**(入,17B)（不是 4k 系的 A0/A1） |
 | 帧格式 | [0]=report id, [1]=opcode, [2..15]=payload, [16]=校验 = (0x55 − Σbytes[0..15]) & 0xFF |
-| opcode | 0x03 链路状态 · 0x04 查询 · 0x08 写 · 0x0F · EEPROM 直读写(addr, n) |
+| opcode | 0x03 链路状态 · 0x04 查询 · **0x07 写 EEPROM / 0x08 读 EEPROM** · 0x0F · 0x01 读型号 |
+| ⚠️ 笔误修正 | 本表原写「0x08 写」，**写反了**：`0x07` 才是写、`0x08` 是读。`src/xm2we.ts` 代码一直是对的
+（`OP_EE_WRITE = 0x07`），2026-10-09 经 OpenMouse `endgame-gear/wireless.js` 与
+itchyfeetleech/OP1we-Control 双向确认后更正文档。 |
 | 配置存储 | EEPROM（0x00–0xBF, 0x100–0x17F），值后跟 0x55 补码配对 + CRC 记录 |
 | CPI | 8×[x,y,mul,crc] @0x0C–0x2B；CPI = (x+1)×(50 或 100) |
 | 按键 | 16×[type,code,param,crc] @0x60–0x9F；左/右/中/后/前 = bit0–4 |

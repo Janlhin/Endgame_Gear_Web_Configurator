@@ -161,15 +161,29 @@ export const XM1_STAGE_ON = 0x00;
 export const xm1LodToMm = (raw) => raw ? (raw + 4) / 5 : 0;
 export const xm1MmToLod = (mm) => Math.round(mm * 5) - 4;
 
-/** CPI 归一化：50–30000，步进 50 —— 全局**单一来源**（UI 输入、XM1 写回、4k 写回都用它）。
+/** CPI 归一化 —— 全局**单一来源**（UI 输入、XM1 写回、4k 写回都用它）。
  *
  *  步进 50 的依据：2026-10-08 实测官方软件拒绝 1234、接受 1150（= 50×23），
  *  即 CPI 必须是 50 的倍数。对齐到 50 是**保守方向** —— 50 的倍数一定是合法值，
  *  所以对齐不会让设备拒绝；反过来把 1234 原样下发才会。
- *  ⚠️ 该结论在 XM1 上实测确认；4k 族沿用同一规则（官方工具为共用 OEM 模板），
- *     若日后在 4k 族上实测到不同步进，只需改这一个函数。
+ *
+ *  ★ 2026-10-09 按「配置族」细分（证据：`@openmouse/protocol` v0.9.0 的
+ *    `endgame-gear/op1.js` 设备表，真机 WebHID 实现）：
+ *      configFamily v1（paw3395：0x1964/0x1966/0x1976）→ 50–26000，步进 50
+ *      configFamily v2（paw3950：0x1978/0x1980/0x1984/0x1970）→ 10–30000，
+ *                              ≤10000 步进 10、>10000 步进 50
+ *    本项目里 gen=2 即 v2 族（XM2w 4k v2 / OP1w 4k v2 / 8k v2）。
+ *  ⚠️ v2 的 10 步进来自**单一外部来源**，本机没有对应真机复核过；
+ *     回读校验是兜底：若设备实际按 50 归一，写入后回读会报出差值，
+ *     不会静默写错。gen 非 2（含 XM1 的 gen=0）一律走实测过的 50 步进。
  */
-export function cpiClamp(v) {
-  const n = Math.round((+v || 0) / 50) * 50;
-  return Math.max(50, Math.min(30000, n));
+export function cpiClamp(v, gen?: number | null) {
+  const v2 = gen === 2;
+  const min = v2 ? 10 : 50, max = 30000;
+  const step = v2 ? ((+v || 0) <= 10000 ? 10 : 50) : 50;
+  return Math.max(min, Math.min(max, Math.round((+v || 0) / step) * step));
+}
+/** UI 输入框的 min/step 属性（与 cpiClamp 同源，避免两处各写一套） */
+export function cpiInputBounds(gen?: number | null) {
+  return gen === 2 ? { min: 10, step: 10, max: 30000 } : { min: 50, step: 50, max: 30000 };
 }

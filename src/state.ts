@@ -37,6 +37,9 @@ export const S: any = {
   wired: false,
   unverified: false,                           // 仅静态实证、未真机验证 → 只读
   unknownModel: false,                         // PID 未收录 → 只读
+  /* 未验证型号的"实验写入"开关：**默认关**，用户点确认后才在本次连接内打开。
+     随设备丢失 / 复位一起清掉（见 presence.resetToInitial），绝不跨会话保留。 */
+  betaArmed: false,
 
   /* —— 从设备读回的数据 —— */
   blob: null as Uint8Array | null,             // 1024B 配置

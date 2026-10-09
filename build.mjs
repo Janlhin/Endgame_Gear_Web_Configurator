@@ -9,6 +9,7 @@
 import { build } from "esbuild";
 import * as sass from "sass";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mdToHtml } from "./tools/md2html.mjs";
 
 mkdirSync("dist", { recursive: true });
 
@@ -65,8 +66,14 @@ const template = readFileSync("index.template.html", "utf-8");
 for (const marker of ["/*__BUNDLE__*/", "/*__STYLES__*/"]) {
   if (!template.includes(marker)) throw new Error(`模板缺少占位符 ${marker}`);
 }
+// 测试清单：docs/test-checklist.md 是唯一真相源，构建时渲染进页面。
+// 志愿者拿到的是单文件工具（离线双击即用），仓库里保留 md 便于评审与 diff —— 不手抄两份。
+const checklistMd = readFileSync("docs/test-checklist.md", "utf-8");
+const checklistHtml = mdToHtml(checklistMd);
+
 const html = template
   .replace("/*__STYLES__*/", () => css)
+  .replace("/*__CHECKLIST__*/", () => checklistHtml)
   .replace("/*__BUNDLE__*/", () => js);
 
 assertNoDevComments(html, "index.html");

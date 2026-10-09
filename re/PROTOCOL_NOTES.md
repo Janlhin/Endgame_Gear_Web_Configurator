@@ -268,3 +268,65 @@ VID `0x3367` + **usagePage `0xFFA1` / usage `0x00A5`**，协议与三族都不�
 完整提取见 **[`re/FAMILY4_NOTES.md`](FAMILY4_NOTES.md)**
 （包格式、54 条 COMTYPE 命令、32 字节口令 `GEGJGYIKDCGBE9DWDKB27EAA7K9Z5J1P`）。
 本工具只识别、不通信。
+
+---
+
+## ★★ 8k 族偏移表（2026-10-09 冻结：四源交叉印证）
+
+**四源**：`niansa/UnofficialEGGMouseConfig`（C++，Unlicense，真机维护）、
+`Creationsss/egctl`（Rust，AGPL-3，OP1 8k v2）、
+`lvlanson/Endgame-Gear-XM2-8k-v2-Linux-Configurator`（Rust）、
+`@openmouse/protocol` v0.9.0（TS/WebHID，AGPL-3，真机）。
+**只取协议事实**（命令码/偏移/枚举不受版权保护），实现方式全部自写。
+
+### 报文与命令
+
+| 项 | 值 |
+|---|---|
+| 配置报告 | `0xA0`，**1041 B**（byte0=ID，byte1=opcode） |
+| 命令报告 | `0xA1`，64 B |
+| 事件报告 | `0x03`（设备主动上报） |
+| OP | `0x02` 读固件 · `0x11` STORE 整块写 · `0x12` LOAD 读 · `0x13` 恢复出厂 |
+| 固件版本 | payload[1]/[2] = 绝对 17/18；BCD 读法 `V{major}.{patch}`（如 37 01 → V1.37） |
+| 写后等待 | 恢复出厂 150 ms（niansa）；本项目沿用 4k 的 800/1080 ms |
+
+### 偏移（绝对 → 减 16 即本项目 blob 偏移）
+
+| 字段 | 绝对 | blob | 本项目现值 |
+|---|---|---|---|
+| pollingDivider | 21 | `0x05` | ✅ 一致 |
+| filterFlags（slamclick `0x01` / jitter `0x10`） | 22 | `0x06` | ✅ |
+| ledLiftOff | 24 | `0x08` | ✅ |
+| LOD | 25 | `0x09` | ✅ |
+| angleSnapping / rippleControl / motionSync | 26 / 27 / 28 | `0x0A` / `0x0B` / `0x0C` | ✅ |
+| reserved | 29 | `0x0D` | 本项目作 active |
+| cpiLevels | 30 | `0x0E` | ✅ |
+| CPI 首档（4 档 × 5B：`[xySplit][X:u16][Y:u16]`） | 51 | `0x23` | ✅ |
+| handedButton | 71 | `0x37` | ✅（本项目标为 HANDED） |
+| firstButton（**7 条 × 7 B**，止于 126） | 77 | `0x3D` | ✅ |
+| glassMode | 127 | `0x6F` | ✅ |
+| angleTuning | 128 | `0x70` | ⚠️ 见冲突 2 |
+| forceMaxFps | 129 | `0x71` | ✅ |
+
+### ⚠️ 两处冲突（真机定论前不写这两个字段）
+
+1. **`custom_flags` @126（niansa，uint16）与 `glassMode` @127（egctl / OpenMouse）相邻重叠。**
+   niansa 开启 experimental（自定义回报率分频）时会写 126–127 两字节，若 127 真是玻璃模式
+   就是顺手改了它。→ **本项目不实现 custom polling divider**。
+2. **angleTuning 位置分叉**：OpenMouse 记 128（blob `0x70`）；旧笔记里 XM2w v1.02 静态推导
+   在 blob `0x01`。→ 保持不写，等 XM2w 4k v2 真机改值回读定论。
+
+### 状态字节（OpenMouse 真机观察）
+
+`0x01` OK · `0x03` busy · **`0x07` 命令被拒（该型号不支持）** · **`0x08` 鼠标不可达（RF 休眠）**。
+四者都是合法帧头；本项目 `src/transport.ts` 已映射这四个值。
+
+### CPI 步进按配置族
+
+| 族 | 范围 | 步进 | 传感器 |
+|---|---|---|---|
+| v1（0x1964 / 0x1966 / 0x1976） | 50–26000 | 50 | paw3395（PF 为 paw3950） |
+| v2（0x1978 / 0x1980 / 0x1984 / 0x1970） | 10–30000 | ≤10000 用 10，>10000 用 50 | paw3950 |
+
+LOD：v1 = `0.7 / 1 / 2 mm`；v2 = `0.7 → 1.7 mm` 共 11 档（本项目 gen2 编码
+`round(mm×10) − 7` 与之吻合）；玻璃模式 = `1.0 / 2.0 mm` 两档。

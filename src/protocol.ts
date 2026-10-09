@@ -22,6 +22,10 @@ const VIDS = [0x3367, 0x22D4];
 const VID = 0x3367;
 const VID_22D4 = 0x22D4;
 const DONGLE_PID = 0x1970;
+/* 接收器族不止 0x1970 一个：四款官方 4k 配置工具的设备表**都**同时列出 0x1970 与 0x1969
+   （2026-10-09 逐工具提取，见 re/upstream/SOURCES.md）。判"是否无线链路"时必须两个都算，
+   否则经由 0x1969 接收器连接会被误判成有线 → 跳过唤醒探测。 */
+const DONGLE_PIDS = [0x1970, 0x1969];
 
 /* PID 表已对照官方 v1.02 工具二进制（0x17200 处的设备表：0x1982/0x1981 鼠标、0x1970/0x1969 接收器族，
    见 re/PROTOCOL_NOTES.md）；0x1968/0x1972/0x1984 来自 vole 社区逆向。
@@ -30,7 +34,12 @@ const DONGLE_PID = 0x1970;
      （x86 `push 0x3367` + `push 0x<PID>`，扫描脚本 re/upstream/tool8k_pids.py）：
        XM2 8k     = 0x1966   OP1 8k     = 0x1964   （工具 v1.12，两者只差这 1 个常量）
        XM2 8k v2  = 0x1980   OP1 8k v2  = 0x1978   （工具 v1.07）
-     限定/变体共用工具 → 同 PID：OP1 8k Purple Frost = 0x1964、OP1 8k v2 Raw Input = 0x1978。
+     OP1 8k Purple Frost = **0x1976**（2026-10-09 补扫官方 LE 专属工具
+       `Endgame.Gear.OP1.8k.Purple.Frost.Limited.Edition.Configuration.Tool.v1.11.exe`：
+       全文只有一对 VID/PID 立即数 —— `push 0x1976` @0x10916 + `push 0x3367` @0x1091B。
+       ⚠️ 旧结论「限定版与 OP1 8k 共用工具 → 同 PID 0x1964」**是错的**，已修正；
+       社区 niansa/UnofficialEGGMouseConfig（真机在维护）亦记 0x1976，两源一致。
+     OP1 8k v2 Raw Input = 0x1978（与 OP1 8k v2 同工具，仍待其专属工具佐证）
 
    ★ 第三个元素 verified=0 表示「未在真机验证」：只允许读取，写入被禁用。
 
@@ -44,10 +53,22 @@ const DONGLE_PID = 0x1970;
    其余字段偏移（LOD `0x09`、angle `0x0A`、ripple `0x0B`、motionSync `0x0C`、
    levels `0x0E`、CPI `0x23+5n` 的 `[xy][X][Y]`、glass `0x6F`）经 egctl 与
    官方工具二进制**双向印证，与 4k 完全一致**，见 re/upstream/SOURCES.md。 */
+  /* ★ 2026-10-09 逐款官方工具提取的设备表（每款工具都列 4 个：鼠标 / 鼠标变体 /
+     接收器 0x1970 / 接收器变体 0x1969），脚本 re/upstream/tool8k_pids.py 与表扫描：
+       XM2w-4k   v1.04 → 0x1968 · **0x1967** · 0x1970 · 0x1969
+       OP1w-4k   v1.04 → 0x1972 · **0x1971** · 0x1970 · 0x1969
+       XM2w-4k v2 v1.01 → 0x1982 · 0x1981 · 0x1970 · 0x1969
+       OP1w-4k v2 v1.00 → 0x1984 · **0x1983** · 0x1970 · 0x1969
+     加粗三个（0x1967 / 0x1971 / 0x1983）是本项目原先没有的变体 PID，本轮补齐。
+     ⚠️ 三个新 PID 与 0x1969 一律标 verified=0（**只读**）：它们只是"同工具、同族"的推断，
+        没有任何真机确认过字段布局与兄弟型号一致，按红线「未核实即不发」先只读。 */
 const MOUSE_PIDS: Record<number, [string, number, number?]> = {
-  0x1968: ["XM2w 4k", 1], 0x1972: ["OP1w 4k", 1], 0x1969: ["XM2w 4k (变体)", 1],
-  0x1982: ["XM2w 4k v2", 2], 0x1984: ["OP1w 4k v2", 2], 0x1981: ["XM2w 4k v2 (变体)", 2],
-  0x1966: ["XM2 8k", 1], 0x1964: ["OP1 8k / Purple Frost", 1],
+  0x1968: ["XM2w 4k", 1], 0x1967: ["XM2w 4k (变体)", 1, 0], 0x1972: ["OP1w 4k", 1], 0x1971: ["OP1w 4k (变体)", 1, 0],
+  0x1982: ["XM2w 4k v2", 2], 0x1984: ["OP1w 4k v2", 2], 0x1981: ["XM2w 4k v2 (变体)", 2], 0x1983: ["OP1w 4k v2 (变体)", 2, 0],
+  /* 0x1969 在四款工具里都与 0x1970 并列出现，属**接收器族**（旧笔记亦记"0x1970/0x1969 接收器族"）；
+     保留在表里只是为了不让它落到"未知型号"，型号名如实标注，同样标未验证 → 只读。 */
+  0x1969: ["4k 变体 / 接收器族 (0x1969)", 1, 0],
+  0x1966: ["XM2 8k", 1], 0x1964: ["OP1 8k", 1], 0x1976: ["OP1 8k Purple Frost", 2],
   0x1980: ["XM2 8k v2", 2], 0x1978: ["OP1 8k v2 / Raw Input", 2],
 };
 
@@ -60,7 +81,7 @@ const MOUSE_PIDS: Record<number, [string, number, number?]> = {
  * angleSnap 0x0A / ripple 0x0B / motionSync 0x0C / active 0x0D / levels 0x0E /
  * CPI 0x23+5n / glass 0x6F），差异只有按键区（8k 从 0x3D 起 7 条，另有一条 HANDED @0x37）。 */
 const PID_8K: Record<number, string> = {
-  0x1966: "XM2 8k", 0x1964: "OP1 8k / Purple Frost",
+  0x1966: "XM2 8k", 0x1964: "OP1 8k", 0x1976: "OP1 8k Purple Frost",
   0x1980: "XM2 8k v2", 0x1978: "OP1 8k v2 / Raw Input",
 };
 const is8k = (pid: number) => PID_8K[pid] !== undefined;
@@ -253,7 +274,7 @@ function xm1GuardEchoByte(reportId: number, data: unknown, ref: Uint8Array | nul
   return data.every((b, i) => (i === 0 || i === 4 ? true : b === 0));
 }
 
-export { VIDS, VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, XM1_PIDS, RPT_CMD, RPT_BULK,
+export { VIDS, VID, VID_22D4, DONGLE_PID, DONGLE_PIDS, MOUSE_PIDS, XM1_PIDS, RPT_CMD, RPT_BULK,
          PID_8K, is8k, PID_FAMILY4, isFamily4, USAGE_FAMILY4,
          OFF8K, buildBlob8k, build8kStoreData,
          XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,

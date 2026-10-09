@@ -49,6 +49,7 @@ export function resetToInitial(reasonKey: LostReason, detail?: string) {
   S.mouseName = "—"; S.gen = null;
   S.eightK = false; S.xm1 = false; S.family4 = false; S.wired = false;
   S.unverified = false; S.unknownModel = false;
+  S.betaArmed = false;   // 实验写入许可只属本次连接，换设备/断开一律收回
   S.blob = null; S.lastFrame = null; S.frameAligned = false;
   S.dongleFw = "—"; S.mouseFw = "—"; S.battery = null;
   S.stage = newStage();

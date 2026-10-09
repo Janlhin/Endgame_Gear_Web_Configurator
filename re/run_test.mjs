@@ -6,6 +6,9 @@ const ENTRIES = [
   ["re/test_xm2we.ts", "re/.test_xm2we.mjs"],
   ["re/test_xm1_write.ts", "re/.test_xm1_write.mjs"],
   ["re/test_8k_write.ts", "re/.test_8k_write.mjs"],
+  // ⚠️ 必须排在 test_presence 之前：它末尾是 process.exit(0)
+  ["re/test_diag.ts", "re/.test_diag.mjs"],
+  ["re/test_write_gates.ts", "re/.test_write_gates.mjs"],
   ["re/test_presence.ts", "re/.test_presence.mjs"],
 ];
 

@@ -28,6 +28,22 @@ const EE_LIMIT = 0xB4;         // 配置区上界（之上读出来是 0xff）
 
 const OP_LINK = 0x03, OP_BATTERY = 0x04, OP_EE_WRITE = 0x07, OP_EE_READ = 0x08, OP_PROFILE = 0x0F;
 
+/** ★ WE 族写入总闸 —— **false = 只读**，与 8k 族同一档防护。
+ *
+ *  理由（2026-10-09 发布前安全审计）：
+ *    · 这段代码从未接过真机，只有 29 项离线仿真；
+ *    · 有线 PID 0x1960 / 0x1962 也没有任何真机实现背书
+ *      （itchyfeetleech/OP1we-Control 只认接收器 0x1961，并注明有线 PID"未见真机"）；
+ *    · 记录级回读校验**证明不了语义正确**：CPI 编码若理解错，
+ *      写进去的就是另一个数量级的值，而回读仍然"一致"。
+ *  → 按本项目红线「未核实即不发」默认关闭。真机验证通过后改为 true，
+ *    并同步把 UI 上的只读警告摘掉。 */
+export let WE_WRITES_ENABLED = false;
+/** 打开/关闭 WE 族的写入。ESM 的导入绑定不可赋值（本项目踩过 TS2326），
+ *  所以对外只给这个 setter —— 而且它只能由 UI 在"用户点过确认"之后调用。
+ *  设备断开时 xm2we-ui 会把它收回 false（实验许可不跨连接）。 */
+export function setWeWrites(v: boolean) { WE_WRITES_ENABLED = v; }
+
 /* 设备休眠时读 EEPROM 会直接不回应，需要反复唤醒等待 */
 const WAKE_ROUNDS = 8, WAKE_PACE = 900;
 
@@ -273,6 +289,12 @@ export class Xm2weSession {
 
   /** 写入一条记录并回读验证（协议文档明确要求 read-back verify） */
   async writeRecord(addr: number, bytes: number[]): Promise<boolean> {
+    /* ★ 总闸（离发送点最近的一层，UI 禁用之外的最后一道）：
+       WE 族**从未接过真机**。记录级回读只能证明"设备按我们发的字节存了"，
+       证明不了字段语义 —— CPI 编码（(hw+1)×(mul?100:50)，高位打包进 M 字节）
+       一旦理解错，写入的就是另一个数量级的值，而回读依然"一致"。
+       按本项目红线「未核实即不发」默认关闭；真机验证通过后改成 true 即可。 */
+    if (!WE_WRITES_ENABLED) throw new Error("XM2we/OP1we writes are disabled: never verified on real hardware");
     if (addr < 0 || addr + bytes.length - 1 > EE_LIMIT) throw new Error("地址超出配置区 0x00–0xB4");
     await this.eeWrite(addr, bytes);
     const back = await this.eeRead(addr, bytes.length, 1500);

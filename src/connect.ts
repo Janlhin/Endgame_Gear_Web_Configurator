@@ -15,7 +15,7 @@ import { closeXm2we, isXm2weOpen } from "./xm2we-ui.js";
 import { xm1WriteDisabled } from "./transport.js";
 import { resetToInitial, watchDisconnect, watchPresence } from "./presence.js";
 import type { LostReason } from "./presence.js";
-import { isXm1, is8k, isFamily4, USAGE_FAMILY4, DONGLE_PID,
+import { isXm1, is8k, isFamily4, USAGE_FAMILY4, DONGLE_PIDS,
          xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte } from "./protocol.js";
 
 export async function releaseAllDevices() {
@@ -83,7 +83,7 @@ export async function openDevice(d) {
   S.eightK = !S.xm1 && is8k(d.productId);
   S.family4 = !S.xm1 && !S.eightK && (isFamily4(d.productId)
             || (d.collections || []).some((c: any) => c.usagePage === USAGE_FAMILY4.page));
-  S.wired = S.xm1 || S.eightK || S.family4 || d.productId !== DONGLE_PID;
+  S.wired = S.xm1 || S.eightK || S.family4 || !DONGLE_PIDS.includes(d.productId);
   S.lastFrame = null; S.frameAligned = false;
   /* ★ XM1 发送白名单（防止再次损坏配置）
    *
@@ -133,8 +133,38 @@ export async function openDevice(d) {
   await refreshAll();
 }
 
+/** 原生确认框的包装：Node（离线测试）里没有 window.confirm，
+ *  此时一律当作"用户未确认" —— 测试环境绝不可能意外放行写入。 */
+export function confirmBeta(msg: string): boolean {
+  const w: any = typeof globalThis !== "undefined" ? (globalThis as any).window : null;
+  if (!w || typeof w.confirm !== "function") return false;
+  return !!w.confirm(msg);
+}
+
+/** 打开实验写入：置位 + 强制先导出一份备份（写坏了还有得救）。 */
+export function armBeta() {
+  S.betaArmed = true;
+  try { ($("btnSave") as any)?.click?.(); } catch (_) { /* 导出失败不阻断，仅记录 */ }
+  banner("warn", t("betaArmed"));
+  log("⚠ 实验写入已开启（仅本次连接）：" + t("betaBackup"));
+}
+
 export function guard4k(needConfig = true) {
   if (isXm2weOpen()) { banner("err", t("bWrongFamily")); log("✗ blocked: XM2we device connected"); throw new Error("wrong protocol family"); }
+  /* ★ 8k 有线族：默认只读，**用户点确认后**才在本次连接内放行。
+     设计取舍：
+       · 全禁 → 远程志愿者（唯一有 8k 设备的人）根本没法帮我们验证，协议永远停在"未验证"；
+       · 全开 → 别人一接上就能写没验证过的路径，这是本项目最忌讳的事。
+     所以走「默认关 + 显式确认 + 强制先导出备份 + 只管本次连接」四件套。
+     确认框用原生 confirm：它是同步的，能保证"没确认就一定不会走到发送那一步"。 */
+  if (S.eightK && !S.betaArmed) {
+    if (!confirmBeta(t("betaConfirm", S.mouseName || "8k"))) {
+      log("⋯ 用户取消了实验写入（保持只读）");
+      banner("warn", t("b8kNote"));
+      throw new Error("user declined experimental write");
+    }
+    armBeta();
+  }
   /* 未真机验证的型号（8k 有线族）只读：协议同构是静态实证的，
      但 gen 编码与字段语义没在硬件上确认过 —— 按未验证的偏移写回去，
      正是 2026-10-09 把 XM1 配置写坏的同一个错误。 */

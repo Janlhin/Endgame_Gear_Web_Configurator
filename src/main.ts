@@ -1,13 +1,14 @@
 // 应用主体：全局状态 / 传输层 / blob 读写解析 / UI 渲染 / 连接与事件绑定
 import { $, sleep, hex, log, banner } from "./util.js";
 import { LANG, t, applyI18n } from "./i18n.js";
-import { VID, VID_22D4, DONGLE_PID, MOUSE_PIDS, RPT_CMD, RPT_BULK,
+import { VID, VID_22D4, DONGLE_PID, DONGLE_PIDS, MOUSE_PIDS, RPT_CMD, RPT_BULK,
          XM1_MAX_STAGES, XM1_SETTLE_MS, isXm1, modelOf,
          buildXm1BlobReport, buildXm1ByteReport,
          xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte,
          PID_8K, is8k, PID_FAMILY4, isFamily4, USAGE_FAMILY4,
          buildBlob8k, build8kStoreData } from "./protocol.js";
 import { isXm2weFamily } from "./xm2we.js";
+import { buildDiag } from "./diag.js";
 import { applyLayout, layoutFor, applyLayoutFromHash, reapplyLayout } from "./layout.js";
 import { openXm2we, closeXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
 import { S, newStage } from "./state.js";
@@ -369,7 +370,7 @@ $("btnConnect").onclick = async () => {
           (pick.collections || []).some(c => c.usagePage === 0xFF01 && c.usage === 0x02)
             ? "" : " ⚠ 未选到 FF01:02 配置接口，若读取失败请改选同一设备的另一个集合");
     }
-    if (pick.productId === DONGLE_PID)
+    if (DONGLE_PIDS.includes(pick.productId))
       log("ℹ 已选择接收器。若鼠标此刻插着 USB 线，无线链路是断开的——请改选鼠标设备（或拔线后再连）。");
     await openDevice(pick);
   } catch (e) { banner("err", t("bConnectFail") + e.message); log("✗ " + e.message); }
@@ -469,6 +470,15 @@ $("btnXm1Echo").onclick = async () => {
 };
 
 $("btnBlob").onclick = () => { if (S.blob) download(new Blob([S.blob]), `egg-mouse-blob-${Date.now()}.bin`); };
+/* 测试数据包：型号 / PID / 固件 / 接口集合 / 完整 blob / 通讯日志一次带走，
+   外加一份回报模板。给远程志愿者用 —— 他们手里正是我们没有的型号。 */
+$("btnDiag").onclick = () => {
+  try {
+    download(JSON.stringify(buildDiag(), null, 2), `egg-mouse-diag-${Date.now()}.json`, "application/json");
+    banner("ok", t("diagSaved"));
+    log("✓ 测试数据包已导出（含 blob 与通讯日志）");
+  } catch (e: any) { banner("err", t("cfgNoRead") + e.message); }
+};
 $("btnLoad").onclick = () => $("fileLoad").click();
 $("fileLoad").onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
@@ -481,6 +491,12 @@ $("fileLoad").onchange = async e => {
   if (S.eightK) { banner("err", t("b8kNoImport")); e.target.value = ""; return; }
   try {
     const j = JSON.parse(await f.text());
+    /* ★ 跨代拦截：不同 gen 的字段编码不同（LOD：gen1 整毫米 / gen2 round(mm×10)−7；
+       按键区、LED 区布局也不同）。把 v2 的配置导入 v1 设备，写入的字节会错位 ——
+       与 2026-10-09 XM1 事故同一形态。文件里没有 gen 字段（旧版本导出）时不拦，
+       只按长度校验，保持向后兼容。 */
+    if (typeof j.gen === "number" && typeof S.gen === "number" && j.gen !== S.gen)
+      throw new Error(t("importGenMismatch", String(j.gen), String(S.gen)));
     const b = Uint8Array.from(atob(j.blobB64), c => c.charCodeAt(0));
     if (b.length !== 1024) throw new Error("blob length != 1024");
     S.blob = b; parseBlob();

@@ -21,7 +21,7 @@
 </head>
 <body>
 <header>
-  <h1>🖱️ <span data-i18n="appTitle">Endgame Gear 网页版驱动</span></h1>
+  <h1>🖱️ <span data-i18n="appTitle">Endgame Gear 网页版配置器</span></h1>
   <span id="connState" class="status-pill off" data-i18n="notConnected">未连接</span>
   <div class="spacer"></div>
   <select id="langSel" style="width:auto">
@@ -108,6 +108,7 @@
     <div class="row">
       <button id="btnWeExport" class="ghost" data-i18n="weExport">导出 EEPROM (.txt)</button>
       <button id="btnWeExportJson" class="ghost" data-i18n="exportCfg">导出配置 (.json)</button>
+      <button id="btnWeDiag" class="ghost" data-i18n="exportDiag">导出测试数据包 (.json)</button>
       <button id="btnWeLog" class="ghost" style="background:#eef0f3;color:var(--sub)" data-i18n="toggleLog">显示/隐藏通讯日志</button>
     </div>
     <p class="muted" data-i18n="weWriteNote">配置区为 EEPROM 0x00–0xB4（共 181 字节），每帧最多带 10 字节，故读取需约 19 个来回；每条记录都带 0x55 补码校验，校验只保证记录边界正确、不代表字段语义已解出。写入一律回读验证。</p>
@@ -187,6 +188,7 @@
       <button id="btnLoad" class="ghost" data-i18n="importCfg">导入配置并写入</button>
       <input type="file" id="fileLoad" accept=".json" style="display:none">
       <button id="btnBlob" class="ghost" data-i18n="exportBlob">导出原始 1024B blob (.bin)</button>
+      <button id="btnDiag" class="ghost" data-i18n="exportDiag">导出测试数据包 (.json)</button>
       <button id="btnXm1Echo" class="ghost" style="display:none" data-i18n="xm1Echo">XM1 实验：原样写回测试</button>
       <button id="btnXm1Undo" class="ghost" style="display:none" data-i18n="xm1Undo">回到上一份</button>
     </div>
@@ -200,6 +202,15 @@
     <div id="log"></div>
     <p class="muted"><a href="tools/blob-studio.html" target="_blank" rel="noopener" data-i18n="studioLink">离线 blob 分析器（tools/blob-studio.html）：粘贴 hex 或导出的 JSON 解析成字段表，粘两份自动差分 —— 不需要连接设备。</a></p>
     <p class="muted" id="persistNote" data-i18n="persistNote">写入立即持久化（无需保存操作）；0x13 是恢复出厂而非保存，慎用。</p>
+  </section>
+
+  <section class="card" id="cardChecklist">
+    <details>
+      <summary data-i18n="secChecklist">参与测试：逐条清单（点开）</summary>
+      <div class="mdBody">
+/*__CHECKLIST__*/
+      </div>
+    </details>
   </section>
 
   <section class="card" id="cardCredits">

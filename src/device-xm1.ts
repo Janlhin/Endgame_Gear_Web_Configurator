@@ -154,7 +154,7 @@ export function xm1Snapshot(label: string) {
 
 export function xm1PatchEdit(ref: Uint8Array, e: any): Uint8Array {
   const out = ref.slice();
-  const clamp = cpiClamp;                 // 50–30000、步进 50（定义见 blob.ts）
+  const clamp = cpiClamp;   // 不传 gen ⇒ 默认 50–30000/步进 50（XM1 实测确认的档位）
   out[XM1_F.active] = (e.active | 0) & 3;
   XM1_F.stages.forEach((st, i) => {
     const ed = e.stages[i];

@@ -1,4 +1,4 @@
-# Endgame Gear Web Configurator（Endgame Gear 网页版驱动）
+# Endgame Gear Web Configurator（Endgame Gear 网页版配置器）
 
 浏览器直连配置 Endgame Gear 无线游戏鼠标的网页工具，**零驱动、零安装**：打开网页 → 点连接 → 改配置。
 
@@ -148,14 +148,14 @@ npm run check     # tsc --noEmit 类型检查
 
 ```bash
 git init && git add . && git commit -m "feat: Endgame Gear web configurator"
-gh repo create egg-web-configurator --public --source=. --push
+gh repo create endgame-gear-web-configurator --public --source=. --push
 gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[path]=/"   # 或在仓库 Settings → Pages 里选 main /
 ```
 
-之后访问 `https://<你的用户名>.github.io/egg-web-configurator/`。GitHub Pages 自动是 HTTPS，满足 WebHID 的安全上下文要求。
+之后访问 `https://<你的用户名>.github.io/endgame-gear-web-configurator/`。GitHub Pages 自动是 HTTPS，满足 WebHID 的安全上下文要求。
 
 > **部署要点**（本项目已逐项核对过，详见 [`docs/ui-port-feasibility.md`](docs/ui-port-feasibility.md)）：
-> - 产物**没有任何绝对路径**（也没有 `<base>`），所以放在项目页子路径 `…/egg-web-configurator/` 下不会破。
+> - 产物**没有任何绝对路径**（也没有 `<base>`），所以放在项目页子路径 `…/endgame-gear-web-configurator/` 下不会破。
 >   对照：同类站点 `op1w.vercel.app` 用的是 `/assets/…` 绝对路径，同一份构建搬到项目页子路径会 404。
 > - 仓库根已有 **`.nojekyll`**：分支发布默认会跑 Jekyll，而它会排除 `_` 开头的文件（如 `scss/_tokens.scss`），
 >   更糟的是**一旦 Jekyll 构建失败，整站 404**。本项目只需要托管两个构建好的 HTML。
@@ -229,6 +229,21 @@ zlib/deflate/LZMA/BZ2 全部解不开），用 `pawstas80/Unpacker` 剥出真实
 ## 免责声明
 
 本项目为独立开源工具，与 Endgame Gear / Pro Gamersware GmbH 无隶属关系。它只读写用户配置，不修改固件、不绕过任何保护机制。使用风险自负；对设备配置的任何更改请自行承担（协议文档已验证写入双向可行，但请理性使用"恢复出厂"以外的底层操作）。
+
+**未在真机上验证过的型号（8k 有线全系、XM2we / OP1we、以及若干变体 PID）默认只读**：
+点写入会弹确认框，确认后**仅当次连接**放行，并自动先导出一份备份。
+逐型号依据与残留风险见 **[docs/release-safety-audit.md](docs/release-safety-audit.md)**。
+
+## 参与测试
+
+手里有我们没有的鼠标（8k 有线全系、XM2we / OP1we）？你的实测是这些型号唯一的验证途径。
+请先看这两份：
+
+- **[docs/remote-beta-guide.md](docs/remote-beta-guide.md)** —— 参与前必读（备份、风险、怎么恢复）
+- **[docs/test-checklist.md](docs/test-checklist.md)** —— 具体要测哪些项、每一项怎么填
+
+工具里点「导出测试数据包 (.json)」可一次得到：型号 / VID / PID / 接口集合 / 固件 /
+完整 blob（WE 族为 EEPROM 转储）/ 通讯日志，外加一份回报模板。
 
 ## 许可证
 

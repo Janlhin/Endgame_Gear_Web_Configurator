@@ -7,7 +7,7 @@ import { $, hex, banner } from "./util.js";
 import { LANG, t } from "./i18n.js";
 import { S } from "./state.js";
 import { xm1Apply } from "./device-xm1.js";
-import { xm1LodToMm, cpiClamp } from "./blob.js";
+import { xm1LodToMm, cpiClamp, cpiInputBounds } from "./blob.js";
 import { XM1_MAX_STAGES } from "./protocol.js";
 
 /* ★ 这两张表按 LANG 直接取用（取不到就是 undefined → 崩）。
@@ -66,6 +66,7 @@ export function renderXm1() {
       `<td><input type="checkbox" data-on="${i}"${st.on ? " checked" : ""}></td>` +
       `<td style="text-align:center"><input type="radio" name="xm1act" data-act="${i}"${S.xm1Edit.active === i ? " checked" : ""}></td>` +
       `<td colspan="2"><input type="number" data-x="${i}" min="50" max="30000" step="50" value="${st.x}"></td>`;
+    // XM1 恒走默认档（50–30000/步进 50）：它的步进是 2026-10-08 实测确认过的，不随 gen 放宽
     tb.appendChild(tr);
   });
   // 事件：直接改编辑状态，不立即写设备
@@ -150,10 +151,11 @@ export function render() {
     /* XY 开关关闭 = 官方软件的单值语义：Y 显示为与 X 相同（框禁用但跟随） */
     const xyOn = S.stage.cpi[n][0] ? 1 : 0;
     const xv = S.stage.cpi[n][1], yv = xyOn ? S.stage.cpi[n][2] : S.stage.cpi[n][1];
+    const bd = cpiInputBounds(S.gen);
     tr.innerHTML = `<td>CPI ${n + 1}${n === S.stage.active ? t("current") : ""}</td><td>${STAGE_COLORS[LANG][n]}</td>
       <td><input type="checkbox" data-xy="${n}" ${xyOn ? "checked" : ""} ${dis}></td>
-      <td><input type="number" data-x="${n}" min="50" max="30000" step="50" value="${xv}" ${dis}></td>
-      <td><input type="number" data-y="${n}" min="50" max="30000" step="50" value="${yv}" ${xyOn && !dis ? "" : "disabled"}></td>`;
+      <td><input type="number" data-x="${n}" min="${bd.min}" max="${bd.max}" step="${bd.step}" value="${xv}" ${dis}></td>
+      <td><input type="number" data-y="${n}" min="${bd.min}" max="${bd.max}" step="${bd.step}" value="${yv}" ${xyOn && !dis ? "" : "disabled"}></td>`;
     tb.appendChild(tr);
   }
   tb.querySelectorAll("input[data-xy]").forEach(el => el.onchange = () => {
@@ -166,10 +168,10 @@ export function render() {
   });
   tb.querySelectorAll("input[data-x],input[data-y]").forEach(el => el.onchange = () => {
     const n = +(el.dataset.x ?? el.dataset.y); const ax = el.dataset.x ? 1 : 2;
-    /* ★ CPI 归一化走 blob.ts 的单一来源（50–30000、步进 50）。
-       静默改掉用户输入的数字会让人困惑，所以被归一化时给一句反馈。 */
+    /* ★ CPI 归一化走 blob.ts 的单一来源（默认 50–30000/步进 50；
+        gen=2 的 paw3950 族放宽到 10–30000、≤10000 步进 10）。 */
     const raw = +el.value || 400;
-    const v = cpiClamp(raw);
+    const v = cpiClamp(raw, S.gen);
     (el as any).value = String(v);
     const note = $("cpiStepNote");
     if (note) note.textContent = v !== raw ? t("cpiAligned", String(v)) : "";
@@ -271,10 +273,17 @@ export function render() {
   });
 
   /* 「没读到配置就不给写」的界面侧体现：按钮直接禁用，而不是等用户点了才弹错。
-     零负载命令（配对/恢复出厂）不在其列。 */
-  const canWrite = !!S.blob && !!S.gen && !S.unverified;
-  for (const id of ["btnApplySensor", "btnApplyPerf", "btnLoad", "btnReset", "btnPair", "btnPairDefault"]) {
+     8k 例外：它的 gen 恒为 null，但**允许点** —— 点了会弹"未验证型号"确认框（guard4k），
+     确认后才放行。这是远程志愿者唯一能帮我们验证 8k 写入的入口，不能置灰堵死。 */
+  const canWrite = !!S.blob && !S.unverified && (S.eightK || !!S.gen);
+  for (const id of ["btnApplySensor", "btnApplyPerf", "btnReset"]) {
     const el = $(id); if (el) el.disabled = !canWrite;
+  }
+  /* 导入与配对对 8k 一律关掉，与确认无关：
+     · 导入 = 整块覆盖，导入别型号的 blob 等于把未知偏移全改写（XM1 事故的形态）；
+     · 配对 = 无线专属命令，对有线 8k 没有意义，行为未知。 */
+  for (const id of ["btnLoad", "btnPair", "btnPairDefault"]) {
+    const el = $(id); if (el) el.disabled = !canWrite || !!S.eightK;
   }
 
   /* 未真机验证的型号：禁用全部写入入口（guard4k 还会再兜一层）。

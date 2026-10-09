@@ -6,7 +6,8 @@ import { t } from "./i18n.js";
 import { applyLayout } from "./layout.js";
 import { resetToInitial, watchDisconnect, watchPresence } from "./presence.js";
 import type { LostReason } from "./presence.js";
-import { Xm2weSession, WE_MOUSE_PID, POLLING_BY_MASK } from "./xm2we.js";
+import { Xm2weSession, WE_MOUSE_PID, POLLING_BY_MASK, WE_WRITES_ENABLED, setWeWrites } from "./xm2we.js";
+import { buildWeDiag } from "./diag.js";
 
 const WE_POLL_OPTS = [125, 250, 500, 1000];
 
@@ -57,6 +58,30 @@ async function openGuarded(d: any): Promise<boolean> {
   return true;
 }
 
+/** 原生确认框包装：Node 里没有 window.confirm，一律当作"未确认"。 */
+function confirmBox(msg: string): boolean {
+  const w: any = (globalThis as any).window;
+  if (!w || typeof w.confirm !== "function") return false;
+  return !!w.confirm(msg);
+}
+
+/** 实验写入的前置动作：显式确认 → 打开 → 强制先导出一份 EEPROM 备份。
+ *  与 8k 族同一套口径（默认只读、点确认才放行、只管本次连接）。 */
+function ensureWeArmed(): boolean {
+  if (WE_WRITES_ENABLED) return true;
+  if (!confirmBox(t("betaConfirm", model || "XM2we / OP1we"))) {
+    banner("warn", t("weUnverified"));
+    log("⋯ 用户取消了实验写入（保持只读）");
+    return false;
+  }
+  setWeWrites(true);
+  try { ($("btnWeExport") as any)?.click?.(); } catch (_) { /* 导出失败不阻断 */ }
+  for (const id of ["btnWeApplyCpi", "btnWeApplyPerf"]) { const el = $(id); if (el) el.disabled = false; }
+  banner("warn", t("betaArmed"));
+  log("⚠ 实验写入已开启（仅本次连接）：" + t("betaBackup"));
+  return true;
+}
+
 /** 打开设备并进入 XM2we 模式。会关闭既有会话，避免两族混用同一 device。 */
 export async function openXm2we(d: any) {
   await closeXm2we();
@@ -80,9 +105,12 @@ export async function openXm2we(d: any) {
   renderInfo();
   $("btnRefresh").disabled = false;
   await refreshWe();
+  /* 只读警告必须常驻：这一族从未接过真机，界面不能假装它是"完全可用"的。 */
+  if (!WE_WRITES_ENABLED) banner("warn", t("weUnverified"));
 }
 
 export async function closeXm2we() {
+  setWeWrites(false);   // 实验写入许可不跨连接
   sess?.dispose();
   sess = null;
   if (dev) {
@@ -208,6 +236,7 @@ export async function refreshWe() {
 /** 应用 CPI + LED 颜色（每槽一条 4 字节记录，逐条回读验证） */
 async function applyCpi() {
   if (!sess) return banner("err", t("weNoDevice"));
+  if (!ensureWeArmed()) return;
   try {
     const slots = sess.cpiTable();
     if (!slots.length) throw new Error(t("weNoDevice"));
@@ -232,6 +261,7 @@ async function applyCpi() {
 /** 应用回报率 + 去抖（成对标量：值 + 0x55 补码） */
 async function applyPerf() {
   if (!sess) return banner("err", t("weNoDevice"));
+  if (!ensureWeArmed()) return;
   try {
     const hz = parseInt($("wePolling").value, 10);
     if (isFinite(hz) && hz > 0) {
@@ -252,6 +282,8 @@ async function applyPerf() {
 export function bindXm2weUI(download: (data: any, name: string, type?: string) => void) {
   $("btnWeApplyCpi").onclick = () => applyCpi();
   $("btnWeApplyPerf").onclick = () => applyPerf();
+  /* ★ 按钮保持可点：点下去会先弹确认（ensureWeArmed），确认才真的写。
+     置灰反而堵死了远程志愿者参与验证的唯一入口；协议层 writeRecord 的闸门仍在。 */
   $("btnWeExport").onclick = () => {
     if (!sess?.mem.size) return banner("err", t("weNoDevice"));
     const head = `# XM2we EEPROM dump — ${model} — ${new Date().toISOString()}\n` +
@@ -261,6 +293,14 @@ export function bindXm2weUI(download: (data: any, name: string, type?: string) =
   $("btnWeExportJson").onclick = () => {
     if (!sess?.mem.size) return banner("err", t("weNoDevice"));
     download(JSON.stringify(sess.toJSON(), null, 2), `xm2we-config-${Date.now()}.json`, "application/json");
+  };
+  $("btnWeDiag").onclick = () => {
+    if (!sess?.mem.size) return banner("err", t("weNoDevice"));
+    try {
+      download(JSON.stringify(buildWeDiag(sess, model), null, 2), `xm2we-diag-${Date.now()}.json`, "application/json");
+      banner("ok", t("diagSaved"));
+      log("✓ 测试数据包已导出（含 EEPROM 转储、解码表与通讯日志）");
+    } catch (e: any) { banner("err", e.message); }
   };
   $("btnWeLog").onclick = () => {
     const l = $("log");

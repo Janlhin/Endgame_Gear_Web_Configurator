@@ -73,7 +73,26 @@ v1 线（XM2w-4k 仓库）：v1.01 → v1.03 → v1.04。
    不进构建产物）、无许可证项目（XM2we-Unleashed）零复制 ✓。
 3. 结论：**当前仓库可干净地以 GPL-3.0-or-later 发布**，无污染。
 
-## 六、协议事实 vs 代码的版权边界（给"官方收编"问题的备注）
+## 六之补 · 2026-10-09 第二轮补扫（许可证清零 + 新发现）
+
+> 方法与完整结论见 **`docs/scan-push-plan.md`**。此处只记三件对本文有修订效力的事。
+
+1. **"待查"许可证全部落地**（脚本 `re/upstream/license_scan.py` + `license_raw.py`）：
+   `niansa/UnofficialEGGMouseConfig` = **Unlicense**（公有领域，8k 族最可放心借鉴的实现）；
+   `Creationsss/egctl` = Cargo.toml 声明 **AGPL-3.0-or-later**（与本项目 GPL-3 不兼容，只取事实）；
+   `0e4ef622/op1w4k-bpf` = GPL-2.0；`daviddwk/xm2we-util` = GPL-3.0；
+   `okms/xm2we-linux` / `itchyfeetleech/OP1we-Control` / `qaustria/xm2w` /
+   `Mannomatico/xm2ctl` / `FrancescoCiannavei/GO-BatteryAPI…` / `BrettLoewen/Endgame-Gear-Mod` = MIT；
+   **lvlanson/XM2-8k-v2-Linux-Configurator、swekkiekekkie/op1web、daohhuynh/homebrew-egg-mouse、
+   racclololz/…、Constructor666/…、shohamc1/OP1wBattery 六家无 LICENSE 文件** → 只读参考，一行不抄。
+2. **新发现一个上一轮完全漏掉的实现**：`@openmouse/protocol`（npm，
+   `OpenMouse-Project/mouse-protocol`，**AGPL-3.0-or-later**）—— 浏览器 WebHID 协议库，
+   含 `endgame-gear/{op1,wireless}` 与 `drivers/endgame/{egg-op1-hid,egg-we-hid}`。
+   **上一轮只搜 GitHub 关键词所以没捞到；本轮靠 npm 注册表命中。** 只取事实，不取代码。
+3. **剔除一处误报**：`swekkiekekkie/op1web` 实为 WebMIDI 生成式工具，与本主题无关。
+
+> 另：本文第三节里 "OP1 8k Purple Frost 与 OP1 8k 同 PID 0x1964" 是**错的**，
+> 正确值 **0x1976**（官方 LE 专属工具二进制 + niansa + OpenMouse 三源一致），代码已修。
 
 - USB 协议/命令码/blob 布局是**事实**，不受版权保护，官方可自由实现——GPL 挡不住"重新实现"。
 - GPL 保护的是**我们的代码**：官方若分发含我们代码的产品，必须按 GPL-3 开源其衍生部分。
