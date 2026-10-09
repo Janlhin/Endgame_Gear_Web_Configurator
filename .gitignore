@@ -37,3 +37,13 @@ re/upstream/*.zip
 re/_shot_*.png
 re/_dom*.html
 re/.test_8k_write.mjs
+
+# ── zexsso/OP1-WebAPP 的抓取物（第三方源码，仅供阅读，2026-10-09 移出跟踪）──
+# 设计令牌与组件清单已沉淀进 re/upstream/SOURCES.md 的「UI 参考」一节，删源码不丢结论。
+re/upstream/op1web_*
+re/upstream/vercel_*
+re/upstream/*.vue
+re/upstream/*.css
+re/upstream/op1web_*.ts
+re/upstream/eggweb_protocol.js
+re/upstream/xm2we_util_main.c
