@@ -39,7 +39,8 @@ npm run verify      # 本地唯一验收入口，顺序按"快 → 慢"短路执
 npm run verify:ci   # 同一入口的跨平台子集（去掉 Windows-only 的 check:ui），CI 用
 ```
 
-构成：`check`（tsc，strict 全开）→ `test`（离线断言）→ `check:i18n`（词条与取用表）→
+构成：`check`（tsc，strict 全开）→ `lint:docs`（markdownlint，28 份 Markdown）→
+`test`（离线断言）→ `check:i18n`（词条与取用表）→
 `check:ui`（无头 Edge 布局 / 语言检测 / 渲染 / 复位演练，**仅 Windows**）→
 `build`（含产物断言：无绝对路径、无开发注释）。
 
@@ -47,6 +48,16 @@ npm run verify:ci   # 同一入口的跨平台子集（去掉 Windows-only 的 c
 ubuntu 跑 `verify:ci`，windows-latest 跑 `check:ui` —— **两条都跑，互不豁免**。
 
 未通过就是未通过，不允许用"环境问题"描述而不复现定位。
+
+### 文档改动的两条硬约束
+
+1. **改文档前先跑 `npm run lint:docs`。** 它的豁免项全部写明了理由
+   （见 `.markdownlint-cli2.jsonc`），改动豁免项时必须同步
+   `docs/.markdownlint.jsonc`——目录级配置是**替换**而非合并。
+2. **外部链接不校验可达性。** `markdown-link-check` 在本机网络下会把
+   真实存在的仓库判为死链（返回 504/403/0；已用 `git ls-remote` 逐个复核）。
+   因此断链防护只覆盖**相对路径与文件内锚点**，外部 URL 靠人工核对。
+   复核证据见 `MANIFEST.md`。**不要因为工具报错就删掉来源登记。**
 
 ## 4. 本项目特有的 AI 约束
 

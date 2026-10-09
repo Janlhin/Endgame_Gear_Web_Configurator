@@ -8,6 +8,11 @@
 #   L3 流水线  本文件 —— 权威判定
 #   L4 运行期  浏览器控制台（无头 Edge 冒烟）+ 写入后的回读校验
 #
+# 文档校验：markdownlint-cli2 已接入 verify:ci（2026-10-09），
+# 配置见 .markdownlint-cli2.jsonc与 docs/.markdownlint.jsonc。
+# 外部链接可达性**未**接入——markdown-link-check 在本机网络下会把
+# 真实存在的仓库判为死链（504/403），详见 MANIFEST.md 的复核记录。
+#
 # 拆成两个 job 的原因：`npm run check:ui` 依赖 **Windows 上预装的 msedge.exe** 与
 # python（re/*.py 里是无头浏览器演练），在 ubuntu runner 上跑不了。
 # 因此跨平台部分放 ubuntu，需要浏览器的部分放 windows —— 两者都跑，互不豁免。

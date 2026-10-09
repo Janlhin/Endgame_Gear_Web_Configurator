@@ -23,7 +23,7 @@
 ## 排序说明
 
 按持续推进方案 §排序规则：**可执行 > 可逆性 > 依赖数 > 价值**。
-当前可执行项共 **11 项**（≥ 3，满足推进方案对队列的要求）；**接手期不存在真阻塞**。
+当前可执行项共 **10 项**（≥ 3，满足推进方案对队列的要求）；**接手期不存在真阻塞**。
 
 ---
 
@@ -31,7 +31,7 @@
 
 | ID | 目标 | 动作 | 依赖 | 可逆性 | 完成判据 | 状态 |
 |---|---|---|---|---|---|---|
-| T-101 | 文档层有 lint 通道 | 加`markdownlint-cli2` + `markdown-link-check` 两个 devDep，接入 `verify` 与 CI | 无 | 高 | `npm run verify` 通过；`markdownlint-cli2 "**/*.md"` 零error；CI绿 | 待办 |
+| T-101 | 文档层有 lint 通道 | 加`markdownlint-cli2` + `markdown-link-check` 两个 devDep，接入 `verify` 与 CI | 无 | 高 | `npm run verify` 通过；`markdownlint-cli2 "**/*.md"` 零error；CI绿 | ✅ **完成 2026-10-09**（`0bbb2b2` + `c18d42e`）。实测拦下 2 处真实文档缺陷：TODO.md 表格被换行截断、web-driver-extra-features 表格缺状态列。`markdown-link-check` 经复核**不接入**（网络假阳性，证据见 MANIFEST.md），降级为可选工具 |
 | T-102 | 提交前有本地门禁 | 加 Husky + lint-staged + commitlint，接入 `pre-commit` / `commit-msg` | 无 | 高 | 故意写一条不符 Conventional Commits 的提交，`commit-msg` 必须拒绝；`npm run verify` 通过 | 待办 |
 | T-103 | `any` 有 lint 拦截 | 加 ESLint flat config + `typescript-eslint`，`@typescript-eslint/no-explicit-any` 设为 `error` | 无 | 高 | `npm run lint` 对当前 82 处 `any` 报错（先配置不修）；`npm run verify` 其余段全绿 | 待办 |
 | T-104 | 样式硬编码有拦截 | 加 Stylelint + `stylelint-config-standard-scss`，含 `color-no-hex`（`_tokens.scss` 走 overrides 放行） | 无 | 高 | `npm run stylelint` 通过；故意在业务 SCSS 写一个字面量颜色，该命令必须失败 | 待办 |
@@ -60,8 +60,24 @@
 |---|---|---|
 | T-106 | 判例一：推送需显式确认 | **不可逆操作**（推送即上线） |
 
-**可执行项统计**：T-101～T-105、T-107～T-110、S-101～S-103 共 **11 项可执行**，
-满足持续推进方案「队列中始终 ≥ 3 个可执行项」的要求。**接手期不存在真阻塞。**
+**可执行项统计**：T-102～T-105、T-107～T-110、S-101～S-103 共 **10 项可执行**
+（T-101 已完成），满足持续推进方案「队列中始终 ≥ 3 个可执行项」的要求。**接手期不存在真阻塞。**
+
+---
+
+## 已完成任务的实测结论（供后续任务参考）
+
+### T-101 markdownlint 接入的三条工具行为（踩过的坑）
+
+1. **`ignores` 不可用于排除**——它与默认 glob 求交集，写成排除式会把匹配文件全部过滤掉
+   （`"ignores": ["node_modules/**"]` → `Linting: 0 files`）。改用 `globs` 正向列举。
+2. **`overrides` 对 globs 匹配到的文件不生效**（0.23.3 实测）——改用目录级
+   `.markdownlint.jsonc`。**注意它是替换而非合并**，全局豁免项须在两处各声明一遍。
+3. **`markdown-link-check` 在本机网络下不可用作门禁**——对 MANIFEST.md 报5 条死链，
+   但 `git ls-remote` 复核确认四个仓库全部真实存在（返回 504/403/0）。
+   接入会造成持续假失败，且会诱导人删掉真实存在的来源登记。
+
+这三条对后续接入 ESLint / Stylelint 有直接参考价值：**先小步验证工具行为，再接进门禁**。
 
 ---
 

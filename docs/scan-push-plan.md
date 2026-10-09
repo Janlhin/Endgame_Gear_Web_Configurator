@@ -220,7 +220,6 @@ CPI 输入若只按 50 步进归一化，会拒绝合法值（如 10 的倍数�
 - 找人顺序（对口程度递减）：`niansa`（8k 全系、Unlicense、真机在维护）→  
   `Creationsss/egctl` 作者（OP1 8k v2）→ `qsxcv/UnofficialEGGWebConfig` 作者 → r/MouseReview / EGG Discord。
 
-
 - 求助信里必须写明：① 先在官方工具里截图备份；② 本项目有过"写坏配置"的历史教训；③ 首次实验只改一个 CPI。
 
 ### P3 · 本地差分实验（`docs/community-help-needed.md` 的 C 组，半天到一天）

@@ -1,6 +1,6 @@
 # 致 Endgame Gear 官方的联系邮件
 
-- **收件**：customerservice@endgamegear.com（Pro Gamersware GmbH 客服）
+- **收件**：<customerservice@endgamegear.com>（Pro Gamersware GmbH 客服）
 - **目的**：介绍本项目，请求官方的协议文档支持/认可
 - **说明**：正文为英文（官方为德国公司，客服语言英文/德文），附中文对照供你审阅
 
@@ -59,8 +59,6 @@ USB/HID 配置协议由社区逆向完成（johanneszab/vole 仓库，基于贵�
 - [ ] 把 `<你的名字>` 和 `<项目 GitHub 链接>` 替换为真实信息（所以最好先把仓库和 GitHub Pages 搭好，邮件里有链接更有说服力）
 - [ ] 若已有真机验证截图/日志，可附上 1–2 张
 - [ ] 备选渠道：help.endgamegear.com 提交工单 + 官方 Discord（官网页脚有入口，社区团队常驻，响应通常快于邮件）
-
-
 
 我愿意把把代码全权交给官方维护 并期待能有官方制作的网页版本
 我只是个很喜欢egg的中国粉丝 对Johnny R创造出的XM系列表示崇高的敬意 我的一生所爱
