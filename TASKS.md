@@ -46,7 +46,7 @@
 | T-106 | 首次获得 CI 权威结论 | 推送 85 个提交到 origin，观察首次 CI 运行 | **凭据授权**：OAuth App 令牌缺 `workflow` scope（2026-10-09 推送被拒，见下方记录） | **低** | `verify` 与 `ui` 两个 job 在GitHub Actions 上均为绿；产物 canary 通过 | 被阻塞（授权中） |
 | T-107 | 文档与代码一致性有自动判据 | 加 `docs:sync` 生成脚本（从 `package.json` / `tsconfig.json` 生成文档中的脚本名与依赖表），接 `git diff --exit-code` | T-101 | 中 | 故意改 `package.json` 里一个脚本名，`npm run verify` 必须失败 | 待办 |
 | T-108 | 有覆盖率基线 | 引入覆盖率计量（c8 或 `node --experimental-test-coverage`），**只记录当前基线数字，不设阈值** | 无 | 中 | `npm run verify` 输出覆盖率数值；基线写入 `docs/`。**阈值待有数据后另行提案**（延续既有判例「测试框架暂不迁移到 Vitest」） | 待办 |
-| T-109 | 协议边界不再是 `any` | 收敛 `src/connect.ts`（6 处 any + 2 死导入）、`src/device-8k.ts`（3）、`src/device-xm1.ts`（1）、`src/blob.ts`（1）。**`src/diag.ts` 及其他不动**（判例三） | T-103 ✅ | 中 | 该四文件 ESLint `no-explicit-any` 计数为 0；`--max-warnings` 下调对应数值；`npm run verify` 全绿；**`re/test_write_gates.ts` 仍全绿（写入闸门不得被削弱）** | 待办 |
+| T-109 | 协议边界不再是 `any` | 收敛 `src/connect.ts`（6）、`src/device-8k.ts`（3）、`src/device-xm1.ts`（1）、`src/blob.ts`（1）。**`src/diag.ts` 及其他不动**（判例三） | T-103 ✅ | 中 | 该四文件 ESLint `no-explicit-any` 计数为 0；`--max-warnings` 下调对应数值；`npm run verify` 全绿；**`re/test_write_gates.ts` 仍全绿（写入闸门不得被削弱）** | ✅ **完成**（`50b5c3d`）。**any 97 → 85**，四文件归零且 `no-explicit-any` 在这四处升级为 **error**。做法：state.ts 新增 `Stage` / `Xm1Edit` / `Xm1Stage` / `StageButton` / `MinutesOrOff` 五个接口，取代散落的 any；`raw`/`unknown`/`unk7` 作为**安全机制载体**显式声明（删掉等于拆掉安全网）。类型通道当场抓出 3 个真实问题（详见下） |
 | T-111 | 死代码清理（ESLint 新发现） | 逐个处理 53 项 `no-unused-vars`。**注意多数不是垃圾而是「导入但未接线」的半成品**，删除前必须逐个确认意图 → 灰名单，需先提案 | 无 | 中 | 每个符号都有明确处置（接线 / 删除 / 标注 TODO(verify)）；`main.ts:183` 的死变量 `xm1Edit` 一并处理；`npm run verify` 全绿 | 待办 |
 
 ### T-111 已完成的核实（2026-10-09，避免后续误删）
@@ -85,6 +85,7 @@ i18n 词条字符串污染（本项目 `xm1ApplyConfirm` / `xm1Applying` 这类�
 | S-101 | 一次性脚本归置| 逐个评估 `re/` 下约 10 个一次性探查脚本（`dias.py`、`obj_scan.py`、`obj_scan2.py`、`cmd_scan.py`、`imm_scan.py`、`xref_scan.py`、`reportid_scan.py`、`const_scan.py` 等）。**能证明结论已沉淀进 `re/PROTOCOL_NOTES.md` / `re/XM1_NOTES.md` 的移入归档目录，产出一致的保留并标注**（判例四，已获授权，不删除） | 无（已裁决） | 中 | 每个脚本有明确归档结论；`re/` 根目录只留有复用价值的脚本；结论写入 `DECISIONS.md` | 待办 |
 | S-102 | 决策日志归整 | 把 `DECISIONS.md` 中散落的假设归档为判例，标注哪些已形成「同类事项不得重复询问」的判例 | 无 | 高 | 每条判例标注影响的后续任务范围 | 待办 |
 | S-103 | 包体积基线 | 记录当前产物体积（285.3 KB：js 250.9 / css 6.7）作为基线，纳入 `verify` 的体积回归检查 | 无 | 高 | `verify` 输出体积并在超阈值时失败；基线数字写入文档 | 待办 |
+| T-112 | `$()` 与 `S` 的类型收敛 | `util.ts:2` 的 `const $ = (id: string): any => document.getElementById(id)` 是**121 处 DOM 调用的类型源头**；`S` 本身也是 `any`（dev / queue / gen / mouseFw 等）。二者是剩余 85 处 any 的主要来源 | T-109 ✅ | 中 | `$` 的返回类型收敛为 `HTMLElement \| null`，121 处调用逐个补空值处理（或引入 `$<T>` 泛型 + 非空断言的显式化）；`S` 定义接口；any 计数与 `--max-warnings` 同步下调；`npm run verify` 全绿 | 待办 |
 
 ---
 
@@ -190,3 +191,33 @@ ESLint 首次运行暴露 183 项。处置原则：
 - 纯卫生规则（eqeqeq / no-var / prefer-const 等）→ 保持 **error**。
   唯一的 prefer-const 错误是 `main.ts:183` 的死变量 `xm1Edit`，
   已豁免并注明归入 T-111。
+
+### T-109 收敛时类型通道抓出的三个真实问题（下次收 any 时直接复用）
+
+1. **`glass` 的类型错配（原先被 `S: any` 掩盖）**
+   `Stage.glass` 是 blob 里的占位字节 0/1，而 `lodByteToMm` / `mmToLodByte`
+   的形参声明是 `boolean`。运行时靠 truthy 判断恰好正确，类型上却不匹配。
+   **修法是显式 `=== 1`，不是把形参改成 number** —— 后者会让类型通道
+   替调用方蒙混过关，等于把刚打开的通道又关掉。
+   为什么原先没被发现：两处调用都走 `S.stage.glass`，而 `S: any`。
+
+2. **`slamclick` / `jitter` / `maxFps` / `multiclick` 是运行时动态加的字段**
+   `newStage()` 的初始值里没有它们；`render.ts` 与 `buildBlob8k` 才根据
+   `S.stage.flags` 的位派生（`!!(flags & 0x01)` 等）。
+   写接口时必须按「实际读取端」枚举字段，不能只看构造函数的初始值——
+   **否则 tsc 会报「属性不存在」，容易误判成「代码坏了」**。
+   已补进 `Stage` 并注明：`jitter` 仅 v1、`maxFps`/`multiclick` 仅 v2。
+
+3. **`raw` / `unknown` / `unk7` 是安全机制的载体，不是遗留代码**
+   它们让 XM1 在字段语义未核实时切只读视图，也让写入路径不敢碰未核实偏移。
+   定接口时把它们显式声明并写明用途——**否则会顺手当垃圾清掉，等于拆掉安全网**。
+
+### 收敛 any 的正确顺序（本次实践得出）
+
+1. 先给**数据形状**定义接口（state.ts），而不是在调用处强转；
+2. 再给**函数参数**标类型（`verifySensor8k(w: Stage)`）；
+3. 最后给**返回值**标类型（`xm1Parse(b): Xm1Edit`）——
+   这一步让 `S.xm1Edit = xm1Parse(...)` 有了类型保障；
+4. 每步都跑 `tsc --noEmit`，它会指出下一处该标什么。
+
+顺序反了（比如先改调用处）会得到大量 `as` 断言，把类型通道变成装饰。
