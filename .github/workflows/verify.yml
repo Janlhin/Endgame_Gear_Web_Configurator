@@ -1,0 +1,67 @@
+# 权威判定通道。
+#
+# 为什么要 CI：本地门禁可以被绕过、可以被环境污染，只有干净环境下的结论才算数
+# （见 AGENTS.md 与「强制工程校验方案」§四层防御模型）。本项目目前的校验通道：
+#
+#   L1 静态    编辑器 / tsc（strict 全开）
+#   L2 本地    npm run verify（提交前，人工执行）
+#   L3 流水线  本文件 —— 权威判定
+#   L4 运行期  浏览器控制台（无头 Edge 冒烟）+ 写入后的回读校验
+#
+# 拆成两个 job 的原因：`npm run check:ui` 依赖 **Windows 上预装的 msedge.exe** 与
+# python（re/*.py 里是无头浏览器演练），在 ubuntu runner 上跑不了。
+# 因此跨平台部分放 ubuntu，需要浏览器的部分放 windows —— 两者都跑，互不豁免。
+name: verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  # ---------- 跨平台：类型 / 断言 / i18n / 构建产物 ----------
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      # 必须 npm ci（锁文件精确还原），不用 npm install（可能静默升级）
+      - run: npm ci
+      # 与本地 verify 同一入口的跨平台子集（本地 verify 额外含 Windows-only 的 check:ui）
+      - name: 跨平台校验（check / test / check:i18n / build）
+        run: npm run verify:ci
+      - name: 产物不得含绝对路径或本地残留
+        run: |
+          # build.mjs 内部已断言"无绝对路径"；这里再从外部独立验证一次（冗余校验的思路：
+          # 同一类缺陷要有两条不共享实现的拦截路径）
+          if grep -nE '[A-Za-z]:\\\\|/Users/|/home/' index.html; then
+            echo "✗ 产物里出现绝对路径"; exit 1
+          fi
+          if grep -c 'cardChecklist' index.html | grep -q '^0$'; then
+            echo "✗ 清单卡没渲染进产物（md2html 失效）"; exit 1
+          fi
+          echo "✓ 产物检查通过"
+      - name: 提交信息符合 Conventional Commits
+        run: |
+          # 只校验最近一次提交；历史不追溯，避免阻塞旧提交
+          git log -1 --pretty=%s | grep -qE '^(feat|fix|docs|refactor|chore|perf|test|build|ci)(\(.+\))?: .+' \
+            || { echo "✗ 提交信息不符合 Conventional Commits：$(git log -1 --pretty=%s)"; exit 1; }
+          echo "✓ commit message ok"
+
+  # ---------- Windows：需要真实浏览器的 UI 演练 ----------
+  ui:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - name: 布局裁剪 / 语言检测 / 渲染 / 复位演练（无头 Edge）
+        run: python re/layout_check.py && python re/i18n_check.py && python re/render_check.py && python re/reset_check.py
