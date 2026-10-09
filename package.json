@@ -13,11 +13,12 @@
     "check:ui": "python re/layout_check.py && python re/i18n_check.py && python re/render_check.py && python re/reset_check.py",
     "lint:docs": "markdownlint-cli2",
     "lint:docs:fix": "markdownlint-cli2 --fix",
-    "verify": "npm run check && npm run lint && npm run lint:docs && npm run test && npm run check:i18n && npm run check:ui && npm run build",
-    "verify:ci": "npm run check && npm run lint && npm run lint:docs && npm run test && npm run check:i18n && npm run build",
+    "verify": "npm run check && npm run lint && npm run lint:docs && npm run lint:css && npm run test && npm run check:i18n && npm run check:ui && npm run build",
+    "verify:ci": "npm run check && npm run lint && npm run lint:docs && npm run lint:css && npm run test && npm run check:i18n && npm run build",
     "prepare": "husky",
     "lint": "eslint src --max-warnings 85",
-    "lint:fix": "eslint src --fix"
+    "lint:fix": "eslint src --fix",
+    "lint:css": "stylelint \"scss/**/*.scss\""
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
@@ -29,7 +30,10 @@
     "husky": "^9.1.7",
     "markdown-link-check": "^3.15.0",
     "markdownlint-cli2": "^0.23.3",
+    "postcss-scss": "^4.0.9",
     "sass": "^1.105.1",
+    "stylelint": "^17.16.0",
+    "stylelint-scss": "^7.3.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.71.1"
   }

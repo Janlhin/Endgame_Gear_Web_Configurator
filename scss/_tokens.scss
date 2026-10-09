@@ -10,7 +10,7 @@
 // ---------- 色彩表（浅色 / 深色）----------
 $theme-light: (
   "bg":        #f5f6f8,
-  "card":      #ffffff,
+  "card":      #fff,
   "surface-2": #f0f2f6,   // 表头 / 次级面
   "surface-3": #eef0f3,   // 中性按钮
   "line":      #e2e5ea,
@@ -18,7 +18,7 @@ $theme-light: (
   "sub":       #6b7484,   // 次要文字
   "acc":       #2563eb,
   "acc-soft":  #eaf0fe,
-  "on-acc":    #ffffff,   // 强调色上的文字
+  "on-acc":    #fff,   // 强调色上的文字
   "ok":        #16a34a,
   "warn":      #d97706,
   "err":       #dc2626,
