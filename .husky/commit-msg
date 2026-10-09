@@ -1,0 +1,10 @@
+#!/bin/sh
+# 提交信息门禁：必须是 Conventional Commits。
+#
+# 与 CI 的关系：verify.yml 里有一条 `git log -1 | grep -E ...` 检查，
+# 口径比本文件**窄**——它只认9 个类型，不认本文件额外允许的
+# research 与 re。这不是矛盾：CI 是最终判定通道，且只查最近一次提交；
+# 本文件在提交瞬间拦截，让人当场就知道，不必等到 CI 才发现。
+# 改类型枚举时两处要同步，见 commitlint.config.cjs 顶部注释。
+
+npx --no -- commitlint --edit "$1"
