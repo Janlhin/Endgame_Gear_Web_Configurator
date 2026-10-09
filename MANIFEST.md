@@ -12,7 +12,35 @@
 |---|---|---|---|---|
 | `esbuild` | 0.24.2 | MIT | TS → JS 打包 | 唯一必需：要把 `src/*.ts` 打成单文件 IIFE。MIT、无原生编译、秒级 |
 | `sass` | 1.105.1 | MIT | SCSS 编译 | 样式层用 SCSS 维护（项目强制约定），需要编译器 |
-| `typescript` | 7.0.2 | Apache-2.0 | 类型检查（`tsc --noEmit`） | 唯一的静态类型通道 |
+| `typescript` | 7.0.2 | Apache-2.0 | 类型检查（`tsc --noEmit`） | 唯一的静态类型通道。⚠️ 实为 **双安装**，见下方「双编译器」说明 |
+| `@typescript/typescript6` | 6.0.2 | Apache-2.0 | **API 侧**：供 typescript-eslint 读取编译器的 AST 与类型信息 | 通过别名 `"typescript": "npm:@typescript/typescript6@6.0.2"` 安装。typescript-eslint 的 peer 上限 `<6.1.0`，而 TS7 不提供编程 API，两者无交集 |
+| `@typescript/native` | 7.0.2 | Apache-2.0 | **命令侧**：供 `tsc` 使用（Go 原生编译器） | 通过别名 `"@typescript/native": "npm:typescript@7.0.2"` 安装 |
+| `eslint` | 10.12.0 | MIT | JavaScript/TypeScript 静态检查（`npm run lint`） | 主规范强制的代码规范层。MIT、无原生编译 |
+| `typescript-eslint` | 8.71.1 | MIT | ESLint 的 TS 解析器与类型感知规则 | 与 eslint 配套。peer 上限 `<6.1.0`，故必须搭配上面的双编译器方案 |
+| `@eslint/js` | 10.12.0 | MIT | ESLint 官方推荐的 JS 规则集 | `eslint.config.mjs` 里 `js.configs.recommended` 的来源 |
+
+### 双编译器说明（读这段再改依赖）
+
+TypeScript 7.0.2 是 Go 原生编译器，**不提供编程 API**；而 typescript-eslint 的
+类型感知规则必须读编译器 AST。两者peer 上限无交集（`>=4.8.4 <6.1.0`），
+上游 issue #12518 已关闭为 "not planned"——修复在 TS 7.1 侧。
+
+因此 `package.json` 用 npm 别名做双安装：
+
+| 包名 | 实际指向 | 谁用它 | 命令 |
+|---|---|---|---|
+| `typescript` | `@typescript/typescript6@6.0.2` | API 消费者（typescript-eslint） | `npx tsc6 --version` → **6.0.3** |
+| `@typescript/native` | `typescript@7.0.2` | `tsc` 命令（typecheck、编辑器） | `npx tsc --version` → **7.0.2** |
+
+**两个版本号刻意不同，不是配置错乱。** 注意 `@typescript/typescript6` 声明
+6.0.2，但其依赖 `@typescript/old@^6` 实际解析到 6.0.3——记录以命令输出为准。
+
+**不要用 `--force` / `--legacy-peer-deps` 绕过**：那只是让 npm 跳过检查，
+缺失的 API 依然缺失，运行时仍会崩。
+
+**退出条件**：typescript-eslint 的 peer 上限覆盖 TS7 后，删掉两个别名，
+恢复 `"typescript": "^7.0.2"` 单条依赖，并删除 tsc6 相关脚本。
+核对命令：`node -e "console.log(require('typescript-eslint/package.json').peerDependencies.typescript)"`
 | `markdownlint-cli2` | 0.23.3 | MIT | Markdown 结构校验（`npm run lint:docs`） | 主规范指定的文档 lint 通道，MIT、无原生编译。实测拦下 2 处真实文档缺陷（表格列数缺失、表格被换行截断） |
 | `markdown-link-check` | 3.15.0 | MIT | 断链检查（**暂未接入**，见下方说明） | 主规范指定的断链通道。在本机网络下会把真实存在的链接判为死链，故只列为可选工具 |
 | `husky` | 9.1.7 | MIT | Git 钩子管理（`pre-commit` / `commit-msg`） | 提交门禁的落地方式。用现成工具而非手写 `.git/hooks`——手写的钩子不会被版本管理跟踪，换机器就失效 |

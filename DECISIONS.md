@@ -199,3 +199,45 @@
 - **授权边界**：属 `AGENTS.md` §7 灰名单，**已获裁决授权**，但仍须逐个评估——
   能证明结论已沉淀的才归档，产出一致的保留并标注。**禁止先删后报。**
 - **同类事项**：逆向脚本与产物，按「结论入文档、过程留归档」处理，不留在工作目录根部。
+
+### 判例五：TypeScript 7 与 ESLint 共存——官方双编译器（2026-10-09）
+
+- **决策**：`package.json` 用npm 别名做双安装。
+  `"typescript": "npm:@typescript/typescript6@6.0.2"`（API 消费者读这个）+
+  `"@typescript/native": "npm:typescript@7.0.2"`（`tsc` 命令解析到这个）。
+- **问题**：`typescript-eslint` 8 的 peer 上限是 `typescript >=4.8.4 <6.1.0`，
+  而本项目用 TypeScript 7.0.2 —— 无交集，`npm install` 直接报 ERESOLVE。
+- **根因**：TS 7 是 Go 原生编译器，**不提供编程 API**，而 typescript-eslint
+  的类型感知规则必须读编译器的 AST 与类型信息。上游 issue #12518 已被关闭为
+  "not planned"——修复在 TS 7.1 侧（稳定 API 至少还要数月）。
+- **被否决的替代方案**：
+  ① `--force` / `--legacy-peer-deps` —— **只是让 npm 跳过检查，缺失的 API 依然缺失**，
+  后续会在运行时崩（社区已复现 ESLint 读`Cjs` 属性时崩）；
+  ② 把 TypeScript 降到 6.x —— 能用，但放弃 TS7 的编译速度；
+  ③ 放弃 ESLint —— 97 处 any 持续无拦截。
+- **实测**：`npx tsc --version` = 7.0.2（原生），`npx tsc6 --version` = 6.0.3（API 侧）。
+  两个版本号**刻意不同**。注意 `@typescript/typescript6` 声明 6.0.2，
+  但它依赖 `@typescript/old@^6` 实际解析到 6.0.3——记录以命令输出为准。
+- **退出条件**：typescript-eslint 的 peer 上限覆盖 TS7 后，删掉别名，
+  恢复 `"typescript": "^7.0.2"` 单条依赖，删除 tsc6 相关脚本。
+  核对命令：`node -e "console.log(require('typescript-eslint/package.json').peerDependencies.typescript)"`
+- **同类事项**：遇到「工具的 peer 上限低于项目主版本」时，先查该工具的 issue
+  与官方迁移指南，多数有别名方案；**不要用 `--force` 当最终解**。
+
+### 判例六：存量 lint 问题用 warn + 阈值，不设error（2026-10-09）
+
+- **决策**：ESLint 的 `no-explicit-any` 与 `no-unused-vars` 设为 **warn**，
+  用 `--max-warnings 154` 卡住增量；纯卫生规则（eqeqeq / no-var /
+  prefer-const）保持 **error**。
+- **理由**：ESLint 首次运行暴露 183 项（97 any + 53 unused + 其他）。
+  若把any 设成 error，`verify` 与 CI 立刻永久红——而「让门禁常红」等于把门禁
+  关掉，主规范同样禁止这种做法。既不能抬高标准来通过，也不能让门禁失效，
+  因此分两步：存量可见可统计但不阻断，新增立即阻断。
+- **实测有效**：注入一处新 `any` 后 lint 立即 exit 1：
+  `✖ 155 problems (0 errors, 155 warnings)` + `too many warnings (maximum: 154)`。
+- **配套事实**：`--max-warnings` **只管 warnings 不管 errors**——实测 155 个 error 时，
+  `--max-warnings 155` 与 `154` 都仍 exit 1。所以存量降级必须靠规则设为 warn，
+  阈值参数替代不了。
+- **阈值数值的意义**：154 = 当前存量，**不是随手填的**。改动前先跑
+  `npx eslint src`看真实计数。每清理一批就要同步下调——这让「清理进度」
+  变成机器可判定的，而不是靠记性。
