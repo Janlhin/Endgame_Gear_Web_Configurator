@@ -49,7 +49,6 @@
 > XM1 **不支持 125Hz**（开关只有 3 档）。
 > 另：官网目录未单列 "XM1 White"，与 XM1 / XM1 RGB 共用同一工具与固件版本。
 
-
 ## 二、★ 版本规律（对协议演进判断极有用）
 
 - **XM2 与 OP1 系列严格配对**：同代产品固件与工具版本完全一致
@@ -114,13 +113,14 @@
 | — | **XM1 / XM1 RGB**（VID `0x22D4`） | 与 ① 同框架 | 1024B blob @16 | ✅ 读写（限 23 个实测确认字节） |
 
 > **两处旧判断已被推翻**（保留记录以免重犯）：
+>
 > 1. 第一轮判定「XM1 是无大报告、无 blob 的独立族」→ 第二轮实测推翻（见 `re/XM1_NOTES.md` 第 8 节）。
 > 2. 曾判定「8k 有线族只需补 PID 即可覆盖」→ 2026-10-09 推翻：读可复用，但
 >    **写命令不同**（8k `0x11` 整块写 vs 4k `0x14/0x15/0x16` 分块写），按键区与 V2 字段位置亦不同。
 > 3. 曾判定「XM1r / OP1we 沿用上述两族之一」→ 2026-10-09 推翻：
 >    **OP1we 属 ③**（PID `0x1962`，与 XM2we 同工具）；
 >    **XM1r 属 ④**（独立第四族，与 OP1 同平台，`0xFFA1` 接口页）。
-
+>
 > ⚠️ 第一轮我曾判定"XM1 是无大报告、无 blob 的独立族"——**已被第二轮实测推翻**，
 > 教训见 `re/XM1_NOTES.md` 第 8 节「方法论教训」。
 
@@ -177,9 +177,11 @@
 - **官网 `endgamegear.com` 对 curl 会返回 429 限流**，WebFetch 通道正常。
   官网站点基于 Shopify，产品页是 `/collections/all`，下载总页是 `/pages/downloads`。
 - **官方 CDN `img.endgamegear.com` 不限流，可直接 curl 下载**工具与固件：
-  ```
+
+  ```bash
   curl -L "https://img.endgamegear.com/downloads/endgame-gear-xm2-8k-configuration-tool.v1.12.exe" -o t.exe
   ```
+
 - 型号下载页 URL 规律：`/pages/<型号小写连字符>-downloads`，
   例：`/pages/xm2w-4k-v2-downloads`、`/pages/xm2we-downloads`。
 - 下载全部需同意 EULA（一个 PDF，全站共用），直接抓 CDN 链接不受此限制。

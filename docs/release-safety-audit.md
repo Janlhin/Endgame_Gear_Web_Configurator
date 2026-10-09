@@ -75,7 +75,7 @@
 
 新增 `re/test_write_gates.ts`（15 项，已接入 `npm test`）：
 
-```
+```text
 [1] WE 族：总闸为 false · writeRecord / writeCpiSlot / writePolling / writeDebounce 均在闸门处抛错
 [2] 8k：guard4k(true) 与 guard4k(false) 都拦截
 [3] 四个"推断出来的 PID" verified=0，四个已验证型号不被误伤

@@ -14,7 +14,7 @@
 
 GitHub 上明确支持 `ISSetupStream` 的开源工具。**不需要安装、不需要运行安装器**：
 
-```
+```text
 Unpacker.exe --list  "…\XM1 Configuration Software V1.09.exe"
   → Detected: ISSetupStream / Overlay start: 0x0014EA00 / Files: 5
     Setup.exe · ISSetup.dll · 0x0409.ini · XM1 Configuration Software.msi · Setup.ini
@@ -86,7 +86,7 @@ Unpacker.exe --recursive --max-depth 3 "…\XM1 Configuration Software V1.09.exe
 
 `0x40F7E0` 发送函数的错误处理：
 
-```
+```text
 HidD_SetFeature 失败 → GetLastError()
   ∈ { 0x15, 0x17, 0x1D, 0x57, 0x65B }  → Sleep(50) 重试
   最多 4 次（cmp eax,4 ; jl 循环）
@@ -124,7 +124,7 @@ HidD_SetFeature 失败 → GetLastError()
 
 ### ★ `0x40FB90` —— 1024B blob 大报告（关键发现）
 
-```
+```asm
 push 0x400                        ; blob = 1024 字节
 lea eax, [ebp-0x858] / push 0 / push eax
 call memset                       ; 清零 blob
@@ -447,7 +447,7 @@ UI 现在明确提示：XM1 仅识别型号，**不做任何读取或写入**，
 **操作**：用鼠标**实体按键**改回报率（用户说明：回报率**只能**用实体键改，改完灯效随之变化）。
 导出 blob 与上一份（6.7 节）逐字节比对：
 
-```
+```text
 b3 vs b4 :  0 处  (完全相同)
 ```
 
@@ -476,7 +476,7 @@ b3 vs b4 :  0 处  (完全相同)
 既然回报率不在 blob 里，就去找它存在哪。反汇编官方两处调用链
 （脚本 `re/upstream/xm1_single_byte.py`，可复现）：
 
-```
+```text
 读取事务（函数 0x418F80）
   call 0x40FA30   cmd 0x03  读 1 字节（返回码须 = 1）
   call 0x40FC80   cmd 0x07  读 1024B blob
@@ -519,7 +519,7 @@ b3 vs b4 :  0 处  (完全相同)
   `Surface Calibrate` + 三个 `msctls_trackbar32`（LOD Bar / Snap Bar / Tune Bar）
   - 回报率提示语：*"This value determins how often the mouse reports the data over USB."*
 - **Lights 页**：`Mode` `Speed` `Strength` + `WHEEL LED` `LOGO LED` `BOTTOM LED`
-  + `WHEEL COLOR` `LOGO COLOR` `BOTTOM COLOR` + `LED ON`
+  - `WHEEL COLOR` `LOGO COLOR` `BOTTOM COLOR` + `LED ON`
 - **CPI LED**：`CPI1 LED1..4` … `CPI4 LED1..4`（**每档 4 个 LED**，共 16 个控件）
 - **模板遗留**：`Enable XY` + `XY1/2/3 TEXT`（XY 独立输入框）、`Check DPI1/2/3`、
   `TITAN X/V/M MOUSE`、`Model Name` —— 证明这是**共用 OEM 模板**改造版，
@@ -577,7 +577,7 @@ b3 vs b4 :  0 处  (完全相同)
 
 ### 完整调用图（脚本 `re/upstream/xm1_dataflow2.py` 可复现）
 
-```
+```text
 读取事务 0x418F80   cmd 0x03 读单字节
                     cmd 0x07 读 blob（0x40FC80）
                     0x40E550  解析（缓冲区 → 对象）
@@ -643,7 +643,7 @@ b3 vs b4 :  0 处  (完全相同)
 
 ### 写入方案（待真机验证，尚未开放）
 
-```
+```text
 ① cmd 0x03 读单字节（唯一仍是黑盒的环节）
 ② 取真机读回的线上布局 1024B（本工具已有）
 ③ 只在我们已核实的偏移上打补丁（CPI/LOD/Ripple/激活档/启用位）
@@ -701,7 +701,7 @@ call 0x40F7E0 (SetFeature, 0x411) → Sleep(80) → GetFeature(64B) 确认
 
 `writeBlobXm1Echo()`（`src/main.ts`）复刻官方写事务三步：
 
-```
+```text
 ① cmd 0x03 握手（空载荷）
 ② cmd 0x08 写 blob：1040B data（不含 reportId）= 08 00 00 00 <blob[0]> 00 00 + 偏移15起 1024B
 ③ cmd 0x04 写单字节（值 = blob[0]）
@@ -848,6 +848,7 @@ XM1 则是 6 字节 `[启用][填充][X][Y]`，**没有这个字段**。
 而 XM1 的大报告头是 `0x8A0`（首字节 `0xA0`）——于是整条 blob 路径被静默排除。
 
 **正确做法**（第二轮才用上）：
+
 1. 先用 `FF 15 <IAT>` 找出**所有** `HidD_*` 调用点
 2. 对每个调用点**回溯到函数起点**，导出完整反汇编
 3. 用传输层函数（`SetFeature`/`GetFeature` 封装）作为锚点，**反查它们的调用者**

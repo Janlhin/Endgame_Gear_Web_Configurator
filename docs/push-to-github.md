@@ -1,10 +1,10 @@
 # 推到 GitHub 的收尾步骤（只差一步，需要你本人操作）
 
-仓库**已创建**（公开、空）：https://github.com/Janlhin/Endgame_Gear_Web_Configurator
+仓库**已创建**（公开、空）：<https://github.com/Janlhin/Endgame_Gear_Web_Configurator>
 
 推送被 GitHub 拒绝，原因只有一个：
 
-```
+```text
 refusing to allow an OAuth App to create or update workflow
 `.github/workflows/deploy.yml` without `workflow` scope
 ```

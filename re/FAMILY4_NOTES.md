@@ -15,7 +15,7 @@
 **提取方式**：Inno Setup 支持静默指定目录安装，装到临时目录后 `resources/app` 是
 **未打包的 JS 源码**（Angular + Electron，连 source map 都有）：
 
-```
+```batch
 ToolOP1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOICONS /DIR=<tmp>
 # 落地：<tmp>\EndgameGearConfigurationSoftware.exe  +  resources\app\main-es2015.js(.map)
 ```

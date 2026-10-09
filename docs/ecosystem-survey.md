@@ -1,3 +1,5 @@
+# 生态调研：官方组织与社区实现
+
 GitHub 上有个**官方组织 EndgameGear**，还挂着固件仓库——这很重要，先摸清它，再扫其他平台：
 查完了，GitHub + Codeberg / GitLab / Gitee 全扫了一遍。结果如下：
 

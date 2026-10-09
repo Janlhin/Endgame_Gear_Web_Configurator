@@ -105,7 +105,7 @@
   `HIDReport` / `HIDInputReportEvent` / `HID` / `Navigator.hid` 六个最小声明。
 - **被否决的替代方案**：装 devDependency `@types/w3c-web-hid`。
 - **理由**：本轮明确承诺"不引入新依赖"。这六个接口就是规范子集、形状取自
-  https://www.w3.org/TR/webhid/ ，不是自创；代价是引入了 `@types/w3c-web-hid` 之后可以删掉本文件。
+  <https://www.w3.org/TR/webhid/> ，不是自创；代价是引入了 `@types/w3c-web-hid` 之后可以删掉本文件。
   另外发现 TypeScript 的 `lib.dom.d.ts` **不含** WebHID —— 这也是 `strict` 下所有
   接 HIDDevice 的参数退化成隐式 any 的根因。
 - **顺带移除的绕过**：`src/main.ts` 里的 `(navigator as any).hid` 现在可以写成 `navigator.hid`。

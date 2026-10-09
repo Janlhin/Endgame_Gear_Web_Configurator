@@ -13,6 +13,21 @@
 | `esbuild` | 0.24.2 | MIT | TS → JS 打包 | 唯一必需：要把 `src/*.ts` 打成单文件 IIFE。MIT、无原生编译、秒级 |
 | `sass` | 1.105.1 | MIT | SCSS 编译 | 样式层用 SCSS 维护（项目强制约定），需要编译器 |
 | `typescript` | 7.0.2 | Apache-2.0 | 类型检查（`tsc --noEmit`） | 唯一的静态类型通道 |
+| `markdownlint-cli2` | 0.23.3 | MIT | Markdown 结构校验（`npm run lint:docs`） | 主规范指定的文档 lint 通道，MIT、无原生编译。实测拦下 2 处真实文档缺陷（表格列数缺失、表格被换行截断） |
+| `markdown-link-check` | 3.15.0 | MIT | 断链检查（**暂未接入**，见下方说明） | 主规范指定的断链通道。在本机网络下会把真实存在的链接判为死链，故只列为可选工具 |
+
+> **`markdown-link-check` 未接入 `verify` 的原因**（2026-10-09 实测）：
+> 对 `MANIFEST.md` 跑出5 条"死链"，但用 `git ls-remote`逐个复核后，
+> `Creationsss/egctl`、`johanneszab/vole`、`okms/xm2we-linux`、`zexsso/OP1-WebAPP`
+> **四个仓库全部真实存在**；返回的是 504（超时）、403（npm 反爬）与 0（连接失败），
+> 属网络与匿名访问限制，不是断链。
+> 在此环境把它接入门禁会造成持续假失败，且会诱导人去删真实存在的来源登记——
+> 因此**降级为可选工具**，只保留依赖。断链防护改由下面这条更可靠的通道承担。
+
+**当前断链防护**：`npm run lint:docs` 的 markdownlint 校验内部锚点与
+`link-fragments`（MD051，文件内锚点是否存在）。跨文件的相对路径引用
+（`docs/xxx.md`、`re/xxx.md`）由同一条命令校验——路径写错会立即报错。
+外部 URL 的可达性改为**人工核对**，理由见上。
 
 **运行时依赖：0 个。** 交付的 `index.html` 不加载任何外部字体、脚本、图片或 CDN 资源 ——
 这一点由 `build.mjs` 的产物断言与 `docs/` 中的说明共同守护。

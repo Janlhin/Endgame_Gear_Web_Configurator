@@ -155,6 +155,7 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 之后访问 `https://<你的用户名>.github.io/Endgame_Gear_Web_Configurator/`。GitHub Pages 自动是 HTTPS，满足 WebHID 的安全上下文要求。
 
 > **部署要点**（本项目已逐项核对过，详见 [`docs/ui-port-feasibility.md`](docs/ui-port-feasibility.md)）：
+>
 > - 产物**没有任何绝对路径**（也没有 `<base>`），所以放在项目页子路径 `…/Endgame_Gear_Web_Configurator/` 下不会破。
 >   对照：同类站点 `op1w.vercel.app` 用的是 `/assets/…` 绝对路径，同一份构建搬到项目页子路径会 404。
 > - 仓库根已有 **`.nojekyll`**：分支发布默认会跑 Jekyll，而它会排除 `_` 开头的文件（如 `scss/_tokens.scss`），
