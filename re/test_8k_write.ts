@@ -59,7 +59,7 @@ ok(PID_8K[0x1966] !== undefined && PID_8K[0x1964] !== undefined
 ok(is8k(0x1966) && is8k(0x1978), "is8k() 正确判定");
 ok(!is8k(0x1968) && !is8k(0x1970), "4k 的 PID 不被判为 8k");
 ok(MOUSE_PIDS[0x1966][2] !== 0, "8k 条目不再是 verified=0（已有真实写路径）");
-ok(PID_FAMILY4[0x1903] && PID_FAMILY4[0x1910] && isFamily4(0x1905), "第四族 PID 表与判定");
+ok(PID_FAMILY4[0x1903] !== undefined && PID_FAMILY4[0x1910] !== undefined && isFamily4(0x1905), "第四族 PID 表与判定");
 ok(!isFamily4(0x1966) && !isFamily4(0x1968), "第四族判定不误伤其它族");
 
 console.log("\n[2] 只改该改的字节（核心性质）");

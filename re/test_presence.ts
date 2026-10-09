@@ -27,14 +27,15 @@ const ALL_CARDS = ["cardInfo", "cardSensor", "cardPerf", "cardBtns", "cardTools"
 console.log("[1] resetToInitial：状态与界面都回到「未连接」");
 {
   /* 造出「上一台设备」的全部残留 —— 复位必须把它清干净 */
-  S.dev = { productName: "XM2w 4k v2", vendorId: 0x3367, productId: 0x1970, opened: true };
+  S.dev = { productName: "XM2w 4k v2", vendorId: 0x3367, productId: 0x1970, opened: true } as HIDDevice;
   S.mouseName = "XM2w 4k v2"; S.gen = 2;
   S.eightK = true; S.xm1 = false; S.family4 = false; S.wired = true;
   S.unverified = true; S.unknownModel = true;
   S.blob = new Uint8Array(1024); S.lastFrame = new Uint8Array(1041); S.frameAligned = true;
   S.dongleFw = "1.2"; S.mouseFw = "2.3"; S.battery = 88;
   S.stage.cpi[0][1] = 1600; S.stage.levels = 2; S.stage.active = 3;
-  S.xm1LastRead = new Uint8Array(1024); S.xm1Armed = true; S.xm1Edit = { stages: [] };
+  S.xm1LastRead = new Uint8Array(1024); S.xm1Armed = true;
+  S.xm1Edit = { active: 1, lodRaw: 0, lodMM: 1, ripple: 0, stages: [] };
   S.xm1Snaps.push({ at: 1, label: "snap", blob: new Uint8Array(1) });
   S.lastFail = true;
 
@@ -55,11 +56,11 @@ console.log("[1] resetToInitial：状态与界面都回到「未连接」");
   ok(S.mouseName === "—" && S.gen === null, "型号 / 代数复位");
   ok(!S.eightK && !S.xm1 && !S.family4 && !S.wired && !S.unverified && !S.unknownModel, "族标志位全部复位");
   ok(S.blob === null, "S.blob 清空（guard4k 据此判断「读到过配置」，不清会让写入闸门误放行）");
-  ok(S.lastFrame === null && S.frameAligned === false, "8k 的帧缓存清空");
+  ok(S.lastFrame === null && !S.frameAligned, "8k 的帧缓存清空");
   ok(S.dongleFw === "—" && S.mouseFw === "—" && S.battery === null, "固件 / 电量复位");
-  ok(S.xm1LastRead === null && S.xm1Armed === false && S.xm1Edit === null, "XM1 回声写回的凭据清空");
+  ok(S.xm1LastRead === null && !S.xm1Armed && S.xm1Edit === null, "XM1 回声写回的凭据清空");
   ok(S.xm1Snaps.length === 0, "XM1 快照清空");
-  ok(S.lastFail === false, "传输层失败标志复位");
+  ok(!S.lastFail, "传输层失败标志复位");
   ok(S.stage.cpi[0][1] === 400 && S.stage.levels === 4 && S.stage.active === 1,
      "界面模型回到出厂默认（否则会把旧值当成设备当前值下发）");
 

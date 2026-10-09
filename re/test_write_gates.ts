@@ -68,7 +68,7 @@ console.log("\n[3] 实验许可必须随连接收回");
 {
   S.betaArmed = true;
   resetToInitial("devGone", "test");
-  ok(S.betaArmed === false, "resetToInitial 清掉 betaArmed");
+  ok(!S.betaArmed, "resetToInitial 清掉 betaArmed");
 }
 
 console.log("\n[4] 只按「同工具同族」推断出来的 PID 必须标未验证");
@@ -173,7 +173,7 @@ console.log("\n[5] XM1 发送闸门：非常规报文必须**真的不发送**�
   blocked = await fire(send, 0xA0, bad);
   ok(blocked !== "", "改未核实字段被拒绝", blocked || "未抛异常");
   ok(wireSends === 0, "★ 改未核实字段的报文**未上 wire**", `wireSends=${wireSends}`);
-  ok(S.xm1Armed === false, "拦截后自动解 armed", `armed=${S.xm1Armed}`);
+  ok(!S.xm1Armed, "拦截后自动解 armed", `armed=${S.xm1Armed}`);
 
   // 5) arm 后改一个**已核实字段**（0x057 Ripple，在 editable 集合内）→ 放行
   S.xm1Armed = true;

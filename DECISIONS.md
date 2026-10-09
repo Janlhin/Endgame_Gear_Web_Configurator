@@ -386,3 +386,32 @@ typescript-eslint 的 peer 上限覆盖 TS7 后，删掉两个别名、恢复
   测试专用的宽松类型能否通过），或单独一个 tsconfig.eslint.json 覆盖。
 - **影响范围**：T-108（覆盖率）关闭的原因之一也与本条相关——
   测试体系与 tsc 是两套割裂的通道。
+
+### 判例十三：tsc 覆盖 re/ 落地——三个新发现（2026-10-09）
+
+- **结论**：判例十二的待办已完成。`tsconfig.json` 的 `include` 扩到
+  `["src/**/*.ts", "re/**/*.ts"]` 并加 `"types": ["node"]`，
+  re/ 下 9 个测试文件从此受 `npm run check` 类型检查，`verify` 全绿。
+- **落地暴露的 10 处真实类型问题**（探测时 tsconfig 只扩 include、不加 types）：
+  ① 13 处 `process`/`node:fs`/`node:path`/`node:url` 找不到（见发现一）；
+  ② 5 处 TS2367（见发现二）；③ 1 处 TS2345——`PID_FAMILY4` 是
+  `Record<number, string>`，测试用 truthy 判断得了 `string | boolean`，改为
+  `!== undefined`；④ 2 处 TS7006——回调参数 `(v)` 补 `: number`；
+  ⑤ 2 处 TS2740/TS2739——`S.dev` 桩补 `as HIDDevice`、`S.xm1Edit` 桩补全字段。
+- **发现一：TS 7（Go 原生编译器）不自动包含 `node_modules/@types`**。
+  不写 `types` 字段时，即便 `@types/node` 已物理存在，tsc 仍报 13 处
+  `Cannot find name 'process'`。必须显式 `"types": ["node"]`。
+  这与 TS 6「默认自动包含 @types」的行为不同（实测：两编译器在显式 types 后
+  结果一致，但 TS7 的默认是收紧的）。凡 TS7 项目接 Node 类型，都需显式声明。
+- **发现二：TS2367 是 tsc 控制流分析的固有局限，不是测试 bug**。
+  `const S` 的属性在 `S.flag = true` 后被窄化为字面量 `true`，而跨函数 /
+  跨异步的全局状态变更（如 `resetToInitial()` 内部改 `S.frameAligned`）
+  tsc 追踪不到，于是后面的 `S.flag === false` 被误判为「恒假」。
+  最小复现证明 tsc 6 与 tsc 7 都报。**断言语义是对的**（运行时确实复位），
+  修复是解窄化：boolean 字段断言改用 `!S.flag`（等价且不触发 TS2367）。
+  判定「是否真 bug」的方法：确认被调函数体内确实改了该字段。
+- **发现三：`@types/node` 此前只是 commitlint 的传递依赖，不显式声明会静默失效**。
+  已提升为显式 devDependency `@types/node@^22`（匹配本机 Node 22）。
+  传递依赖可被上游移除或改版本，而 `types:["node"]` 一旦声明就依赖它存在。
+- **影响范围**：re/ 下 9 个测试文件从此受类型检查；将来改测试时的拼写类错误
+  （判例十二记录的那次 import 路径写错）会在 `npm run check` 阶段就被拦住。

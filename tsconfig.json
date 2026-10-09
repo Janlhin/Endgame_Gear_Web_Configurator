@@ -22,7 +22,17 @@
 
     "noEmit": true,
     "skipLibCheck": true,
-    "allowJs": false
+    "allowJs": false,
+
+    /* ★ types:["node"]（2026-10-09，判例十二落地）——
+       测试文件 re/test_*.ts 用 process / node:fs / node:path / node:url，
+       需要 Node 类型。但 TS 7（Go 原生编译器）**不自动包含** node_modules/@types，
+       必须显式列出（实测：不写此字段时 process 类报 13 处 TS2591）。
+       代价：types 一旦非空即**排除**其他 @types 包（debug/estree 等间接依赖），
+       src 与 re 均无此需求，故无副作用（已实测 src + types:['node'] = 0 错误）。
+       注意 @types/node 是显式 devDependency（^22，匹配本机 Node 22）——
+       它此前只是 commitlint 的传递依赖，不显式声明会在 commitlint 移除它时静默失效。 */
+    "types": ["node"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "re/**/*.ts"]
 }
