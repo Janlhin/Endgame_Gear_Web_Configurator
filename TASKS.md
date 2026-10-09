@@ -27,6 +27,65 @@
 
 ---
 
+## 搁置与阻塞
+
+| 任务 | 状态 | 说明 |
+|---|---|---|
+| T-106 | **已搁置**（2026-10-09） | 用户决定「不弄 GitHub 了，弄项目先」。推送需 `workflow` scope 授权，详见下方记录。搁置不影响任何其他任务——CI 是判定通道，但本地 verify 已能拦住全部实质缺陷 |
+
+### T-106 推送受阻记录（2026-10-09，已搁置）
+
+**已解除的阻塞**：判例一要求推送前需显式确认——已确认（用户直接给出推送命令）。
+
+**遇到的阻塞**：`git push -u origin main` 被 GitHub 拒绝：
+
+```text
+! [remote rejected] main -> main (refusing to allow an OAuth App to create
+  or update workflow `.github/workflows/deploy.yml` without `workflow` scope)
+```
+
+**性质**：凭据授权限制，**不是代码或配置问题**。当前令牌缺 `workflow` scope，
+而 `.github/workflows/` 下的 `verify.yml` 与 `deploy.yml` 均需该权限。
+
+**推送前已完成的检查**（全部通过）：
+
+- 远端可达（HTTP 200），确认仓库存在但为空，从未推送过
+- 工作树干净
+- 无大文件（>1MB）被追踪
+- 无 `*.exe` / `*.bin` / `*.zip` 等第三方二进制泄露（`re/upstream/*.exe` 已被 .gitignore 正确排除）
+- 无凭据文件（唯一命中的 `scss/_tokens.scss` 是样式变量，非敏感）
+
+**失败的替代方案及原因**：曾考虑「排除 workflow 文件先推代码」——
+被否决，因为那会让 CI 与 Pages 部署**完全失效**，且本地工作树需临时缺失
+workflow 文件，属于用更大的问题换小问题。
+
+**解除方式**（若将来重启）：给令牌加 `workflow` scope（重新授权 OAuth App，
+或改用 Personal Access Token），之后重试推送。**此项必须由人操作。**
+步骤见 `docs/推送前需授权.md`。
+
+**推成功后的连带效应**：`deploy.yml` 对 `push: main` 自动触发 Pages，**推送即上线**。
+
+**可执行项统计**：T-104、T-105、T-107～T-111、S-101～S-103 共 **12 项可执行**
+（T-101/102/103 已完成，T-106 已搁置），满足持续推进方案「队列中始终 ≥ 3 项可执行」的要求。**无真阻塞。**
+
+---
+
+## 已完成任务的实测结论（供后续任务参考）
+
+### T-101 markdownlint 接入的三条工具行为（踩过的坑）
+
+1. **`ignores` 不可用于排除**——它与默认 glob 求交集，写成排除式会把匹配文件全部过滤掉
+   （`"ignores": ["node_modules/**"]` → `Linting: 0 files`）。改用 `globs` 正向列举。
+2. **`overrides` 对 globs 匹配到的文件不生效**（0.23.3 实测）——改用目录级
+   `.markdownlint.jsonc`。**注意它是替换而非合并**，全局豁免项须在两处各声明一遍。
+3. **`markdown-link-check` 在本机网络下不可用作门禁**——对 MANIFEST.md 报5 条死链，
+   但 `git ls-remote` 复核确认四个仓库全部真实存在（返回 504/403/0）。
+   接入会造成持续假失败，且会诱导人删掉真实存在的来源登记。
+
+这三条对后续接入 ESLint / Stylelint 有直接参考价值：**先小步验证工具行为，再接进门禁**。
+
+---
+
 ## 排序说明
 
 按持续推进方案 §排序规则：**可执行 > 可逆性 > 依赖数 > 价值**。
@@ -43,7 +102,7 @@
 | T-103 | `any` 有 lint 拦截 | 加 ESLint flat config + `typescript-eslint`，`@typescript-eslint/no-explicit-any` 设为 `error` | 无 | 高 | `npm run lint` 对当前 82 处 `any` 报错（先配置不修）；`npm run verify` 其余段全绿 | ✅ **完成**（`3cef833`）。**解决了 TS7 冲突**：typescript-eslint 8 peer 上限 <6.1.0，本项目用 TS 7.0.2（Go 原生编译器，无编程 API）→ 采用官方双编译器方案（`typescript` → `@typescript/typescript6@6.0.2` 供工具读 API，`@typescript/native` → `typescript@7.0.2` 供 tsc）。实测 tsc=7.0.2 / tsc6=6.0.3。**实测 97 处 any**（比 grep 的 84 处更全，能识别 `<any>`/`any[]`）。规则分级：any 与 unused-vars 设 warn（直接设 error 会让 CI 永久红＝把门禁关掉），阈值 `--max-warnings 154` 拦截新增——**已实证注入新 any 后 lint 立即 exit 1** |
 | T-104 | 样式硬编码有拦截 | 加 Stylelint + `stylelint-config-standard-scss`，含 `color-no-hex`（`_tokens.scss` 走 overrides 放行） | 无 | 高 | `npm run stylelint` 通过；故意在业务 SCSS 写一个字面量颜色，该命令必须失败 | 待办 |
 | T-105 | esbuild 漏洞有结论 | 单独提交升级 esbuild 0.24.2 → 0.28.x，跑完整 verify 确认产物仍零外部引用 | 无 | 中 | `npm audit` 无moderate；`npm run verify` 全绿；产物外部引用计数仍为 0；`cardChecklist` canary 仍命中 | 待办 |
-| T-106 | 首次获得 CI 权威结论 | 推送 85 个提交到 origin，观察首次 CI 运行 | **凭据授权**：OAuth App 令牌缺 `workflow` scope（2026-10-09 推送被拒，见下方记录） | **低** | `verify` 与 `ui` 两个 job 在GitHub Actions 上均为绿；产物 canary 通过 | 被阻塞（授权中） |
+| T-106 | 首次获得 CI 权威结论 | 推送 85 个提交到 origin，观察首次 CI 运行 | **凭据授权**：OAuth App 令牌缺 `workflow` scope（2026-10-09 推送被拒，见下方记录） | **低** | `verify` 与 `ui` 两个 job 在GitHub Actions 上均为绿；产物 canary 通过 | **已搁置**（2026-10-09，用户决定先做项目） |
 | T-107 | 文档与代码一致性有自动判据 | 加 `docs:sync` 生成脚本（从 `package.json` / `tsconfig.json` 生成文档中的脚本名与依赖表），接 `git diff --exit-code` | T-101 | 中 | 故意改 `package.json` 里一个脚本名，`npm run verify` 必须失败 | 待办 |
 | T-108 | 有覆盖率基线 | 引入覆盖率计量（c8 或 `node --experimental-test-coverage`），**只记录当前基线数字，不设阈值** | 无 | 中 | `npm run verify` 输出覆盖率数值；基线写入 `docs/`。**阈值待有数据后另行提案**（延续既有判例「测试框架暂不迁移到 Vitest」） | 待办 |
 | T-109 | 协议边界不再是 `any` | 收敛 `src/connect.ts`（6）、`src/device-8k.ts`（3）、`src/device-xm1.ts`（1）、`src/blob.ts`（1）。**`src/diag.ts` 及其他不动**（判例三） | T-103 ✅ | 中 | 该四文件 ESLint `no-explicit-any` 计数为 0；`--max-warnings` 下调对应数值；`npm run verify` 全绿；**`re/test_write_gates.ts` 仍全绿（写入闸门不得被削弱）** | ✅ **完成**（`50b5c3d`）。**any 97 → 85**，四文件归零且 `no-explicit-any` 在这四处升级为 **error**。做法：state.ts 新增 `Stage` / `Xm1Edit` / `Xm1Stage` / `StageButton` / `MinutesOrOff` 五个接口，取代散落的 any；`raw`/`unknown`/`unk7` 作为**安全机制载体**显式声明（删掉等于拆掉安全网）。类型通道当场抓出 3 个真实问题（详见下） |
