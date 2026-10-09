@@ -47,3 +47,10 @@ re/upstream/*.css
 re/upstream/op1web_*.ts
 re/upstream/eggweb_protocol.js
 re/upstream/xm2we_util_main.c
+
+# esbuild 生成的 sourcemap（re/run_test.mjs 开 sourcemap 时会产生）
+re/.test_*.mjs.map
+
+# 覆盖率工具的输出目录（c8 / nyc）
+coverage/
+.nyc_output/

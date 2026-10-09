@@ -1,0 +1,56 @@
+build: 接入 knip 做死代码自动检测，并记录首份报告的结论
+
+T-110。判据：`npm run knip` 可执行并输出报告；结论写入 DECISIONS.md。
+
+## 为什么需要它
+
+ESLint 的 `no-unused-vars` 只能看**单个文件内**的未使用变量，查不出
+「整个文件/某个导出没人用」。T-111那 49 处是逐个人工核实出来的，
+而「导出但无人 import」正是重构残留最典型的信号。
+
+## ★ 配置要点：裸跑的结果几乎全是误报
+
+首次裸跑 `npx knip` 报出 14 个「未使用文件」——**里面 11 个是测试文件、
+4 个是 SCSS**，没有一个是真死代码。原因是本项目的入口不止 src/main.ts：
+  · re/test_*.ts 由 re/run_test.mjs 用 ENTRIES 数组**动态 import**，
+    knip 的静态分析看不见；
+  · scss/*.scss 由 build.mjs 里的 sass.compile 加载，不是 TS import。
+
+配置声明这些入口后，误报归零，报告只剩 51 个未使用导出。
+
+**一个满是误报的报告等于没有报告** —— 这是本次最重要的一条经验。
+
+## 两个环境坑
+
+1. **knip 只认 knip.json[c] / knip.(js|ts) / knip.config.(js|ts)**，
+   **不认 .mjs**（实测写成 knip.config.mjs 会被完全忽略，等于裸跑无配置）。
+   与 Stylelint 的要求一致。
+2. 配置字段名不能凭记忆写：写 `rules: { files: "unused files" }` 与
+   `includeDependencies` / `reporters` 都被 schema 拒绝
+   （ERROR: Invalid input）。正确字段读自 node_modules/knip/schema.json。
+   rules 的值是 `"error" | "warn" | "off"`，不是 `"unused files"` 这类描述。
+
+## 首份报告的结论（写入 DECISIONS.md）
+
+51 个未使用导出里，**大部分是误报**——knip 只看 TS import 关系，
+看不到 index.html 里通过事件绑定/字符串调用的那些。已抽样核实：
+`transact` 在 device-4k.ts 与 xm2we.ts 有真实调用；`isSafeToOpen` /
+`openGuarded` 在 xm2we-ui.ts 有调用。
+
+**确认无人调用的**（已记入 T-111 待处置）：
+  confirmBeta / armBeta      —— 写入闸门确认框（可能是有意未接线）
+  pollAck8k                  —— 8k STORE 的 ACK 轮询
+  fillSelect                 —— render.ts 的下拉填充
+  fwStr                      —— session.ts 的固件版本格式化
+
+⚠️ 这批**不作为门禁**（rules.exports 设为 warn），
+   因为误报率还高，加进 verify 只会诱导人忽略整个报告。
+   等 T-111 逐项核实完、误报清零后再考虑升为 error。
+
+## 顺带修 .gitignore 的真实缺口
+
+本轮实验（给 run_test.mjs 加 sourcemap 试覆盖率）产生了两类文件，
+发现 .gitignore 都没覆盖：re/.test_*.mjs.map 与 coverage/。
+已补齐——否则一旦有人试覆盖率就会误提交几十个文件。
+
+验证：npm run verify 九段全绿；npm run knip 退出码 0 且输出无配置冗余提示。
