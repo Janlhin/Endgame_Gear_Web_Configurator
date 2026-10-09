@@ -465,3 +465,42 @@ typescript-eslint 的 peer 上限覆盖 TS7 后，删掉两个别名、恢复
 - **影响范围**：任何依赖「某工具是否可用」的判断。本项目已有同类经验——
   判例三里 `re/` 下脚本因路径写错而被判「未接线」，靠跨文件引用检查才分清
   「残留」与「漏接线」。
+
+### 判例十六：授权「看起来做了」可能刷在另一套凭据上（2026-10-09）
+
+- **由来**：推送被拒于 `without workflow scope`。用户执行了
+  `gh auth refresh -s workflow` 并在浏览器完成授权，但重推仍以**逐字相同**的
+  理由被拒。表面看是「授权无效」，实际是**刷错了对象**。
+- **根因**：本机存在**两套互不相通的 GitHub 凭据**（Windows 凭据管理器）。
+  一条是 `git:https://Janlhin@github.com` —— **`git push` 实际用的就是这条**
+  （`gho_`，实测有效，缺 `workflow`）；另一条是 `gh:github.com:Janlhin` ——
+  **gh CLI 自己**用的（`gh auth refresh` 刷的正是这条）。
+  `git config credential.helper` = `helper-selector` + `git-credential-wincred.exe`，
+  所以 push 走 wincred；而 `gh` 用自己的 keyring 条目。**两者永不相通。**
+- **为什么它特别容易骗人**：`gh auth status` 与 `gh api` 都能正常返回、
+  看起来「已登录、授权正常」，而 push 依然失败。**若只查 `gh` 侧就下结论，
+  会得出「授权流程有 bug」的错误判断。**
+- **正确排查法**：`cmdkey /list` 看有哪些条目，再用
+  `git-credential-wincred.exe get`（喂 `protocol=https` + `host=github.com`）
+  取出 **git 真正会用的那条**，验证其有效性（`/user`）与权限（`X-OAuth-Scopes`）。
+  **要查的是「消费者实际用的那一份」，不是「生产者那一份」。**
+- **处置**：删除旧的 `git:` 凭据，让 git 回落到 `gh` 已授权的令牌
+  （`cmdkey /delete:git:https://Janlhin@github.com`）；或把带 `workflow` 的
+  令牌直接写进 remote URL（推完换回）。
+- **影响范围**：任何涉及 git / gh / IDE / GCM 多客户端的场景。判例十五是它的
+  近亲——都是「你以为你检查的那个东西，不是实际起作用的那个」。
+
+### 判例十七：机器上有多个同款工具副本时，「PATH 里找不到」不等于「没装」（2026-10-09）
+
+- **事实**：本机有两个 `gh`：`C:\Program Files\GitHub CLI\gh.exe`（2.102.0，winget）
+  与 `C:\Users\Janlhin\.workbuddy\binaries\gh\bin\gh.exe`（2.88.1，PortableGit 自带）；
+  全局 `credential.https://github.com.helper` 指向**后者**。
+  而 `where gh` 报「无法找到文件」——**两个都不在 PATH 里**。
+- **代价**：我据此先后写下「`gh` 未安装」，进而否决了 `gh auth refresh` 路线、
+  建议新建一个不必要的 PAT，并把错误结论写进了三份文档。
+- **规则**：判断工具是否存在时，**至少查三条渠道**——
+  ① `Get-Command` / `where`；② 常见安装路径与配置里引用的绝对路径；
+  ③ 包管理器清单（`winget list` / `npm ls -g`）。
+  尤其当该判断会**否决一条已知可行路线**时。
+- **与判例十五的关系**：十五说「单渠道结论要跨渠道复核」，本条给出具体的
+  三渠道清单——**环境类判断（装没装、PATH 有没有）尤其吃假阴性**。

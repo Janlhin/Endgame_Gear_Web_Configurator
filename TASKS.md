@@ -65,18 +65,26 @@ workflow 文件，属于用更大的问题换小问题。
 
 **2026-10-09 第二次尝试（同日，用户指令「推」）**：错误**逐字相同**，实测结论更新——
 
-- 排除偶发解释（令牌已改 / 网络抖动）：两次拒绝原因完全一致。
+- **★ 根因已确诊（2026-10-09 晚，第三轮排查）**：本机存在**两套互不相通的
+  GitHub 凭据**，用户完成的 `gh auth refresh` **刷错了对象**——
+  `git:https://Janlhin@github.com` 是 **`git push` 实际用的那条**
+  （`gho_` 开头、实测有效、**缺 `workflow`**）；
+  `gh:github.com:Janlhin` 是 **gh CLI 自己**用的（scope `gist, read:org, repo`）。
+  由于 `credential.helper` = `helper-selector` + `git-credential-wincred.exe`，
+  push 走 wincred，**永远取不到 gh 那条已刷新的令牌**。
+  诊断手法：`cmdkey /list` 列条目 → `git-credential-wincred.exe get`
+  取出 git 真正会用的那条 → `/user` 验有效性 + `X-OAuth-Scopes` 验权限。
+  **教训：要看「消费者实际用的那一份」，不是「生产者那一份」。**
 - **⚠️ 更正本轮早先的误判**：先前记「本机未安装 `gh` CLI」**不成立**——
-  `gh` **已安装**（v2.102.0，winget，`C:\Program Files\GitHub CLI\gh.exe`），
-  只是**不在 Git Bash 的 PATH 里**，而检测在 bash 中做。PowerShell 可正常调用。
-- **令牌 scope 实测**（`gh api -X GET user -i` 读 `X-OAuth-Scopes`）：
-  `gist, read:org, repo` —— **确实缺 `workflow`**，这是被拒的直接原因，
-  属数据侧证据，非推测。
-- 远端经 `git ls-remote origin` 复核为**零对象**，两次拒绝均发生在传输完成前，
+  实测有**两个 gh**（`C:\Program Files\GitHub CLI\gh.exe` 2.102.0、
+  PortableGit 自带 2.88.1），只是**都不在 Git Bash 的 PATH 里**，
+  `where gh` 报「无法找到文件」，故 bash 检测得到的是**假阴性**。
+- **解除方式**（须人操作，见 `docs/推送前需授权.md`）：
+  ① 让 `gh` 侧令牌先拿到 `workflow`；② 删除 wincred 里的旧 `git:` 凭据，
+  让 git 回落到 gh 已授权的令牌；③ 重推。备选：把带 `workflow` 的令牌
+  直接写进 remote URL（推完必须换回，否则令牌留在 `.git/config`）。
+- 远端经 `git ls-remote origin` 复核为**零对象**，三次拒绝均发生在传输完成前，
   **未污染远端**——可放心重试，不会留下半推送状态。
-- 待推送提交数 119；工作树干净；体检全过（大文件 / 第三方二进制 / 凭据 三项均为空）。
-- 阻塞性质不变：**凭据授权，非代码或配置问题**，须人经浏览器完成。
-  `gh auth refresh -s workflow` 已启动设备码流程，**待用户在浏览器授权**。
 
 **推成功后的连带效应**：`deploy.yml` 对 `push: main` 自动触发 Pages，**推送即上线**。
 
