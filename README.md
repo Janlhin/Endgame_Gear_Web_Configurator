@@ -122,7 +122,7 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 
 Then visit `https://<your-username>.github.io/Endgame_Gear_Web_Configurator/`. GitHub Pages is HTTPS by default, which satisfies WebHID's secure-context requirement.
 
-> **Deployment notes** (each item verified for this project; see [`docs/ui-port-feasibility.md`](docs/ui-port-feasibility.md)):
+> **Deployment notes** (each item verified for this project; the original feasibility analysis lives in git history — `docs/ui-port-feasibility.md`, removed 2026-10-11):
 >
 > - The artifact contains **no absolute paths** (and no `<base>`), so placing it under a project-page subpath `…/Endgame_Gear_Web_Configurator/` does not break. For comparison: a similar site, `op1w.vercel.app`, uses `/assets/…` absolute paths, so the same build moved to a project-page subpath would 404.
 > - The repo root already has **`.nojekyll`**: branch publishing runs Jekyll by default, and Jekyll excludes files starting with `_` (such as `scss/_tokens.scss`) — worse, **if the Jekyll build fails, the whole site 404s**. This project only needs two built HTML files hosted.
@@ -203,7 +203,7 @@ Clicking "Export test data packet (.json)" in the tool gives you all of it in on
 
 This project is released under **GPL-3.0-or-later** (see `LICENSE`). You are free to use, modify and redistribute it, and any derivative distribution based on this code must also be open-sourced under GPL-3.
 
-Third-party material: `op1web_PROTOCOL.md` (MIT © zexsso) and `eggweb_protocol.js` (**AGPL-3** © qsxcv) collected under `re/upstream/` are retained as research archive only and take no part in the build; `docs/community-code-scan.md` holds the full community scan and compliance conclusions. Protocol facts themselves are not copyrightable, but please respect each upstream project's license terms.
+Third-party material: `op1web_PROTOCOL.md` (MIT © zexsso) and `eggweb_protocol.js` (**AGPL-3** © qsxcv) collected under `re/upstream/` are retained as research archive only and take no part in the build; `MANIFEST.md` holds the compliance conclusions, and the full community scan lives in git history (`docs/community-code-scan.md`, removed 2026-10-11). Protocol facts themselves are not copyrightable, but please respect each upstream project's license terms.
 
 ## Changelog
 
@@ -211,7 +211,7 @@ See **[CHANGELOG.md](CHANGELOG.md)** (since v1.3).
 
 ## Roadmap
 
-The mid-term campaign plan (official repo reconnaissance → wired protocol reverse-engineering → whole-line web driver → wrap-up) is in **[TODO.md](TODO.md)** (#8–#12).
+The task queue with dependencies and completion status lives in **[TASKS.md](TASKS.md)**.
 
 ### Support status
 
@@ -239,8 +239,8 @@ The mid-term campaign plan (official repo reconnaissance → wired protocol reve
 3. **Button remapping UI** — the 4k family's protocol layer is implemented, the editor is missing
 4. **XM1 lighting / key mapping / Angle Snap / Smoothing** — doable once located by differential analysis
 5. **More languages** — add an entry file under `src/i18n/` (following the 189 keys in `de.ts`), import it into `I18N` in `src/i18n.ts`, add the language tag mapping in `normalizeLang()`, then add one entry each to the language dropdown in `index.template.html` and to `STAGE_COLORS`/`BTN_NAMES` in `main.ts`. `npm run check:i18n` validates each site individually — PRs welcome
-6. **Deploy to GitHub Pages + request protocol documentation from the vendor** — see `docs/email-to-endgamegear.md`
+6. **Deploy to GitHub Pages + request protocol documentation from the vendor** (draft email in git history — `docs/email-to-endgamegear.md`, removed 2026-10-11)
 
 > ✅ Done (2026-10-09): post-write read-back verification for the 4k family; **independent XY CPI confirmed on real hardware**
 
-Detailed tasks, dependencies and completion status: **[TODO.md](TODO.md)**.
+Detailed tasks, dependencies and completion status: **[TASKS.md](TASKS.md)**.

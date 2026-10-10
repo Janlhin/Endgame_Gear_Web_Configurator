@@ -78,7 +78,7 @@ TypeScript 7.0.2 是 Go 原生编译器，**不提供编程 API**；而 typescri
 
 > **合规口径**：AGPL 源码与本项目（GPL-3）不兼容，一律**只取协议事实**
 > （命令码、偏移、枚举值——不受版权保护），实现方式全部自写。
-> 完整清单与许可证判定见 `docs/community-code-scan.md`。
+> 完整清单与许可证判定见 git 历史（`docs/community-code-scan.md`，2026-10-11 删除，见 DECISIONS）；上表即现行结论。
 
 ## 三、厂商二进制（**不入库**）
 

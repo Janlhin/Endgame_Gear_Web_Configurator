@@ -2,7 +2,7 @@
 
 > **这里只列"能重新拿到的东西"** —— 二进制与第三方源码不进仓库（版权 + 体积），
 > 但必须留下**可复现的凭据**：下载地址、SHA256、以及"当初用它得出了什么结论"。
-> 结论已沉淀进 `SOURCES.md` / `docs/community-code-scan.md`，本文件负责**复现路径**。
+> 结论已沉淀进 `SOURCES.md`（`docs/community-code-scan.md` 已于 2026-10-11 删除，见 git 历史），本文件负责**复现路径**。
 >
 > 2026-10-09 清理：这些文件累计约 32 MB，全部从仓库与工作目录删除（可再生）。
 > 需要重跑分析时执行 `bash re/upstream/fetch.sh`，再核对 SHA256。
@@ -45,7 +45,7 @@
 | `itchyfeetleech/OP1we-Control` | MIT | WE 族帧格式、opcode 白名单、`0x0E` 风险 |
 | `qaustria/xm2w` · `Mannomatico/xm2ctl` · `FrancescoCiannavei/GO-BatteryAPI…` | MIT | WE 族常量交叉验证 |
 
-复现：`git clone --depth 1 <repo>` 即可（URL 见 `docs/community-code-scan.md` 第三节）。
+复现：`git clone --depth 1 <repo>` 即可（URL 即上表所列仓库地址）。
 本轮的 npm 侧发现（`@openmouse/protocol`，AGPL-3）同理：
 `npm pack @openmouse/protocol` → `dist/endgame-gear/op1.js`、`dist/drivers/endgame/egg-we-hid.js`。
 

@@ -584,3 +584,38 @@ typescript-eslint 的 peer 上限覆盖 TS7 后，删掉两个别名、恢复
 - **影响范围**：上述两个修复需**再次推送**才会验证生效。因此 CI 的结论是
   「本地 verify 全绿 + CI 的 `verify` job 全绿 + `ui`/`deploy` 两个环境问题已修」，
   **尚未取得「CI 全绿」的结论**——后者必须等下一次推送后复查，不能凭「已修」推定。
+
+### 判例二十一：一次性过程文档的清理——「历史属于版本控制，不属于当前文档」（2026-10-11）
+
+- **决策**：删除 docs/ 下 9 个一次性过程记录与 re/ 下 2 个一次性探查产物，
+  共 11 个文件。清单：
+  `docs/推送前需授权.md`、`docs/接手报告-2026-10-09.md`、`docs/push-to-github.md`、
+  `docs/scan-push-plan.md`、`docs/publish-inventory.md`、`docs/community-code-scan.md`、
+  `docs/community-help-needed.md`、`docs/email-to-endgamegear.md`、`docs/ui-port-feasibility.md`、
+  `re/usb_enum.txt`、`re/webhid-probe.html`。
+- **理由**：这些文件的任务均已终局（推送完成、可行已兑现、结论已被
+  README / MANIFEST / XM1_NOTES / PROTOCOL_NOTES 吸收），留在 docs/ 只会让
+  「哪些文档还活着」无法判定。典型腐化信号：`推送前需授权.md` 文件名说
+  「需授权」、正文第一行说「已完成」。
+- **被否决的替代方案**：移入 `docs/archive/` 子目录。拒绝理由：归档目录仍会
+  被当作活文档检索与引用，问题只被换了个地方；git 历史本身就是可检索的存档，
+  且每份文件的删除点（本判例）提供了找回入口。
+- **引用同步**：README、MANIFEST、re/upstream/MANIFEST、TASKS 中的活引用
+  已改为指向 git 历史；本文件既有判例中的历史提法**不改写**（追加式日志）。
+- **保留决定**：`docs/ecosystem-survey.md`、`docs/cpi-step-check.md`、
+  `docs/xm1-diff-kit.md` 经评估保留（分别被页面 i18n 文案引用、有回归价值、
+  XM1 差分实验未完结）。
+- **状态**：已执行。删除文件可经 git 历史找回（本判例日期前最近一次涉及该文件的提交）。
+
+### 判例二十二：TODO.md 并入 TASKS.md，消除双队列（2026-10-11）
+
+- **决策**：删除 TODO.md；其中仍是待办的事项转为任务队列 T-121~T-125，
+  覆盖率总览与「明确不做」硬边界并入 TASKS.md 末尾「自 TODO.md 并入的内容」节。
+- **理由**：TODO.md 与 TASKS.md 双队列并存违反单一职责；TODO.md 尾部已混入
+  推送过程记录（名实分离），且 T-113d 要求将其转英——并入后该任务作废，省掉
+  272 行无意义的翻译工作。
+- **被否决的替代方案**：两份都保留、只划清分工。拒绝理由：两者的待办事项
+  已互相重叠（远程测试、推送状态多处重复描述），划清分工的成本高于合并。
+- **连带修正**：T-106 状态更新为「CI 全绿 2026-10-11」（原记录已过时）；
+  T-113d 作废；README 两处 TODO.md 链接改指 TASKS.md。
+- **状态**：已执行。
