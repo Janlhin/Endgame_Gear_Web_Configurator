@@ -1,5 +1,7 @@
 # Endgame Gear Web Configurator
 
+**English** | [简体中文](README.zh-CN.md)
+
 A browser-based tool that configures Endgame Gear wireless gaming mice directly — **no driver, no installation**: open the page → click connect → change settings.
 
 Built on Chrome/Edge's **WebHID** API, talking to the mouse's or receiver's configuration channel through HID feature reports. The protocol implementation comes from a complete community reverse-engineering of the official Windows tools (see [Acknowledgements](#acknowledgements)), and it reproduces all of the official tools' timing quirks.
