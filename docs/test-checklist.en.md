@@ -6,7 +6,7 @@
 > Companions:
 >
 > - Data export: the "Export test data packet (.json)" button on the page (model / PID / firmware / interface collection / blob / logs in one file)
-> - Volunteer process: [`docs/remote-beta-guide.md`](https://github.com/Janlhin/Endgame_Gear_Web_Configurator/blob/main/docs/remote-beta-guide.md)
+> - Volunteer process: [`docs/remote-beta-guide.en.md`](https://github.com/Janlhin/Endgame_Gear_Web_Configurator/blob/main/docs/remote-beta-guide.en.md)
 > - XM1 differential experiments: [`docs/xm1-diff-kit.md`](https://github.com/Janlhin/Endgame_Gear_Web_Configurator/blob/main/docs/xm1-diff-kit.md)
 >
 > ⚠️ Universal red line: **change one value at a time**; let the page auto-export a backup before changing anything;
