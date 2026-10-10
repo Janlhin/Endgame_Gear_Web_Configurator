@@ -1,7 +1,7 @@
 # TASKS.md — 任务队列
 
 > 依据《用 AI 做项目：持续推进行动方案》v1.0.1 §任务队列 建立。
-> 来源：`docs/接手报告-2026-10-09.md` 的差距清单（由接手规范阶段 2 产出）。
+> 来源：接手报告（2026-10-09，git 历史 `docs/接手报告-2026-10-09.md`，2026-10-11 删除）的差距清单（由接手规范阶段 2 产出）。
 > 建立时点：2026-10-09接手基线完成后。
 > 字段定义见持续推进方案 §任务队列，七个字段缺一不可；「完成判据」必须可机器判定。
 
@@ -61,7 +61,7 @@ workflow 文件，属于用更大的问题换小问题。
 
 **解除方式**（若将来重启）：给令牌加 `workflow` scope（重新授权 OAuth App，
 或改用 Personal Access Token），之后重试推送。**此项必须由人操作。**
-步骤见 `docs/推送前需授权.md`。
+步骤见 git 历史（`docs/推送前需授权.md`，2026-10-11 删除）。
 
 **2026-10-09 第二次尝试（同日，用户指令「推」）**：错误**逐字相同**，实测结论更新——
 
@@ -101,7 +101,7 @@ workflow 文件，属于用更大的问题换小问题。
   且推送报错**回到最初那句** `without workflow scope`，
   证明 git 现在用的**正是 gh 那条令牌**。**链路已通，只差 `workflow` 一个 scope。**
 - **解除方式（大幅简化）**：`gh auth refresh -h github.com -s workflow` 即可收尾，
-  **后续无需再向任何人传递令牌**。见 `docs/推送前需授权.md` 路线 A。
+  **后续无需再向任何人传递令牌**。（路线 A 已于 2026-10-11 执行完毕；原文见 git 历史 `docs/推送前需授权.md`。）
 - ⚠️ 更正一处路径记载：全局 `credential.https://github.com.helper` 实际指向
   **`C:\Program Files\GitHub CLI\gh.exe`**（2.102.0），
   **不是**先前记录的 PortableGit 那份（2.88.1）。
@@ -152,7 +152,7 @@ workflow 文件，属于用更大的问题换小问题。
 | T-103 | `any` 有 lint 拦截 | 加 ESLint flat config + `typescript-eslint`，`@typescript-eslint/no-explicit-any` 设为 `error` | 无 | 高 | `npm run lint` 对当前 82 处 `any` 报错（先配置不修）；`npm run verify` 其余段全绿 | ✅ **完成**（`3cef833`）。**解决了 TS7 冲突**：typescript-eslint 8 peer 上限 <6.1.0，本项目用 TS 7.0.2（Go 原生编译器，无编程 API）→ 采用官方双编译器方案（`typescript` → `@typescript/typescript6@6.0.2` 供工具读 API，`@typescript/native` → `typescript@7.0.2` 供 tsc）。实测 tsc=7.0.2 / tsc6=6.0.3。**实测 97 处 any**（比 grep 的 84 处更全，能识别 `<any>`/`any[]`）。规则分级：any 与 unused-vars 设 warn（直接设 error 会让 CI 永久红＝把门禁关掉），阈值 `--max-warnings 154` 拦截新增——**已实证注入新 any 后 lint 立即 exit 1** |
 | T-104 | 样式硬编码有拦截 | 加 Stylelint + `stylelint-config-standard-scss`，含 `color-no-hex`（`_tokens.scss` 走 overrides 放行） | 无 | 高 | `npm run stylelint` 通过；故意在业务 SCSS 写一个字面量颜色，该命令必须失败 |  ✅ **完成**（`80b92de`）。Stylelint 17 + stylelint-scss + postcss-scss。verify 7→8 段。核心规则 `declaration-property-value-disallowed-list` 锁死业务样式硬编码（令牌表豁免）。**判据双向实测**：业务 SCSS 写 `#f00`/`rgba()` 被拦（exit 2），令牌表豁免生效。三处踩坑已记入 stylelint.config.cjs 顶部（配置必须 .cjs、需 customSyntax、17 移除了 15 个 stylistic 规则） |
 | T-105 | esbuild 漏洞有结论 | 单独提交升级 esbuild 0.24.2 → 0.28.x，跑完整 verify 确认产物仍零外部引用 | 无 | 中 | `npm audit` 无moderate；`npm run verify` 全绿；产物外部引用计数仍为 0；`cardChecklist` canary 仍命中 |  ✅ **完成**（`5855c2d`）。esbuild 0.24→0.28.2（先读 CHANGELOG 确认破坏性变更不涉及）。安装遇 `spawnSync EBUSY`（本机沙箱环境问题），用 `--ignore-scripts` 绕过且二进制仍到位。产物 +9 字节已逐词确认语义等价。**moderate 归零**：`smol-toml` 靠 `overrides` 升到 1.9.0（上游 markdownlint-cli2 锁死 1.8.0）+ 实测 markdownlint 仍正常。剩余 13 个 high 已查证全在 devDependencies、产物命中 0 |
-| T-106 | 首次获得 CI 权威结论 | 推送 123 个提交到 origin，观察首次 CI 运行 | — | **低** | `verify` 与 `ui` 两个 job 在 GitHub Actions 上均为绿；产物 canary 通过 | 🟡 **推送成功，CI 首跑已出结论（2026-10-09 19:14）**：`main -> main`，远端 HEAD `f5bf9ef`。`verify` job（ubuntu）**全绿**；`ui` job 因 **Windows runner GBK 编码**失败、deploy 因 **Pages 未启用**失败——**均非代码缺陷，已修**（`ui` 设 `PYTHONIOENCODING=utf-8`；deploy 改 `enablement: true`）。**尚未取得「CI 全绿」结论**，须再推一次并复查 |
+| T-106 | 首次获得 CI 权威结论 | 推送 123 个提交到 origin，观察首次 CI 运行 | — | **低** | `verify` 与 `ui` 两个 job 在 GitHub Actions 上均为绿；产物 canary 通过 | ✅ **完成 2026-10-11**：`verify`（ubuntu）与 `ui`（windows）两 job 全绿（run `38070406683`），`deploy pages` 亦成功，站点上线 <https://janlhin.github.io/Endgame_Gear_Web_Configurator/> 。此前 2026-10-09 首跑的两个环境问题（GBK 编码 / Pages 未启用）经 551f961 修复后验证生效 |
 
 | T-107 | 文档与代码一致性有自动判据 | 加 `docs:sync` 生成脚本（从 `package.json` / `tsconfig.json` 生成文档中的脚本名与依赖表），接 `git diff --exit-code` | T-101 | 中 | 故意改 `package.json` 里一个脚本名，`npm run verify` 必须失败 |  ✅ **完成**（`9f5e82a`）。新增 `re/check_verify.mjs` + `check:meta`，作为 verify 第一段。verify 9 段。**含自指检查**（否则删掉 check:meta 本身无人察觉）。判据实测：删一段 → exit 1；删 check:meta 自己 → 同样报错。副产品：发现 verify:ci 少一段是**有意设计**（CI 有独立 UI job 且多跑 reset_check.py） |
 | T-108 | 有覆盖率基线 | 引入覆盖率计量（c8 或 `node --experimental-test-coverage`），**只记录当前基线数字，不设阈值** | 无 | 中 | `npm run verify` 输出覆盖率数值；基线写入 `docs/`。**阈值待有数据后另行提案**（延续既有判例「测试框架暂不迁移到 Vitest」） |  🚫 **不可修复**（2026-10-09）。**实测证明拿不到有意义数字**：① NODE_V8_COVERAGE 记录的 URL 全是打包后的 `re/.test_*.mjs`，TS 源路径已丢失；② 加 sourcemap 后 `c8 --include="src/**"` 得 All files **0%**（c8 默认不做 source-map remapping）；③ 不带 include 能出数字但统计的是打包产物且**包含测试代码自身**。可行路径均代价过高（迁 Vitest 违反判例二 / 改 9 个测试加载方式 / main.ts 依赖 DOM 无法在 Node 跑）。详见 DECISIONS.md 判例十 |
@@ -163,7 +163,7 @@ workflow 文件，属于用更大的问题换小问题。
 | T-113 | README.md 转英 | 297 行，单文件一个提交（D-1 全量转英第 1 批） | 无 | 高 | `npm run verify` 全绿；README 汉字数归零（取证链原文豁免） | ✅ **完成**（2026-10-09）。汉字 4364 → **42**。残留 42 字全部为裁决要求保留项：证据强度括注（未真机验证 / 实测确认 / 偏移未定位，共 6 处）+ 语言自称（8 语言名）。**内部锚点同步译英**：`#致谢` → `#acknowledgements`，与 `## Acknowledgements` 一致（已核对）。PID / 命令码 / 偏移 / SHA 全部原样保留 |
 | T-113b | AGENTS.md 转英 | 178 行。**AI 协作约束，翻译须逐条对应不得简化** | T-113 | 高 | verify 全绿；AGENTS 汉字归零；**红线条款 4 条与删除分级表逐条对齐原文** | ⬜ 待办 |
 | T-113c | CHANGELOG.md 转英 | 67 行，历史条目，**保留原日期与版本号不动** | T-113b | 高 | verify 全绿；汉字归零 | ⬜ 待办 |
-| T-113d | TODO.md 转英 | 272 行，含待决议项 D-1~D-4 | T-113c | 高 | verify 全绿；汉字归零；**D-x 编号与选项字母（A/B/C）保持不变** | ⬜ 待办 |
+| T-113d | ~~TODO.md 转英~~ | 🚫 **作废（2026-10-11）**：TODO.md 已删除，活待办并入本文件（见 T-121~T-125 与「自 TODO.md 并入的内容」节），过程记录归 git 历史（DECISIONS 判例二十二） | — | 高 | — | 🚫 作废 |
 | T-113e | MANIFEST.md 转英 | 107 行，**SHA256 与 URL 一律不动**，仅译用途说明 | T-113d | 高 | verify 全绿；汉字归零；**逐条核对哈希值未变** | ⬜ 待办 |
 | T-114 | docs/ 转英 | docs/ 下 17 个文件（保留 field-parity 等证据强度表述）。**须按目录分批，单提交 ≤400 行** | T-113e | 高 | `npm run verify` 全绿；docs/ 汉字归零 | ⬜ 待办 |
 | T-115 | re/ 结论文档转英 | PROTOCOL_NOTES.md / XM1_NOTES.md 等 6 个结论文档（保留「实测 3mm=0x0B」类证据强度）。**单文件一个提交** | T-113 | 高 | verify 全绿；汉字归零（证据原文豁免） | ⬜ 待办 |
@@ -172,6 +172,11 @@ workflow 文件，属于用更大的问题换小问题。
 | T-120 | L4 运行期校验（Zod schema） | 在外部输入边界（blob 解析 / URL 参数 / localStorage）接入 Zod，替代手写判断。**主规范 P2 退出判据：构造一条非法外部输入，须被 schema 捕获** | 无 | 中 | 非法输入被 schema 拒绝且有测试断言；verify 全绿；产物零外部依赖不受影响 | ⬜ 待办 |
 | T-118 | 灯效 6 项补齐 | LED 开关 / 灯效模式 / 滚轮灯 / Logo 灯 / DPI 灯 / 自定义颜色的偏移取证 + 实现（D-2） | **真机差分**（外部依赖） | 中 | 偏移定位（差分产出）+ 代码实现 + 离线仿真通过；真机验证待定 | ⬜ 待办 |
 | T-119 | 左手模式 + 按键重映射 | 左手模式 + 按键重映射 UI 的偏移取证 + 实现（涉 0x16 双块写，风险最高） | **真机差分**（外部依赖） | 中 | 偏移定位 + 实现 + 离线仿真通过；真机验证待定 | ⬜ 待办 |
+| T-121 | XM2we / OP1we 真机验证 | `src/xm2we.ts` 代码就绪（29 项离线仿真通过），从未接真机。验证 input report 桥接时序、CPI 八槽写入、回报率 one-hot 掩码写入 | **外部依赖**：需 XM2we / OP1we 设备（PID `0x1962` 已从官方 `Cfg.ini` 取到） | 中 | 真机读写各一次且回读校验通过 | ⬜ 待办（等设备） |
+| T-122 | XM1 差分实验四项 | XM1 灯效 / 按键映射（`0x0C7+5n` 7 项表）/ Angle Snap·Smoothing / 单字节通道语义，逐项官方软件改一个值差分。实验包 `docs/xm1-diff-kit.md` + `re/archive/xm1_diff.py` | **外部依赖**：志愿者 XM1 真机数据 | 中 | 偏移定位并能读写 | ⬜ 待办（等数据） |
+| T-123 | 向官方申请协议文档 | 邮件草稿在 git 历史（`docs/email-to-endgamegear.md`，2026-10-11 删除），论据：XRed 木马事件 + 可审计工具价值 | T-106 ✅ | 中 | 获得官方回复或协议文档 | ⬜ 待办 |
+| T-124 | 无障碍 | 全键盘可操作、屏幕阅读器标注、高对比度 | 无 | 中 | 键盘可完成全部配置流程 | ⬜ 待办 |
+| T-125 | 配置分享 / 多设备管理 / 命令行 | 方案见 `docs/web-driver-extra-features.md` 第四节，纯前端为主 | 无 | 中 | 按该节设计实现并验证 | ⬜ 待办 |
 
 ### ⚠️ 队列定义修正记录（2026-10-09 20:16）
 
@@ -319,3 +324,36 @@ ESLint 首次运行暴露 183 项。处置原则：
 **顺带的发现**：这次的产物 `index.html` 一并被提交了（它本身没问题），
 但**两个临时文件**（`.id_tags.tmp` / `.static_ids.tmp`）也曾进入工作树——
 已清理，且 `.gitignore` 未改动（它们本来就不该被 add，已确认未入库）。
+
+---
+
+## 自 TODO.md 并入的内容（2026-10-11，TODO.md 已删除）
+
+### 型号覆盖现状（2026-10-09 快照）
+
+| 状态 | 款数 | 型号 |
+|---|---|---|
+| ✅ 读写可用（真机验证） | **6** | XM1、XM1 RGB、XM2w 4k、XM2w 4k v2、OP1w 4k、OP1w 4k v2 |
+| ✅ 读写可用（三来源交叉印证，未真机） | **6** | XM2 8k、XM2 8k v2、OP1 8k、OP1 8k Purple Frost、OP1 8k v2、OP1 8k v2 Raw Input |
+| 🧩 代码就绪，缺真机 | **2** | XM2we、OP1we（T-121） |
+| 🔍 仅识别型号（第四协议族） | **3** | XM1r、OP1、OP1 RGB（见 `re/FAMILY4_NOTES.md`） |
+
+对照基准：官方 17 款，全表见 `docs/official-product-catalog.md`。8k 族 6 款的
+「同构」来自官方工具二进制静态实证（报告 ID `0xA1`、7 个 `HidD_*` API 相同、
+PDB 代号 `K26`、XM2 8k 与 OP1 8k 的 exe 只差一个 PID 常量），**不是真机验证**，
+因此只读：写入入口在代码层被禁用。
+
+### 明确不做（硬边界，未经新裁决不得推翻）
+
+| 项 | 原因 |
+|---|---|
+| XM1 回报率 | 底部 3 档硬件拨动开关（250/500/1000 Hz），软件改不了，官方也改不了 |
+| 固件升级 | `.fub` 载荷加密；刷坏进 bootloader（两 LED 红闪）。风险与收益不成比例 |
+| 宏编辑 | 存储位置与编码格式未确认 |
+| 任何未验证的写入路径 | 2026-10-09 已付代价（把鼠标 DPI/CPI 清零）。**未核实即不发**是硬红线 |
+
+### 既有决议指针
+
+D-1（文档转英）→ T-113 系列；D-2（补齐官方设置）→ T-118/T-119；
+D-3（推 GitHub / Pages）→ T-106 已完成；D-4（CPI 回归验证）→ 真机操作项，
+步骤见 `docs/cpi-step-check.md`。裁决正文见 `DECISIONS.md` 判例十四。

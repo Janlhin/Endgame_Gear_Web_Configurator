@@ -2,6 +2,20 @@
 
 本项目从 v1.3 起记录变更。更早的版本看 git 历史（`git log --oneline`）。
 
+## Unreleased — 2026-10-11
+
+### 仓库整洁化（接手审查整改）
+
+- **删除 11 个一次性过程文档**：docs/ 下 9 个（推送前需授权 / 接手报告 /
+  push-to-github / scan-push-plan / publish-inventory / community-code-scan /
+  community-help-needed / email-to-endgamegear / ui-port-feasibility）+
+  re/ 下 2 个探查产物（usb_enum.txt / webhid-probe.html）。任务均已终局，
+  git 历史可找回（DECISIONS.md 判例二十一）。
+- **TODO.md 并入 TASKS.md**，消除双队列；活待办转为 T-121~T-125，
+  覆盖率总览与「明确不做」硬边界随迁（DECISIONS.md 判例二十二）。
+- 引用同步：README / MANIFEST / re/upstream/MANIFEST / TASKS 中指向已删
+  文件的活引用改为指向 git 历史；T-106 状态更新为「CI 全绿」；T-113d 作废。
+
 ## v1.3.0 — 2026-10-09
 
 发布前的安全审计 + 项目改名。这一版不含固件升级，也不绕过任何保护机制。
