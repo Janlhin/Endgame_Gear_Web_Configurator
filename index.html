@@ -593,7 +593,7 @@ a {
 <h3>测试问题清单（给远程志愿者 / 自用回归）</h3>
 <blockquote><p>用法：按你手上的型号跳到对应小节，逐条打勾。每条都写了<strong>怎么测</strong>、<strong>什么算通过</strong>、 <strong>不通过说明什么</strong>——"不通过"也是有效结果，照实填比空着有价值。</p>
 <p>配套：</p>
-<ul><li>导出数据：页面上的「导出测试数据包 (.json)」（型号/PID/固件/接口集合/blob/日志一次带走）</li><li>志愿者流程：<a href="remote-beta-guide.md" target="_blank" rel="noopener"><code>docs/remote-beta-guide.md</code></a></li><li>XM1 差分实验：<a href="xm1-diff-kit.md" target="_blank" rel="noopener"><code>docs/xm1-diff-kit.md</code></a></li></ul>
+<ul><li>导出数据：页面上的「导出测试数据包 (.json)」（型号/PID/固件/接口集合/blob/日志一次带走）</li><li>志愿者流程：<a href="https://github.com/Janlhin/Endgame_Gear_Web_Configurator/blob/main/docs/remote-beta-guide.md" target="_blank" rel="noopener"><code>docs/remote-beta-guide.md</code></a></li><li>XM1 差分实验：<a href="https://github.com/Janlhin/Endgame_Gear_Web_Configurator/blob/main/docs/xm1-diff-kit.md" target="_blank" rel="noopener"><code>docs/xm1-diff-kit.md</code></a></li></ul>
 <p>⚠️ 通用红线：<strong>一次只改一个值</strong>；改之前先让页面自动导出备份； 出现"回读不一致"就<strong>停下来</strong>，不要重试。</p></blockquote>
 <hr>
 <h4>零、环境与连接（所有型号都要过一遍）</h4>
@@ -617,7 +617,7 @@ a {
 <ul><li><input type="checkbox" disabled> 读取正常，CPI / 回报率 / LOD / 开关状态都和官方工具一致？</li><li><input type="checkbox" disabled> 改 CPI → 回读校验通过？</li><li><input type="checkbox" disabled> 改 XY 独立 CPI（X ≠ Y）→ 生效吗？（这是官方工具没有的功能）</li><li><input type="checkbox" disabled> <strong>导出配置 → 改几个值 → 导入刚才那份 → 能还原吗？</strong></li><li><input type="checkbox" disabled> 导入一份<strong>别的代际</strong>的配置文件（如 v2 配置导入 v1 鼠标）→ 应该被拒绝并给出提示，</li> 而不是写进去。是吗？<li><input type="checkbox" disabled> 无线写入的等待时间够吗？（有线 500 ms / 无线 880 ms；有没有出现写入后回读不一致？）</li><li><input type="checkbox" disabled> 鼠标休眠后点读取会怎样？（应该有"动一下鼠标"的提示，而不是莫名的报错）</li><li><input type="checkbox" disabled> 电量读数稳定吗？</li><li><input type="checkbox" disabled> （敢测的话）配对命令：按住左+右+中键 3 秒后点"重新配对接收器"，能重连吗？</li></ul>
 <hr>
 <h4>四、XM1 / XM1 RGB —— 本地差分（我自己跑）</h4>
-<p>已备好实验包，见 <a href="xm1-diff-kit.md" target="_blank" rel="noopener"><code>docs/xm1-diff-kit.md</code></a>。每项是"官方软件改一个值 → 导出 → 跑 <code>re/xm1_diff.py</code>"：</p>
+<p>已备好实验包，见 <a href="https://github.com/Janlhin/Endgame_Gear_Web_Configurator/blob/main/docs/xm1-diff-kit.md" target="_blank" rel="noopener"><code>docs/xm1-diff-kit.md</code></a>。每项是"官方软件改一个值 → 导出 → 跑 <code>re/xm1_diff.py</code>"：</p>
 <ul><li><input type="checkbox" disabled> 实验 1：灯效（Mode / Speed / Strength / LED 颜色 ×3 / LED ON）共 5 个子项</li><li><input type="checkbox" disabled> 实验 2：按键映射（左键一个、侧键一个）</li><li><input type="checkbox" disabled> 实验 3：Angle Snap / Smoothing / Angle Tune</li><li><input type="checkbox" disabled> 实验 4：底部拨动开关 / 底部按键（看 <code>blob[0]</code> 那个字节）</li></ul>
 <hr>
 <h4>五、XM1r / OP1 / OP1 RGB（第四协议族）</h4>

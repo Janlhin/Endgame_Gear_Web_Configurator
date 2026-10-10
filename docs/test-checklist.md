@@ -6,8 +6,8 @@
 > 配套：
 >
 > - 导出数据：页面上的「导出测试数据包 (.json)」（型号/PID/固件/接口集合/blob/日志一次带走）
-> - 志愿者流程：[`docs/remote-beta-guide.md`](remote-beta-guide.md)
-> - XM1 差分实验：[`docs/xm1-diff-kit.md`](xm1-diff-kit.md)
+> - 志愿者流程：[`docs/remote-beta-guide.md`](https://github.com/Janlhin/Endgame_Gear_Web_Configurator/blob/main/docs/remote-beta-guide.md)
+> - XM1 差分实验：[`docs/xm1-diff-kit.md`](https://github.com/Janlhin/Endgame_Gear_Web_Configurator/blob/main/docs/xm1-diff-kit.md)
 >
 > ⚠️ 通用红线：**一次只改一个值**；改之前先让页面自动导出备份；
 > 出现"回读不一致"就**停下来**，不要重试。
@@ -99,7 +99,7 @@
 
 ## 四、XM1 / XM1 RGB —— 本地差分（我自己跑）
 
-已备好实验包，见 [`docs/xm1-diff-kit.md`](xm1-diff-kit.md)。每项是"官方软件改一个值 → 导出 → 跑 `re/xm1_diff.py`"：
+已备好实验包，见 [`docs/xm1-diff-kit.md`](https://github.com/Janlhin/Endgame_Gear_Web_Configurator/blob/main/docs/xm1-diff-kit.md)。每项是"官方软件改一个值 → 导出 → 跑 `re/xm1_diff.py`"：
 
 - [ ] 实验 1：灯效（Mode / Speed / Strength / LED 颜色 ×3 / LED ON）共 5 个子项
 - [ ] 实验 2：按键映射（左键一个、侧键一个）
