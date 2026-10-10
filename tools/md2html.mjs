@@ -89,7 +89,10 @@ export function mdToHtml(md) {
         }
         let text = m[3];
         const cb = text.match(/^\[([ xX])\]\s*(.*)$/);      // 任务列表
-        if (cb) { text = `<input type="checkbox" disabled> ${cb[2]}`; items.push("<li>" + inline(text) + "</li>"); }
+        // ★ 顺序不能反：先 inline() 转义文本，再拼 <input> 标签。
+        //   反过来会连标签一起转义，页面上显示 "&lt;input ...&gt;" 字面量
+        //   （2026-10-11 线上实测踩过这个坑）。
+        if (cb) { items.push('<li><input type="checkbox" disabled> ' + inline(cb[2]) + "</li>"); }
         else items.push("<li>" + inline(text) + "</li>");
         i++;
       }
