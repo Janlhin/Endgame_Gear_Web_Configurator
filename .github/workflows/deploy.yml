@@ -57,9 +57,18 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      # ★ upload-pages-artifact 的 path 必须是【目录】——第二次 CI 实测失败于此：
+      #   直接写 path: index.html 会把单文件当目录，tar 报
+      #   "index.html: Cannot open: Not a directory"（exit 2）。
+      #   组一个只含 index.html 的发布目录，维持「只发布这一个文件」的口径不变。
+      - name: 组装发布目录（action 要求目录）
+        run: |
+          mkdir -p site
+          cp index.html site/
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: index.html
+          path: site
 
       - id: deploy
         uses: actions/deploy-pages@v4
