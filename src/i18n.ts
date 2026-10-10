@@ -372,6 +372,15 @@ export function applyI18n() {
     const v = (I18N[LANG] && I18N[LANG][k]) || I18N["zh-CN"][k];
     if (v != null) el.textContent = v;  // 查不到就保留 HTML 原文，绝不显示键名
   });
+  // 测试清单卡片：内容不是词条而是构建时注入的双语整篇文档（见 build.mjs），
+  // 这里按语言切换显示——中文系显示中文版，其余 6 种语言回退到英文版。
+  const zhList = document.getElementById("mdChecklistZh");
+  const enList = document.getElementById("mdChecklistEn");
+  if (zhList && enList) {
+    const wantZh = LANG === "zh-CN" || LANG === "zh-TW";
+    zhList.hidden = !wantZh;
+    enList.hidden = wantZh;
+  }
   document.documentElement.lang = LANG;
   $el<HTMLSelectElement>("langSel").value = LANG;
 }

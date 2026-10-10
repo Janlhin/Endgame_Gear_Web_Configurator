@@ -68,8 +68,13 @@ for (const marker of ["/*__BUNDLE__*/", "/*__STYLES__*/"]) {
 }
 // 测试清单：docs/test-checklist.md 是唯一真相源，构建时渲染进页面。
 // 志愿者拿到的是单文件工具（离线双击即用），仓库里保留 md 便于评审与 diff —— 不手抄两份。
-const checklistMd = readFileSync("docs/test-checklist.md", "utf-8");
-const checklistHtml = mdToHtml(checklistMd);
+// 双语：中文版 + 英文版（test-checklist.en.md）都渲染进去，运行时按 i18n 语言
+// 切换显示（见 src/i18n.ts 的 applyI18n）——其余 6 种语言回退到英文版。
+const checklistZh = mdToHtml(readFileSync("docs/test-checklist.md", "utf-8"));
+const checklistEn = mdToHtml(readFileSync("docs/test-checklist.en.md", "utf-8"));
+const checklistHtml =
+  `<div id="mdChecklistZh" lang="zh-CN">\n${checklistZh}\n</div>\n` +
+  `<div id="mdChecklistEn" lang="en" hidden>\n${checklistEn}\n</div>`;
 
 const html = template
   .replace("/*__STYLES__*/", () => css)
