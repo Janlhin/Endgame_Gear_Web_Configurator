@@ -88,6 +88,8 @@ The source is in two parts; the build script bundles both into a single file wri
 | `src/` | TypeScript. Strictly layered (bottom → top): `state` / `transport` / `protocol` → `blob` / `verify` → `device-4k` / `device-8k` / `device-xm1` → `render` / `presence` → `session` → `connect` → `main` (the entry point only does assembly and event binding); `xm2we.ts` + `xm2we-ui.ts` are a fully independent second protocol family; `i18n.ts` + `i18n/*.ts` hold the 8 languages' entries |
 | `scss/` | **The single source of styles** (`_tokens.scss` design tokens / `_mixins.scss` mixins / `main.scss` components) |
 
+**A per-file map of the entire repository** (what every file is for) lives in **[`docs/repo-map.md`](docs/repo-map.md)**.
+
 Tech stack: **TypeScript 7** (the Go-native compiler, `tsc --noEmit` for type checking) + **esbuild** for bundling + **sass** for SCSS compilation. Type checking and bundling are separated — `tsc` only checks types; the artifact is produced by esbuild.
 
 **Locally**: open `index.html` by double-clicking (`file://` is a secure context, so WebHID works). If browser policy blocks it, any static server will do:
