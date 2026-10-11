@@ -88,7 +88,7 @@
 | `src/` | TypeScript。严格分层（自底向上）：`state` / `transport` / `protocol` → `blob` / `verify` → `device-4k` / `device-8k` / `device-xm1` → `render` / `presence` → `session` → `connect` → `main`（入口只做组装与事件绑定）；`xm2we.ts` + `xm2we-ui.ts` 是完全独立的第二协议家族；`i18n.ts` + `i18n/*.ts` 存放 8 种语言的词条 |
 | `scss/` | **样式的唯一来源**（`_tokens.scss` 设计令牌 / `_mixins.scss` 混入 / `main.scss` 组件） |
 
-**整仓库逐文件地图**（每个文件的作用）在 **[`docs/repo-map.md`](docs/repo-map.md)**。
+**整仓库逐文件地图**（每个文件的作用）在 **[`docs/repo-map.md`](docs/repo-map.md)**（[English](docs/repo-map.en.md)）。
 
 技术栈：**TypeScript 7**（Go 原生编译器，`tsc --noEmit` 做类型检查）+ **esbuild** 打包 + **sass** 编译 SCSS。类型检查与打包分离 —— `tsc` 只查类型；产物由 esbuild 生成。
 
