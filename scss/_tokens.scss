@@ -8,52 +8,102 @@
 // 那些在编译期求值，var() 会让它们失效。（当前全库已确认无此类用法。）
 
 // ---------- 色彩表（浅色 / 深色）----------
+// 2026-10-20 视觉改版：两套主题按同一套语义完整设计。
+// 新增语义：bg-2（次级底）、muted（三级文字）、line-strong（悬停描边）、
+// acc-2（渐变副色）、glow-*（背景光晕）、grid（网格线）、header（页头玻璃）、
+// shadow-*（三级投影）、hi（顶部高光）。
 $theme-light: (
-  "bg":        #f5f6f8,
-  "card":      #fff,
-  "surface-2": #f0f2f6,   // 表头 / 次级面
-  "surface-3": #eef0f3,   // 中性按钮
-  "line":      #e2e5ea,
-  "text":      #1c2330,
-  "sub":       #6b7484,   // 次要文字
-  "acc":       #2563eb,
-  "acc-soft":  #eaf0fe,
-  "on-acc":    #fff,   // 强调色上的文字
-  "ok":        #16a34a,
-  "warn":      #d97706,
-  "err":       #dc2626,
-  "sem-ok-bg":   #dcfce7,
-  "sem-ok-fg":   #166534,
-  "sem-warn-bg": #fef3c7,
-  "sem-warn-fg": #92400e,
-  "sem-err-bg":  #fee2e2,
-  "sem-err-fg":  #991b1b,
-  "log-bg":    #10141c,
-  "log-fg":    #9fd0a0,
+  "bg":          #eef1f7,
+  "bg-2":        #e3e8f2,
+  "card":        rgba(255, 255, 255, 0.90),
+  "card-solid":  #fff,
+  "surface-2":   #f1f4fa,
+  "surface-3":   #e6ebf4,
+  "line":        rgba(15, 23, 42, 0.11),
+  "line-strong": rgba(15, 23, 42, 0.22),
+  "hi":          rgba(255, 255, 255, 0.95),
+
+  "text":        #0d1526,
+  "sub":         #55617a,
+  "muted":       #8792a6,
+
+  "acc":         #2f6bff,
+  "acc-2":       #7c5cff,
+  "acc-soft":    rgba(47, 107, 255, 0.10),
+  "on-acc":      #fff,
+  "on-err":      #fff,
+
+  "ok":          #0f9d63,
+  "warn":        #b7791f,
+  "err":         #d92d3f,
+
+  "sem-ok-bg":   #e6f7ef,
+  "sem-ok-fg":   #0b6b47,
+  "sem-warn-bg": #fdf3e2,
+  "sem-warn-fg": #8a5a12,
+  "sem-err-bg":  #fdecee,
+  "sem-err-fg":  #a11b2b,
+
+  "log-bg":      #0a0d14,
+  "log-fg":      #9fe3b0,
+  "log-shadow":  "inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 60px rgba(0, 255, 140, 0.03)",
+
+  "glow-1":      rgba(47, 107, 255, 0.16),
+  "glow-2":      rgba(124, 92, 255, 0.12),
+  "glow-3":      rgba(15, 157, 99, 0.10),
+  "grid":        rgba(15, 23, 42, 0.035),
+  "header":      rgba(255, 255, 255, 0.72),
+
+  "shadow-1":    "0 1px 2px rgba(13, 21, 38, 0.06), 0 10px 26px -18px rgba(13, 21, 38, 0.28)",
+  "shadow-2":    "0 16px 38px -18px rgba(13, 21, 38, 0.30)",
+  "shadow-3":    "0 34px 76px -32px rgba(13, 21, 38, 0.38)",
 );
 
 $theme-dark: (
-  "bg":        #14171c,
-  "card":      #1b1f26,
-  "surface-2": #22262e,
-  "surface-3": #262b34,
-  "line":      #2f353f,
-  "text":      #e6e9ef,
-  "sub":       #9aa3b2,
-  "acc":       #5b8cff,
-  "acc-soft":  #1e2a44,
-  "on-acc":    #0d1117,
-  "ok":        #34d399,
-  "warn":      #e0a53a,
-  "err":       #f87171,
-  "sem-ok-bg":   #123024,
-  "sem-ok-fg":   #86efac,
-  "sem-warn-bg": #33280d,
-  "sem-warn-fg": #fcd34d,
-  "sem-err-bg":  #3a1d1d,
-  "sem-err-fg":  #fca5a5,
-  "log-bg":    #0b0e13,
-  "log-fg":    #8fd39a,
+  "bg":          #04060a,
+  "bg-2":        #080c13,
+  "card":        rgba(19, 25, 36, 0.82),
+  "card-solid":  #131924,
+  "surface-2":   #161e2b,
+  "surface-3":   #1c2534,
+  "line":        rgba(255, 255, 255, 0.09),
+  "line-strong": rgba(255, 255, 255, 0.20),
+  "hi":          rgba(255, 255, 255, 0.12),
+
+  "text":        #e9eef7,
+  "sub":         #94a1b7,
+  "muted":       #6d7a8f,
+
+  "acc":         #6ea8ff,
+  "acc-2":       #a78bfa,
+  "acc-soft":    rgba(110, 168, 255, 0.13),
+  "on-acc":      #061021,
+  "on-err":      #fff,
+
+  "ok":          #34d399,
+  "warn":        #fbbf24,
+  "err":         #fb7185,
+
+  "sem-ok-bg":   rgba(52, 211, 153, 0.12),
+  "sem-ok-fg":   #7df0c4,
+  "sem-warn-bg": rgba(251, 191, 36, 0.12),
+  "sem-warn-fg": #fbd98a,
+  "sem-err-bg":  rgba(251, 113, 133, 0.13),
+  "sem-err-fg":  #ffb3bd,
+
+  "log-bg":      #04060a,
+  "log-fg":      #8ef0b0,
+  "log-shadow":  "inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 60px rgba(0, 255, 140, 0.03)",
+
+  "glow-1":      rgba(64, 120, 255, 0.28),
+  "glow-2":      rgba(139, 92, 246, 0.20),
+  "glow-3":      rgba(16, 185, 129, 0.14),
+  "grid":        rgba(255, 255, 255, 0.035),
+  "header":      rgba(7, 10, 16, 0.66),
+
+  "shadow-1":    "0 1px 2px rgba(0, 0, 0, 0.40), 0 14px 34px -14px rgba(0, 0, 0, 0.65)",
+  "shadow-2":    "0 18px 42px -20px rgba(0, 0, 0, 0.75)",
+  "shadow-3":    "0 38px 84px -34px rgba(0, 0, 0, 0.90)",
 );
 
 // ---------- 发射 CSS 变量 ----------
@@ -72,22 +122,29 @@ $theme-dark: (
 }
 
 // ---------- 颜色令牌（转发到 CSS 变量）----------
-$bg:        var(--c-bg);
-$card:      var(--c-card);
-$surface-2: var(--c-surface-2);
-$surface-3: var(--c-surface-3);
-$line:      var(--c-line);
+$bg:          var(--c-bg);
+$bg-2:        var(--c-bg-2);
+$card:        var(--c-card);
+$card-solid:  var(--c-card-solid);
+$surface-2:   var(--c-surface-2);
+$surface-3:   var(--c-surface-3);
+$line:        var(--c-line);
+$line-strong: var(--c-line-strong);
+$hi:          var(--c-hi);
 
-$text:      var(--c-text);
-$sub:       var(--c-sub);
+$text:        var(--c-text);
+$sub:         var(--c-sub);
+$muted:       var(--c-muted);
 
-$acc:       var(--c-acc);
-$acc-soft:  var(--c-acc-soft);
-$on-acc:    var(--c-on-acc);
+$acc:         var(--c-acc);
+$acc-2:       var(--c-acc-2);
+$acc-soft:    var(--c-acc-soft);
+$on-acc:      var(--c-on-acc);
+$on-err:      var(--c-on-err);
 
-$ok:        var(--c-ok);
-$warn:      var(--c-warn);
-$err:       var(--c-err);
+$ok:          var(--c-ok);
+$warn:        var(--c-warn);
+$err:         var(--c-err);
 
 $sem-ok-bg:   var(--c-sem-ok-bg);
 $sem-ok-fg:   var(--c-sem-ok-fg);
@@ -96,34 +153,65 @@ $sem-warn-fg: var(--c-sem-warn-fg);
 $sem-err-bg:  var(--c-sem-err-bg);
 $sem-err-fg:  var(--c-sem-err-fg);
 
-$log-bg:    var(--c-log-bg);
-$log-fg:    var(--c-log-fg);
+$log-bg:      var(--c-log-bg);
+$log-fg:      var(--c-log-fg);
+$log-shadow:  var(--c-log-shadow);
+
+$glow-1:      var(--c-glow-1);
+$glow-2:      var(--c-glow-2);
+$glow-3:      var(--c-glow-3);
+$grid:        var(--c-grid);
+$header:      var(--c-header);
+$shadow-1:    var(--c-shadow-1);
+$shadow-2:    var(--c-shadow-2);
+$shadow-3:    var(--c-shadow-3);
+
+// ---------- 打印：强制白底黑字（覆盖深色主题，避免打印出黑页） ----------
+@media print {
+  html, html[data-theme="dark"] {
+    --c-bg: #fff;
+    --c-bg-2: #fff;
+    --c-card: #fff;
+    --c-card-solid: #fff;
+    --c-text: #111;
+    --c-sub: #444;
+    --c-muted: #666;
+    --c-line: #ddd;
+    --c-line-strong: #bbb;
+  }
+}
 
 // ---------- 间距 ----------
 $gap-xs: 4px;
 $gap-sm: 8px;
 $gap-md: 16px;
-$gap-lg: 20px;
+$gap-lg: 24px;
+$gap-xl: 32px;
 
-$max-width: 980px;
-$label-min: 140px;   // .row label 的最小宽度
+$max-width: 1080px;
+$label-min: 132px;   // .row label 的最小宽度
 
 // ---------- 字号 ----------
 $fs-xs: 12px;
 $fs-sm: 13px;
 $fs-md: 15px;
 $fs-lg: 18px;
+$fs-xl: 24px;
+$fs-2xl: 30px;
 
 // ---------- 圆角 ----------
-$radius-sm:  6px;
-$radius-md:  7px;
-$radius-lg:  10px;
-$radius-pill: 99px;
+$radius-sm:  7px;
+$radius-md:  10px;
+$radius-lg:  16px;
+$radius-pill: 999px;
 
 // ---------- 字体 ----------
-// 默认栈面向拉丁 + 简体中文。$font-mono 只用于十六进制日志，无需 CJK。
-$font-stack: "Segoe UI", "Microsoft YaHei", sans-serif;
-$font-mono:  Consolas, monospace;
+// 零外部资源：只用系统字体栈（离线 file:// 也能正确渲染）。
+// Display 栈优先 Segoe UI Variable（Win11），退回 Segoe UI / 苹方。
+$font-stack: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+$font-display: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+// $font-mono 只用于十六进制日志与数值，无需 CJK。
+$font-mono: "Cascadia Mono", "Cascadia Code", Consolas, "SFMono-Regular", monospace;
 
 // ---- 按语言分流的中文/日文/韩文字体栈 ----
 // 「Microsoft YaHei」是简体字形。若让日文汉字或繁体走它，字形会不对
@@ -133,5 +221,12 @@ $font-zh-tw: "Microsoft JhengHei", "PingFang TC", "Microsoft YaHei", sans-serif;
 $font-ja:    "Yu Gothic UI", "Hiragino Sans", "Meiryo", "Microsoft YaHei", sans-serif;
 $font-ko:    "Malgun Gothic", "Apple SD Gothic Neo", "Microsoft YaHei", sans-serif;
 
+// ---------- 动效 ----------
+$ease-out: cubic-bezier(0.22, 0.7, 0.2, 1);
+$t-fast: 140ms;
+$t-base: 220ms;
+$t-slow: 480ms;
+
 // ---------- 断点 ----------
 $bp-md: 760px;
+$bp-sm: 560px;

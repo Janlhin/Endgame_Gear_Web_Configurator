@@ -21,7 +21,13 @@
 </head>
 <body>
 <header>
-  <h1>🖱️ <span data-i18n="appTitle">Endgame Gear 网页版配置器</span></h1>
+  <h1>
+    <svg class="brandMark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="2.8" width="12" height="18.4" rx="6"/>
+      <path d="M12 2.8v6.2"/>
+    </svg>
+    <span data-i18n="appTitle">Endgame Gear 网页版配置器</span>
+  </h1>
   <span id="connState" class="status-pill off" data-i18n="notConnected">未连接</span>
   <div class="spacer"></div>
   <select id="langSel" style="width:auto">
@@ -109,7 +115,7 @@
       <button id="btnWeExport" class="ghost" data-i18n="weExport">导出 EEPROM (.txt)</button>
       <button id="btnWeExportJson" class="ghost" data-i18n="exportCfg">导出配置 (.json)</button>
       <button id="btnWeDiag" class="ghost" data-i18n="exportDiag">导出测试数据包 (.json)</button>
-      <button id="btnWeLog" class="ghost" style="background:#eef0f3;color:var(--sub)" data-i18n="toggleLog">显示/隐藏通讯日志</button>
+      <button id="btnWeLog" class="ghost" data-i18n="toggleLog">显示/隐藏通讯日志</button>
     </div>
     <p class="muted" data-i18n="weWriteNote">配置区为 EEPROM 0x00–0xB4（共 181 字节），每帧最多带 10 字节，故读取需约 19 个来回；每条记录都带 0x55 补码校验，校验只保证记录边界正确、不代表字段语义已解出。写入一律回读验证。</p>
   </section>
@@ -198,7 +204,7 @@
       <button id="btnPairData" class="ghost" data-i18n="getPairData">读取配对数据</button>
       <button id="btnReset" class="danger" data-i18n="factoryReset">恢复出厂设置</button>
     </div>
-    <div class="row"><button id="btnLog" class="ghost" style="background:#eef0f3;color:var(--sub)" data-i18n="toggleLog">显示/隐藏通讯日志</button></div>
+    <div class="row"><button id="btnLog" class="ghost" data-i18n="toggleLog">显示/隐藏通讯日志</button></div>
     <div id="log"></div>
     <p class="muted"><a href="tools/blob-studio.html" target="_blank" rel="noopener" data-i18n="studioLink">离线 blob 分析器（tools/blob-studio.html）：粘贴 hex 或导出的 JSON 解析成字段表，粘两份自动差分 —— 不需要连接设备。</a></p>
     <p class="muted" id="persistNote" data-i18n="persistNote">写入立即持久化（无需保存操作）；0x13 是恢复出厂而非保存，慎用。</p>

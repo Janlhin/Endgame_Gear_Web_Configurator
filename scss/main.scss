@@ -6,9 +6,13 @@
 // 模板只保留一个占位符 /*__STYLES__*/。
 //
 // 目录：
-//   _tokens.scss   设计令牌（颜色/间距/圆角/断点）
+//   _tokens.scss   设计令牌（颜色/间距/圆角/断点/动效）
 //   _mixins.scss   混入与工具函数
 //   main.scss      组件与元素样式，@use 上面两者
+//
+// 2026-10-20 视觉改版：单文件零依赖前提下的「电影感」升级 ——
+// 背景光晕 + 网格 + 颗粒、玻璃卡片、分层投影、入场节奏、磁吸悬停。
+// 不使用任何外部字体/图片/脚本；动效全部为 CSS，且尊重 reduced-motion。
 // ============================================================
 
 @use "sass:map";
@@ -18,56 +22,233 @@
 // ---------- 基础 ----------
 * { box-sizing: border-box; }
 
-body {
-  margin: 0;
-  font-family: $font-stack;
+html {
   background: $bg;
-  color: $text;
+  scroll-behavior: smooth;
 }
 
+body {
+  min-height: 100vh;
+  margin: 0;
+  font-family: $font-stack;
+  font-size: $fs-sm;
+  line-height: 1.5;
+  color: $text;
+  background: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+
+  // 背景层：两团冷光 + 一张淡网格，固定不随滚动（file:// 下也正常）
+  &::before {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    content: "";
+    background:
+      radial-gradient(60% 42% at 12% -8%, $glow-1, transparent 70%),
+      radial-gradient(46% 36% at 92% 4%, $glow-2, transparent 72%),
+      radial-gradient(52% 40% at 68% 104%, $glow-3, transparent 70%),
+      linear-gradient(180deg, $bg-2, $bg 42%);
+  }
+
+  // 颗粒：极细的 SVG 噪声，压住大色块的「塑料感」
+  &::after {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    content: "";
+    opacity: 0.14;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+[data-theme="dark"] body::after { opacity: 0.22; }
+
 // 日文 / 韩文 / 繁体中文各自换字体栈 —— 否则汉字会套用简体字形。
-// 用 :lang() 而非 [lang=]：前者能匹配 lang="ja-JP" 这类带区域的标签。
 html:lang(zh-TW) body { font-family: $font-zh-tw; }
 html:lang(ja)    body { font-family: $font-ja; }
 html:lang(ko)    body { font-family: $font-ko; }
 
-// ---------- 页头 ----------
+::selection { color: $text; background: $acc-soft; }
+
+@supports (scrollbar-width: thin) {
+  * { scrollbar-width: thin; scrollbar-color: $line-strong transparent; }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: $line-strong;
+  border: 3px solid transparent;
+  border-radius: $radius-pill;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track { background: transparent; }
+
+// ---------- 页头（玻璃条） ----------
 header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   display: flex;
   align-items: center;
-  gap: $gap-md;
+  gap: 12px;
   flex-wrap: wrap;
-  padding: $gap-sm $gap-lg;
-  background: $card;
+  padding: 10px 24px;
+  background: $header;
   border-bottom: 1px solid $line;
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
 
-  h1 {
-    margin: 0;
-    font-size: $fs-lg;
+  // 顶边一道极细高光，模拟玻璃厚度
+  &::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 1px;
+    content: "";
+    background: linear-gradient(90deg, transparent, $hi, transparent);
+    opacity: 0.6;
   }
 
+  h1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-family: $font-display;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: $text;
+  }
+
+  .brandMark {
+    width: 22px;
+    height: 22px;
+    color: $acc;
+    filter: drop-shadow(0 0 10px $acc-soft);
+    transition: transform $t-base $ease-out;
+  }
+
+  h1:hover .brandMark { transform: rotate(-6deg) scale(1.06); }
+
   .spacer { flex: 1; }
+
+  select { height: 32px; }
+
+  button { height: 32px; }
+}
+
+// 页头控件在窄屏收紧
+@include below($bp-sm) {
+  header { gap: 8px; padding: 10px 14px; }
+  header h1 { font-size: 12.5px; }
+  header select { max-width: 118px; }
 }
 
 // ---------- 主体栅格 ----------
 main {
-  max-width: $max-width;
-  margin: $gap-lg auto;
-  padding: 0 $gap-md;
   display: grid;
-  gap: $gap-md;
+  gap: 18px;
+  max-width: $max-width;
+  min-width: 0;
+  padding: 28px 20px 96px;
+  margin: 0 auto;
+}
+
+// 入场：自下而上 10px + 淡入，逐卡错开 40ms
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+main > * { animation: rise $t-slow $ease-out both; }
+
+@for $i from 1 through 12 {
+  main > *:nth-child(#{$i}) { animation-delay: ($i - 1) * 40ms; }
 }
 
 // ---------- 卡片 ----------
 .card {
-  padding: $gap-md $gap-lg;
+  position: relative;
+  min-width: 0;
+  padding: 22px 24px;
   background: $card;
   border: 1px solid $line;
   border-radius: $radius-lg;
+  box-shadow: $shadow-1;
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  transition:
+    border-color $t-base $ease-out,
+    box-shadow $t-base $ease-out,
+    translate $t-base $ease-out;
+
+  // 顶部 1px 高光：让平面卡片有「边缘」而不是纯色块
+  &::before {
+    position: absolute;
+    top: 0;
+    right: 12%;
+    left: 12%;
+    height: 1px;
+    content: "";
+    background: linear-gradient(90deg, transparent, $hi, transparent);
+    pointer-events: none;
+  }
 
   h2 {
-    margin: 0 0 $gap-md;
-    font-size: $fs-md;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px;
+    font-family: $font-display;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: $text;
+
+    &::before {
+      flex: none;
+      width: 3px;
+      height: 14px;
+      content: "";
+      background: linear-gradient(180deg, $acc, $acc-2);
+      border-radius: 2px;
+    }
+  }
+}
+
+@media (hover: hover) {
+  .card:hover {
+    translate: 0 -2px;
+    border-color: $line-strong;
+    box-shadow: $shadow-2;
+  }
+}
+
+// 设备信息卡：当作 hero 处理 —— 型号最大、带一圈冷光
+#cardInfo {
+  background:
+    radial-gradient(120% 150% at 0% 0%, $glow-1, transparent 58%),
+    $card;
+  border-color: $line-strong;
+
+  #iModel {
+    font-family: $font-display;
+    font-size: $fs-2xl;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: $text;
+  }
+
+  #iBattery {
+    font-family: $font-mono;
+    font-size: $fs-xl;
+    font-weight: 600;
     color: $acc;
   }
 }
@@ -76,17 +257,23 @@ main {
 .row {
   display: flex;
   align-items: center;
-  gap: $gap-sm;
+  gap: 10px;
   flex-wrap: wrap;
-  margin: $gap-xs 0;
+  margin: 7px 0;
 
   label {
     min-width: $label-min;
-    font-size: $fs-sm;
+    font-size: $fs-xs;
     color: $sub;
   }
 
-  .val { font-weight: 600; }
+  .val {
+    font-family: $font-mono;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
 
   /* 「成组的 label + 控件」包装。用 display:contents 让它对布局完全透明
      （label 与控件仍按 .row 的直接子项参与 flex），
@@ -96,77 +283,204 @@ main {
 }
 
 select, input[type="number"] {
-  padding: 6px 8px;
+  height: 34px;
+  padding: 0 10px;
+  font-family: $font-stack;
   font-size: $fs-sm;
-  background: $card;
   color: $text;
+  background: $surface-2;
   border: 1px solid $line;
-  border-radius: $radius-sm;
+  border-radius: $radius-md;
+  outline: none;
+  transition:
+    border-color $t-fast $ease-out,
+    box-shadow $t-fast $ease-out,
+    background-color $t-fast $ease-out;
+
+  &:hover { border-color: $line-strong; }
+
+  &:focus-visible {
+    background: $card-solid;
+    border-color: $acc;
+    box-shadow: 0 0 0 3px $acc-soft;
+  }
+}
+
+select {
+  padding-right: 26px;
+  cursor: pointer;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, $sub 50%),
+    linear-gradient(135deg, $sub 50%, transparent 50%);
+  background-position:
+    calc(100% - 15px) 15px,
+    calc(100% - 10px) 15px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
 }
 
 // ---------- 按钮 ----------
 button {
-  padding: 8px 16px;
+  position: relative;
+  height: 34px;
+  padding: 0 14px;
+  overflow: hidden;
+  font-family: $font-stack;
   font-size: $fs-sm;
+  font-weight: 500;
   color: $on-acc;
+  white-space: nowrap;
   cursor: pointer;
   background: $acc;
-  border: none;
+  border: 1px solid transparent;
   border-radius: $radius-md;
+  box-shadow: inset 0 1px 0 $hi, $shadow-1;
+  transition:
+    translate $t-fast $ease-out,
+    box-shadow $t-fast $ease-out,
+    filter $t-fast $ease-out,
+    background-color $t-fast $ease-out,
+    border-color $t-fast $ease-out;
 
-  &:hover { filter: brightness(1.08); }
-  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  // 悬停时掠过一道细光（纯 CSS，不影响点击）
+  &::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -60%;
+    width: 40%;
+    content: "";
+    background: linear-gradient(100deg, transparent, $hi, transparent);
+    transform: skewX(-18deg);
+    opacity: 0;
+    transition: left $t-slow $ease-out, opacity $t-base $ease-out;
+  }
+
+  &:hover {
+    filter: brightness(1.06);
+    box-shadow: inset 0 1px 0 $hi, $shadow-2;
+    translate: 0 -1px;
+  }
+
+  &:hover::after { left: 120%; opacity: 0.55; }
+
+  &:active { translate: 0 0; filter: brightness(0.97); }
+
+  &:focus-visible {
+    outline: 2px solid $acc;
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    filter: grayscale(0.2);
+    translate: 0 0;
+  }
 
   &.ghost {
     color: $acc;
-    background: $acc-soft;
+    background: transparent;
+    border-color: $line-strong;
+    box-shadow: none;
+
+    &:hover {
+      background: $acc-soft;
+      border-color: $acc;
+      box-shadow: none;
+    }
   }
 
-  &.danger { background: $err; }
+  &.danger {
+    color: $on-err;
+    background: $err;
+
+    &:hover { filter: brightness(1.05); }
+  }
 }
 
 // ---------- 表格 ----------
 table {
   width: 100%;
   font-size: $fs-sm;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 
   th, td {
-    padding: 7px 9px;
+    padding: 9px 10px;
     text-align: left;
-    border: 1px solid $line;
+    vertical-align: middle;
+    border-bottom: 1px solid $line;
   }
 
   th {
+    padding-top: 6px;
+    padding-bottom: 8px;
+    font-size: 11.5px;
     font-weight: 600;
+    letter-spacing: 0.05em;
     color: $sub;
-    background: $surface-2;
+    text-transform: uppercase;
+    border-bottom-color: $line-strong;
   }
 
-  td input { width: 90px; }
+  td { color: $text; }
+
+  tbody tr { transition: background-color $t-fast $ease-out; }
+  tbody tr:hover { background: $surface-2; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  td input[type="number"] { width: 92px; height: 30px; }
 }
 
 // ---------- 状态胶囊 ----------
 .status-pill {
-  display: inline-block;
-  padding: 3px 10px;
-  font-size: $fs-xs;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  font-weight: 500;
   color: $acc;
   background: $acc-soft;
+  border: 1px solid transparent;
   border-radius: $radius-pill;
+  transition: color $t-base $ease-out, background-color $t-base $ease-out;
+
+  &::before {
+    width: 6px;
+    height: 6px;
+    content: "";
+    background: currentColor;
+    border-radius: 50%;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  &:not(.off)::before { animation: pulse 2.2s ease-in-out infinite; }
 
   &.off {
     color: $sub;
     background: $surface-2;
+    border-color: $line;
+
+    &::before { box-shadow: none; opacity: 0.65; }
   }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
 }
 
 // ---------- 横幅提示 ----------
 .banner {
   display: none;
-  margin-bottom: $gap-sm;
-  padding: 10px 14px;
-  font-size: $fs-sm;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: $text;
+  border: 1px solid transparent;
   border-radius: $radius-md;
 
   // 三种语义色：各自给出背景与前景。
@@ -180,39 +494,59 @@ table {
   @each $cls, $c in $variants {
     &.#{$cls} {
       display: block;
-      background-color: map.get($c, bg);
       color: map.get($c, fg);
+      background-color: map.get($c, bg);
+      border-color: $line;
+      box-shadow: inset 3px 0 0 currentColor;
+      animation: bannerIn $t-base $ease-out both;
     }
   }
+}
+
+@keyframes bannerIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 // ---------- 通讯日志 ----------
 #log {
   display: none;
-  max-height: 240px;
-  padding: 12px;
+  max-height: 260px;
+  padding: 14px 16px;
+  margin-top: 12px;
   overflow-y: auto;
   font-family: $font-mono;
   font-size: 11.5px;
+  line-height: 1.65;
   color: $log-fg;
   white-space: pre-wrap;
   background: $log-bg;
+  border: 1px solid $line;
   border-radius: $radius-md;
+  box-shadow: $log-shadow;
 }
 
 // ---------- 杂项 ----------
 .muted {
   font-size: $fs-xs;
-  color: $sub;
+  line-height: 1.7;
+  color: $muted;
 }
 
-a { color: $acc; }
+a {
+  color: $acc;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color $t-fast $ease-out, color $t-fast $ease-out;
+
+  &:hover { border-bottom-color: currentColor; }
+}
 
 // 两列网格：窄屏折叠为一列
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: $gap-md;
+  gap: 24px;
 
   @include below($bp-md) {
     grid-template-columns: 1fr;
@@ -222,36 +556,48 @@ a { color: $acc; }
 // ---------- 预设条与设置说明 ----------
 // 预设只往表单里填值、不写设备，用户确认后再点「应用」。
 .presetBar {
-  margin-bottom: $gap-sm;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
 
   .presetLabel {
-    font-size: $fs-xs;
-    color: $sub;
     min-width: auto;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: $muted;
+    text-transform: uppercase;
   }
 
   button {
-    font-size: $fs-xs;
-    padding: 4px 10px;
+    height: 28px;
+    padding: 0 11px;
+    font-size: 11.5px;
   }
 }
 
 // 「这些设置是什么意思」——默认收起，不打扰已经会用的人
 .helpBox {
-  margin-top: $gap-md;
+  padding-top: 14px;
+  margin-top: 18px;
   font-size: $fs-xs;
   color: $sub;
+  border-top: 1px dashed $line;
 
   summary {
-    cursor: pointer;
+    font-size: 12.5px;
     color: $acc;
-    font-size: $fs-sm;
+    cursor: pointer;
     user-select: none;
   }
 
+  summary::marker { color: $muted; }
+
   dl { margin: $gap-sm 0 0; }
-  dt { font-weight: 600; color: $text; margin-top: $gap-sm; }
-  dd { margin: 2px 0 0; line-height: 1.55; }
+  dt { margin-top: 12px; font-weight: 600; color: $text; }
+  dd { margin: 3px 0 0; line-height: 1.65; }
 }
 
 // ---------- 内嵌 Markdown（测试清单）----------
@@ -259,9 +605,9 @@ a { color: $acc; }
 // 清单是"给人读、给人逐条勾"的，所以排版目标是可读 + 可打印，不是花哨。
 #cardChecklist {
   summary {
-    cursor: pointer;
     font-weight: 600;
     color: $text;
+    cursor: pointer;
     list-style: revert;
   }
   summary::marker { color: $sub; }
@@ -304,14 +650,56 @@ a { color: $acc; }
       width: 100%;
       margin: 6px 0;
       th, td { border: 1px solid $line; padding: 4px 8px; text-align: left; vertical-align: top; }
-      th { background: $surface-2; font-weight: 600; }
+      th { background: $surface-2; font-weight: 600; letter-spacing: 0; text-transform: none; }
     }
     input[type="checkbox"] { margin-right: 6px; }
     a { color: $acc; }
   }
 }
 
+@include below($bp-sm) {
+  main { gap: 14px; padding: 18px 12px 72px; }
+  .card { padding: 18px 16px; border-radius: 14px; }
+  .card h2 { font-size: 13px; margin-bottom: 14px; }
+  .row { gap: 8px; }
+  .row label { min-width: 88px; }
+  .row .muted { flex: 1 1 100%; }
+  #cardInfo #iModel { font-size: $fs-xl; }
+
+  /* 多列表格在窄屏改为「卡片内横向滚动」，不撑破页面。
+     table 改 block 后浏览器会保留内部表格排版，只是多出一个滚动容器。 */
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  th, td { white-space: nowrap; }
+  td input[type="number"] { width: 74px; }
+}
+
+// ---------- 无障碍：尊重「减少动态效果」 ----------
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  main > * { animation: none; }
+  .card { transition: none; }
+  .card:hover { translate: 0; }
+  .status-pill:not(.off)::before { animation: none; }
+  button::after { display: none; }
+  button, .card { transition-duration: 0.001ms; }
+}
+
 @media print {
+  html, body { background: $bg; }
+  body::before, body::after { display: none; }
+  header { position: static; backdrop-filter: none; box-shadow: none; }
+  .card {
+    break-inside: avoid;
+    background: $card-solid;
+    border-color: $line-strong;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
   #cardChecklist .mdBody { font-size: 11px; }
-  #cardChecklist { break-inside: avoid; }
 }
