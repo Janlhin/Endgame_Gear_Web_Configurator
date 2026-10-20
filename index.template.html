@@ -122,16 +122,20 @@
       <tbody id="weCpiRows"></tbody>
     </table>
     <p class="muted" data-i18n="weSlot1Note">槽位 1 是当前生效的 CPI，写入即刻改变指针速度，无需保存或断电。鼠标上的按钮切换的是<b>回报率</b>而非 CPI 档位——它的闪烁次数很容易被误读成档位。</p>
-    <div class="row">
-      <label data-i18n="polling">回报率</label>
-      <select id="wePolling" style="width:120px"></select>
-      <span class="muted" data-i18n="wePollingNote">存放为 one-hot 掩码：0x08=125 / 0x04=250 / 0x02=500 / 0x01=1000 Hz</span>
-    </div>
-    <div class="row">
-      <label data-i18n="weDebounce">点击去抖 (ms)</label>
-      <input type="number" id="weDebounce" min="0" max="255" step="1" style="width:90px">
-      <button id="btnWeApplyCpi" data-i18n="applySensor">应用传感器设置</button>
-      <button id="btnWeApplyPerf" class="ghost" data-i18n="applyPerf">应用性能/电源</button>
+    <div class="settings">
+      <div class="grp">
+        <label data-i18n="polling">回报率</label>
+        <select id="wePolling"></select>
+        <span class="note" data-i18n="wePollingNote">存放为 one-hot 掩码：0x08=125 / 0x04=250 / 0x02=500 / 0x01=1000 Hz</span>
+      </div>
+      <div class="grp">
+        <label data-i18n="weDebounce">点击去抖 (ms)</label>
+        <input type="number" id="weDebounce" min="0" max="255" step="1">
+      </div>
+      <div class="applyRow">
+        <button id="btnWeApplyCpi" data-i18n="applySensor">应用传感器设置</button>
+        <button id="btnWeApplyPerf" class="ghost" data-i18n="applyPerf">应用性能/电源</button>
+      </div>
     </div>
   </section>
 
@@ -169,33 +173,40 @@
       </table>
       <div class="muted" id="cpiStepNote" style="margin-top:6px"></div>
     </div>
-    <div class="splitCol">
-      <div class="row" id="rowStages" style="margin-top:12px">
-        <label data-i18n="cpiLevels">启用档位数</label>
+    <div class="splitCol settings">
+      <div class="grp" id="rowStages">        <label data-i18n="cpiLevels">启用档位数</label>
         <select id="cpiLevels"><option>1</option><option>2</option><option>3</option><option>4</option></select>
-        <label style="min-width:auto" data-i18n="activeStage">当前档位</label>
-        <select id="cpiActive" style="width:90px"></select>
-        <span class="muted" id="cpiActiveNote"></span>
+        <label data-i18n="activeStage">当前档位</label>
+        <select id="cpiActive"></select>
+        <span class="note" id="cpiActiveNote"></span>
       </div>
-      <div class="row" id="rowLod">
+      <div class="grp" id="rowLod">
         <label data-i18n="lod">抬离距离 (LOD)</label>
-        <select id="lod" style="width:110px"></select>
-        <span class="cell" id="cellGlass">
-        <label style="min-width:auto" data-i18n="glassMode">玻璃面模式</label>
-        <select id="glass" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
-        <span class="muted" data-i18n="glassNote">v2 专属；切换时 LOD 编码会随之换算</span>
-        </span>
+        <select id="lod"></select>
       </div>
-      <div class="row">
-        <span class="cell" id="cellAngleSnap"><label data-i18n="angleSnap">角度捕捉</label><select id="angleSnap" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></span>
-        <span class="cell" id="cellRipple"><label style="min-width:auto" data-i18n="ripple">波纹控制</label><select id="ripple" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></span>
-        <span class="cell" id="cellLedLiftoff"><label style="min-width:auto" data-i18n="ledLiftoff">抬离时 LED</label><select id="ledLiftoff" style="width:80px"><option value="1" data-i18n="on">开</option><option value="0" data-i18n="off">关</option></select></span>
+      <div class="grp" id="cellGlass">
+        <label data-i18n="glassMode">玻璃面模式</label>
+        <select id="glass"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+        <span class="note" data-i18n="glassNote">v2 专属；切换时 LOD 编码会随之换算</span>
       </div>
-      <div class="row" id="rowAngleTune">
-        <label data-i18n="angleTune">角度调校 (°)</label><input type="number" id="angleTune" min="-30" max="30" step="1" style="width:80px">
-        <span class="muted" data-i18n="angleTuneNote">v2 专属</span>
+      <div class="grp" id="cellAngleSnap">
+        <label data-i18n="angleSnap">角度捕捉</label>
+        <select id="angleSnap"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
       </div>
-      <div class="row"><button id="btnApplySensor" data-i18n="applySensor">应用传感器设置</button></div>
+      <div class="grp" id="cellRipple">
+        <label data-i18n="ripple">波纹控制</label>
+        <select id="ripple"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+      </div>
+      <div class="grp" id="cellLedLiftoff">
+        <label data-i18n="ledLiftoff">抬离时 LED</label>
+        <select id="ledLiftoff"><option value="1" data-i18n="on">开</option><option value="0" data-i18n="off">关</option></select>
+      </div>
+      <div class="grp" id="rowAngleTune">
+        <label data-i18n="angleTune">角度调校 (°)</label>
+        <input type="number" id="angleTune" min="-30" max="30" step="1">
+        <span class="note" data-i18n="angleTuneNote">v2 专属</span>
+      </div>
+      <div class="applyRow"><button id="btnApplySensor" data-i18n="applySensor">应用传感器设置</button></div>
     </div>
     </div>
     <div id="sensorHelp" class="helpBox"></div>
@@ -204,18 +215,39 @@
   <section class="card" id="cardPerf" data-off>
     <h2 data-i18n="secPerf">性能 / 电源</h2>
     <div class="cardSplit">
-    <div class="splitCol">
-      <div class="row" id="rowPolling"><label data-i18n="polling">回报率</label><select id="polling"></select><span class="muted" id="pollNote"></span></div>
-      <div class="row" id="rowMotionSync"><label>Motion Sync</label><select id="motionSync" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-      <div class="row" id="rowSlamclick"><label data-i18n="slamclick">Slamclick 过滤</label><select id="slamclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-      <div class="row" id="rowV1Jitter"><label data-i18n="jitter">抖动过滤 (v1)</label><select id="jitter" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-    </div>
-    <div class="splitCol">
-      <div class="row" id="rowV2Max"><label data-i18n="maxFps">强制最高传感器 FPS (v2)</label><select id="maxFps" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-      <div class="row" id="rowV2Multi"><label data-i18n="multiclick">多击确认过滤 (v2)</label><select id="multiclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-      <div class="row" id="rowPower"><label data-i18n="powerSaving">省电超时 (分钟)</label><select id="powerSaving"></select>
-        <label style="min-width:auto" data-i18n="deepSleep">深度休眠 (分钟)</label><select id="deepSleep"></select></div>
-      <div class="row"><button id="btnApplyPerf" data-i18n="applyPerf">应用性能/电源</button></div>
+    <div class="settings">
+      <div class="grp" id="rowPolling">
+        <label data-i18n="polling">回报率</label>
+        <select id="polling"></select>
+        <span class="note" id="pollNote"></span>
+      </div>
+      <div class="grp" id="rowMotionSync">
+        <label>Motion Sync</label>
+        <select id="motionSync"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+      </div>
+      <div class="grp" id="rowSlamclick">
+        <label data-i18n="slamclick">Slamclick 过滤</label>
+        <select id="slamclick"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+      </div>
+      <div class="grp" id="rowV1Jitter">
+        <label data-i18n="jitter">抖动过滤 (v1)</label>
+        <select id="jitter"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+      </div>
+      <div class="grp" id="rowV2Max">
+        <label data-i18n="maxFps">强制最高传感器 FPS (v2)</label>
+        <select id="maxFps"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+      </div>
+      <div class="grp" id="rowV2Multi">
+        <label data-i18n="multiclick">多击确认过滤 (v2)</label>
+        <select id="multiclick"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+      </div>
+      <div class="grp" id="rowPower">
+        <label data-i18n="powerSaving">省电超时 (分钟)</label>
+        <select id="powerSaving"></select>
+        <label data-i18n="deepSleep">深度休眠 (分钟)</label>
+        <select id="deepSleep"></select>
+      </div>
+      <div class="applyRow"><button id="btnApplyPerf" data-i18n="applyPerf">应用性能/电源</button></div>
     </div>
     </div>
     <div id="perfHelp" class="helpBox"></div>

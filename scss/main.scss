@@ -578,6 +578,66 @@ main > * { animation: rise $t-slow $ease-out both; }
   .cell { display: contents; }
 }
 
+// ---------- 设置项网格（.settings）----------
+// ★ 2026-10-20：原来的 .row 是 flex-wrap，一行里塞 1～3 组「标签+控件」，
+//   而各标签宽度不一（部分写了 min-width:auto），导致控件横位错开、
+//   末尾还会掉出孤零零的控件（如「开 ▾」单独换行）—— 看着乱。
+//   改成**两列网格**：第 1 列放标签（宽度取全体最长，天然对齐），
+//   第 2 列放控件（所有控件左边缘同一条线）。一行一组，绝不换行错位。
+//
+//   .grp = 「可按型号整组隐藏」的包装。用 display:contents 让它的子项
+//   直接成为网格项；applyLayout 给它写内联 display:none 时又会盖过
+//   display:contents（内联样式优先级更高）→ 整组照常隐藏。
+.settings {
+  display: grid;
+
+  /* 两列 = 「标签 | 控件」：
+     ① 第 1 列放标签（宽度取全体最长，右对齐）；
+     ② 第 2 列放控件（宽度统一，左边缘成一条线）。
+     一行一组，绝不换行错位 —— 这是这一版的核心。 */
+  grid-template-columns: max-content 120px;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+
+  > label {
+    font-size: $fs-xs;
+    color: $sub;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  /* 控件统一宽度（0.78rem 字号下 120px 足够放下 4 位数 + 单位）——
+     宽度一致是这一版的核心：所有下拉框左边缘在同一条线上，右边缘也在同一条线上。 */
+  select,
+  input[type="number"] {
+    width: 120px;
+    max-width: 100%;
+  }
+
+  /* 说明文字独占一行（跨两列），不跟控件抢位置。 */
+  .note {
+    grid-column: 1 / -1;
+    margin: -2px 0 4px;
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: $muted;
+  }
+
+  /* 「应用」按钮行：跨两列，靠左。 */
+  .applyRow {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  /* 同一组里的第二行（如「当前档位」）与第一行之间留一点呼吸。 */
+  .grp > label + select + label { margin-top: 6px; }
+}
+
+.grp { display: contents; }
+
 select, input[type="number"] {
   height: 34px;
   padding: 0 10px;
@@ -1043,6 +1103,16 @@ a {
   .cardSplit {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
+  }
+}
+
+// 设置区四列（两组并排）：只在它独占整行宽度时用 ——
+// 即 cardSplit 退回单列之后（<1280px）。宽屏时设置区在右半列（≈480px），
+// 四列放不下，仍用两列。
+@include below($bp-xl) {
+  .splitCol.settings {
+    grid-template-columns: max-content 120px max-content 120px;
+    column-gap: 12px 14px;
   }
 }
 
