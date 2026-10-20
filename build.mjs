@@ -121,8 +121,16 @@ const kbOf = (s) => Buffer.byteLength(s, "utf8") / 1024;
  *   产物 321.7 KB，余量 ~3 KB —— 仍是紧约束，塞进任何库都会立刻报红。
  *   2026-10-20  325 → 330：改为双栏驾驶舱（左栏常驻 + 右侧单分区 + 分区导航）。
  *   增量 1.8 KB：cockpit.ts 导航逻辑、rail/stage 样式、family4Body 八语言词条。
- *   产物 326.8 KB，余量 ~3 KB。 */
-const SIZE_BUDGET_KB = 330;
+ *   产物 326.8 KB，余量 ~3 KB。
+ *   2026-10-20  330 → 338：XM1 与 4k 族样式统一。
+ *   增量 6.4 KB，全部为自有代码，无任何外部依赖：
+ *     · 传感器表统一为 5 列（两族同构）：表体行渲染 + 受约束的「启用」勾选
+ *       + 表内「当前」radio，取代原先两个下拉（启用档位数 / 当前档位）
+ *     · 型号说明从表内 <tr> 移到右栏折叠卡（setSensorNote）
+ *     · 左栏信息位补齐：不可知的值写明原因而非裸「—」（11 个新词条 × 8 语言）
+ *     · LED 色点样式 + 4 个设备语义色令牌
+ *   产物 336.4 KB，余量 ~1.6 KB —— 仍是紧约束。 */
+const SIZE_BUDGET_KB = 338;
 const actualKb = kbOf(html);
 console.log(`dist/index.html + index.html written, ${kb(html)} KB  (js ${kb(js)} KB, css ${kb(css)} KB)`);
 if (actualKb > SIZE_BUDGET_KB) {

@@ -39,7 +39,9 @@ const ALL_CARDS = [
    .cell 是 `display: contents` 的包装 —— 在 flex 行里不占位，但能整组隐藏。 */
 const ALL_ROWS = [
   "rowDongleFw", "rowBattery",                                     // 设备信息里不适用于有线的两行
-  "rowStages", "rowLod", "cellGlass", "cellAngleSnap", "cellRipple",  // 传感器
+  "grpSensorNote",                                                       // 型号说明折叠卡（两族都有，只是内容不同）
+  "presetBar",                                                         // 预设按钮条（4k 族可用；XM1 的预设无法写进固件，故不显示）
+  "rowLod", "cellGlass", "cellAngleSnap", "cellRipple",  // 传感器
   "cellLedLiftoff", "rowAngleTune",
   "rowPolling", "rowMotionSync", "rowSlamclick",                    // 性能 / 电源
   "rowV1Jitter", "rowV2Max", "rowV2Multi", "rowPower",
@@ -55,13 +57,13 @@ const LAYOUT: Record<LayoutKind, { cards: string[]; rows: string[] }> = {
      反过来 v2 没有「抖动过滤」（v1 专属）。这些差异来自 4k 族 blob 布局的逐字节核验。 */
   v1: {
     cards: CARDS_4K,
-    rows: ["rowDongleFw", "rowBattery", "rowStages", "rowLod", "cellAngleSnap", "cellRipple",
+    rows: ["rowDongleFw", "rowBattery", "grpSensorNote", "presetBar", "rowLod", "cellAngleSnap", "cellRipple",
            "cellLedLiftoff",
            "rowPolling", "rowMotionSync", "rowSlamclick", "rowV1Jitter", "rowPower", "rowPairing"],
   },
   v2: {
     cards: CARDS_4K,
-    rows: ["rowDongleFw", "rowBattery", "rowStages", "rowLod", "cellGlass", "cellAngleSnap",
+    rows: ["rowDongleFw", "rowBattery", "grpSensorNote", "presetBar", "rowLod", "cellGlass", "cellAngleSnap",
            "cellRipple", "cellLedLiftoff", "rowAngleTune",
            "rowPolling", "rowMotionSync", "rowSlamclick", "rowV2Max", "rowV2Multi", "rowPower", "rowPairing"],
   },
@@ -76,7 +78,7 @@ const LAYOUT: Record<LayoutKind, { cards: string[]; rows: string[] }> = {
     cards: ["cardInfo", "cardSensor", "cardTools"],
     /* 不显示「启用档位数 / 当前档位」：档数固定 4，激活档在表内用单选，两个下拉是噪声。
        LOD 要显示（偏移 0x046 已实测）；Ripple 要显示（0x057）；角度/灯效/玻璃面都没有。 */
-    rows: ["rowLod", "cellRipple"],
+    rows: ["grpSensorNote", "rowLod", "cellRipple"],
   },
 
   /* 8k 有线族：可读可写。写入是**整块读-改-写**（0x11），未确认的字段一律保持读回原值。
@@ -91,7 +93,7 @@ const LAYOUT: Record<LayoutKind, { cards: string[]; rows: string[] }> = {
        ✗ 按键区：8k 从 0x3D 起 7 条（4k 是 0x37 起 8 条），另有 HANDED @0x37，未验证 */
   "8k": {
     cards: ["cardInfo", "cardSensor", "cardPerf", "cardTools"],
-    rows: ["rowStages", "cellAngleSnap", "cellRipple",
+    rows: ["grpSensorNote", "presetBar", "cellAngleSnap", "cellRipple",
            "rowPolling", "rowMotionSync", "rowSlamclick", "rowV1Jitter"],
   },
 
@@ -99,7 +101,7 @@ const LAYOUT: Record<LayoutKind, { cards: string[]; rows: string[] }> = {
      保持这一档存在的意义：任何「协议已匹配但没验证过」的新型号默认都落到最保守的界面。 */
   ro: {
     cards: ["cardInfo", "cardSensor", "cardTools"],
-    rows: ["rowDongleFw", "rowBattery", "cellAngleSnap", "cellRipple"],
+    rows: ["rowDongleFw", "rowBattery", "grpSensorNote", "presetBar", "cellAngleSnap", "cellRipple"],
   },
 
   /* 第四协议族（XM1r / OP1 / OP1 RGB）：只显示一张设备信息卡。
@@ -116,25 +118,37 @@ const LAYOUT: Record<LayoutKind, { cards: string[]; rows: string[] }> = {
 
 const byId = (id: string) => document.getElementById(id);
 
-/** 传感器表头随型号切换：XM1 是**单值** CPI（固件只读 X），4k 族是 XY 可独立。
+/** 传感器表的 5 列 —— **两族完全相同**，列位一一对应。
+ *
+ *  ★ 2026-10-20：此前两族各写一套表头（4k 是「档位/LED 颜色/XY 独立/CPI X/CPI Y」，
+ *    XM1 是「档位/启用/当前/CPI(单值)」+ 第 5 列隐藏 + 第 4 列跨 2 列），
+ *    同一个控件在两族下是两套列语义，无法互相对照。现统一为：
+ *      档位 | 启用 | 当前 | CPI X | CPI Y
+ *    差异只体现在**单元格内容**上（4k 的「启用」是受约束勾选、Y 可编辑；
+ *    XM1 的「启用」是真值 checkbox、Y 不支持），表头不再分叉。 */
+const SENSOR_COLS: { id: string; label: () => string }[] = [
+  { id: "stage", label: () => t("stage") },
+  { id: "on", label: () => t("xm1On") },
+  { id: "active", label: () => t("xm1ActiveCol") },
+  { id: "cpiX", label: () => "CPI X" },
+  { id: "cpiY", label: () => "CPI Y" },
+];
+
+/** 传感器表头（两族相同，但语言切换要重建 —— 走 t()，仍是双语的）。
  *  ★ 表头文本由本模块接管：摘掉 th 上的 data-i18n，否则 applyI18n() 会把它们
- *    重置回默认的「档位 / LED 颜色 / XY 独立 / CPI X / CPI Y」。
- *    语言切换时由 main.ts 调 reapplyLayout() 重建（走 t()，仍是双语的）。 */
-function setSensorHeader(kind: LayoutKind) {
+ *    重置回默认文本。语言切换时由 main.ts 调 reapplyLayout() 重建。 */
+function setSensorHeader() {
   const ths: any[] = Array.from(document.querySelectorAll("#cardSensor thead th"));
   if (!ths.length) return;
-  const xm1Mode = kind === "xm1";
-  const labels = xm1Mode
-    ? [t("stage"), t("xm1On"), t("xm1ActiveCol"), "CPI " + t("xm1Single"), ""]
-    : [t("stage"), t("ledColor"), t("xySplit"), "CPI X", "CPI Y"];
   ths.forEach((el, i) => {
     el.removeAttribute("data-i18n");
-    if (labels[i] !== undefined) el.textContent = labels[i];
+    const c = SENSOR_COLS[i];
+    if (!c) return;
+    el.textContent = c.label();
+    el.dataset.col = c.id;          /* 列位标识：渲染层据此填内容 */
+    el.colSpan = 1;                 /* 恒 1 —— 不再有 colspan=2 的跨列技巧 */
+    el.style.display = "";          /* 恒可见 —— 不再有隐藏列 */
   });
-  /* XM1 的 CPI 是单值，表体用 colspan=2 放一个输入框 —— 表头第 4 列也跨 2 列，
-     否则会多出一个空列头。其它型号恢复成 5 个独立列头。 */
-  ths[3].colSpan = xm1Mode ? 2 : 1;
-  ths[4].style.display = xm1Mode ? "none" : "";
 }
 
 /** 当前生效的布局（语言切换时用它重建表头等由 t() 生成的文本） */
@@ -158,7 +172,7 @@ function applyLayout(kind: LayoutKind) {
     const el = byId(id);
     if (el) el.style.display = L.rows.indexOf(id) >= 0 ? "" : "none";
   }
-  setSensorHeader(kind);
+  setSensorHeader();
 
   /* 未连接时整块驾驶舱收起（只剩清单/致谢）；不再依赖卡片各自的 display。 */
   const cockpit = byId("cockpit");

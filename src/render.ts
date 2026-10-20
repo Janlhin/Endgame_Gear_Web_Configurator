@@ -47,6 +47,11 @@ export const FILTER_SLOTS = 5;
 export const GX_SAFE = 0xF0;
 export const GX_SPEED = 0xF1;
 
+/** 每档的 LED 色点 class —— 与 STAGE_COLORS 的「蓝/绿/黄/红」一一对应。
+ *  4k 固件不提供每档 RGB（那是 XM2we 族才有的），所以色点是 CSS 硬编码的形状，
+ *  颜色语义靠「第 n 档 = 第 n 色」的固定约定。 */
+export const STAGE_DOT_CLASS = ["blue", "green", "yellow", "red"];
+
 export function setConn(on: boolean, text: string) { const p = $el("connState"); p.className = "status-pill" + (on ? "" : " off"); p.textContent = text; }
 
 /* ---------- 设备仪表盘（hero）的展示层 ----------
@@ -88,6 +93,19 @@ export function fillSelect(sel: HTMLSelectElement, opts: (string | number)[][], 
   sel.value = String(val);
 }
 
+/** 型号说明 → 右栏顶部的折叠说明卡。
+ *
+ *  ★ 2026-10-20：此前两族的说明都是**塞在表格 tbody 里**的一行
+ *    （`<tr><td colspan="5" class="muted">`）—— 会被列宽挤成密排小字，
+ *    而且和页顶横幅重复（XM1 的 xm1EditNote 同时出现在两处）。
+ *    统一挪到卡内右栏顶部的 <details> 里：两族同位置、默认收起不撑高。
+ *    页顶横幅则一律是绿色一行的状态条（bReadOk / bReadOkXm1）。 */
+export function setSensorNote(kind: "fourK" | "xm1") {
+  const body = $("sensorNoteBody");
+  if (!body) return;
+  body.textContent = kind === "xm1" ? t("xm1EditNote") : t("xyHint");
+}
+
 export function renderXm1() {
   /* S.xm1Edit 为 null 说明 XM1 配置还没成功读出来（session.ts:82 的 catch
      分支也会走到这里）。此时下面每处 S.xm1Edit.stages 都会抛，
@@ -103,19 +121,30 @@ export function renderXm1() {
   // 这一行是收敛 S 时最需要的改动——它同时让「此处已判空」对类型系统可见。
   const ed = S.xm1Edit;
   $el("iModel").textContent = S.mouseName;
-  $el("iMouseFw").textContent = "—";
-  $el("iDongleFw").textContent = t("noDongleWired");
-  $el("iBattery").textContent = "—";
+  /* ★ 2026-10-20 左栏信息位补齐：此前 XM1 这几行是裸「—」，
+     与 4k 族（每行都有值）看上去像"坏了一半"。现在统一两族的**行结构**，
+     值不可知时写明原因，而不是一个破折号：
+       · 鼠标固件：XM1 命令表里没有固件查询命令（session.ts 的注释有记）
+       · 接收器固件：有线直连，没有接收器这个概念
+       · 电量：XM1 协议无电量命令 —— ★ 不能写成「无电池」，
+              XM1 是有线供电的，措辞会被读成硬件事实错误
+       · 回报率：由鼠标底部的 3 档拨动开关决定，软件读不到 */
+  $el("iMouseFw").textContent = t("fwUnreadable");
+  $el("iDongleFw").textContent = t("dongleFwNA");
+  $el("iBattery").textContent = t("batteryUnreadable");
   $el("iConn").textContent = t("wiredMode");
   $el("iGen").textContent = "2020 (XM1)";
 
   /* 仪表盘指标：XM1 的回报率由底部硬件拨动开关决定，软件读不到；
-     档位固定 4 档（见下方 cpiLevels 只读）。 */
+     档位固定 4 档（表内单选当前档）。 */
   paintBattery();
   const cur = ed.stages[ed.active] ?? ed.stages[0];
   setMetric("mCpi", cur ? String(cur.x) : "—");
-  setMetric("mPoll", "—");
+  setMetric("mPoll", t("pollHwSwitch"));
   setMetric("mStage", `${ed.active + 1} / 4`);
+  /* 指标的 title 说明「为什么是这个值」—— 裸值看不出分母含义的差别。 */
+  const mPoll = $("mPoll"); if (mPoll) mPoll.title = t("pollHwSwitchTip");
+  const mStage = $("mStage"); if (mStage) mStage.title = t("stageFixed4");
 
   // 表头由 layout.ts 的 applyLayout("xm1") 设置（XM1 是单值 CPI，固件只读 X）
 
@@ -130,11 +159,19 @@ export function renderXm1() {
 
   ed.stages.forEach((st: any, i: number) => {
     const tr = document.createElement("tr");
+    /* ★ 2026-10-20 列语义与 4k 族统一为「档位 | 启用 | 当前 | CPI X | CPI Y」：
+       · 档位：没有色点（XM1 无 LED 颜色概念）
+       · 启用：XM1 有**真实的逐档启用字节**（每档 6 字节 [启用][填充][X][Y]），
+                所以这里可以自由勾选，不受 4k 那种「前缀」约束
+       · 当前：radio（name 与 4k 统一为 cpiActive）
+       · CPI Y：XM1 固件只读 X、忽略 Y（实测确认）→ 置灰「不支持」，
+                不给一个改了也写不进去的输入框 */
     tr.innerHTML =
       `<td>CPI ${i + 1}</td>` +
       `<td><input type="checkbox" data-on="${i}"${st.on ? " checked" : ""}></td>` +
-      `<td style="text-align:center"><input type="radio" name="xm1act" data-act="${i}"${ed.active === i ? " checked" : ""}></td>` +
-      `<td colspan="2"><input type="number" data-x="${i}" min="50" max="30000" step="50" value="${st.x}"></td>`;
+      `<td><input type="radio" name="cpiActive" data-act="${i}"${ed.active === i ? " checked" : ""}></td>` +
+      `<td><input type="number" data-x="${i}" min="50" max="30000" step="50" value="${st.x}"></td>` +
+      `<td class="na" title="${t("xm1YIgnoredTip")}">${t("notSupported")}</td>`;
     // XM1 恒走默认档（50–30000/步进 50）：它的步进是 2026-10-08 实测确认过的，不随 gen 放宽
     tb.appendChild(tr);
   });
@@ -148,9 +185,8 @@ export function renderXm1() {
   tb.querySelectorAll<HTMLInputElement>("input[data-x]").forEach((el) => {
     el.oninput = () => { ed.stages[+el.dataset.x!].x = +el.value || 0; };
   });
-  const note = document.createElement("tr");
-  note.innerHTML = `<td colspan="5" class="muted">${t("xm1EditNote")}</td>`;
-  tb.appendChild(note);
+  /* 型号说明不再塞进表格（那会被列宽挤成密排小字），改放在右栏的折叠说明卡里。 */
+  setSensorNote("xm1");
 
   // LOD / Ripple：XM1 只有这两个传感器项已核实
   const lodSel = $el<HTMLSelectElement>("lod");
@@ -171,11 +207,8 @@ export function renderXm1() {
     rip.disabled = false;
     rip.onchange = (e: Event) => { ed.ripple = +(e.target as HTMLSelectElement).value; };
   }
-  // 档位数：XM1 固定 4 档（官方 UI 也是 4 张卡片），只读展示
-  const lv = $el<HTMLSelectElement>("cpiLevels");
-  if (lv) { lv.value = "4"; lv.disabled = true; }
-  const act = $el<HTMLSelectElement>("cpiActive");
-  if (act) { act.disabled = true; }        // 激活档用表内单选，避免两处入口
+  // 「启用档位数 / 当前档位」两个下拉已删除（2026-10-20）：
+  // 启用与当前都由表内控件承载（XM1 的启用是真值 checkbox、当前是 radio）。
   const note2 = $("cpiActiveNote");
   if (note2) note2.textContent = "";
 
@@ -217,7 +250,8 @@ export function render() {
 
   $el("iModel").textContent = S.mouseName;
   $el("iMouseFw").textContent = S.mouseFw;
-  $el("iDongleFw").textContent = S.wired ? t("noDongleWired") : S.dongleFw;
+  /* 有线时统一用「不适用（有线连接，无接收器）」—— 与 XM1 同一措辞。 */
+  $el("iDongleFw").textContent = S.wired ? t("dongleFwNA") : S.dongleFw;
   $el("iBattery").textContent = S.battery === null ? "—"
     : (S.wired && S.battery < 100 ? t("charging", S.battery) : S.battery + " %");
   $el("iConn").textContent = S.wired ? t("wiredMode") : t("wirelessMode");
@@ -231,12 +265,42 @@ export function render() {
     const xyOn = S.stage.cpi[n][0] ? 1 : 0;
     const xv = S.stage.cpi[n][1], yv = xyOn ? S.stage.cpi[n][2] : S.stage.cpi[n][1];
     const bd = cpiInputBounds(S.gen);
-    tr.innerHTML = `<td>CPI ${n + 1}${n === S.stage.active ? t("current") : ""}</td><td>${STAGE_COLORS[LANG]?.[n] ?? ""}</td>
-      <td><input type="checkbox" data-xy="${n}" ${xyOn ? "checked" : ""} ${dis}></td>
+    /* ★ 2026-10-20 列语义统一为「档位 | 启用 | 当前 | CPI X | CPI Y」（两族同构）：
+       · 档位：名字 + LED 色点。蓝/绿/黄/红是「第 n 档 = 第 n 色」的固定约定，
+                4k 固件不提供每档 RGB（STAGE_COLORS 只是显示用的名字表），
+                所以色点只能是 CSS 硬编码的四个颜色。
+       · 启用：4k **没有逐档启用字节**（每档只有 [XY位][X][Y]），它的「启用」
+                语义是总数 levels（blob 0x0E）。故这列是**受约束勾选**：
+                勾第 N 档连带勾上前面所有档（写 levels = N+1），
+                取消第 N 档则 levels = N。勾选态即「n < levels」。
+       · 当前：radio，写 S.stage.active。gen=1（v1）的硬件只认鼠标底部的
+                CPI 键、软件切不了档 —— 与原下拉的 disabled 一致。
+       · CPI Y 格：XY 独立勾选框 + Y 数字框并排（原来 XY 独占一列）。 */
+    tr.innerHTML = `<td><span class="stageDot dot-${STAGE_DOT_CLASS[n] ?? "blue"}"></span>CPI ${n + 1}</td>
+      <td><input type="checkbox" data-on="${n}" ${n < S.stage.levels ? "checked" : ""}></td>
+      <td><input type="radio" name="cpiActive" data-act="${n}" ${n === S.stage.active ? "checked" : ""} ${S.gen === 1 ? "disabled" : ""}></td>
       <td><input type="number" data-x="${n}" min="${bd.min}" max="${bd.max}" step="${bd.step}" value="${xv}" ${dis}></td>
-      <td><input type="number" data-y="${n}" min="${bd.min}" max="${bd.max}" step="${bd.step}" value="${yv}" ${xyOn && !dis ? "" : "disabled"}></td>`;
+      <td class="yCell"><input type="checkbox" data-xy="${n}" ${xyOn ? "checked" : ""} ${dis}>
+        <input type="number" data-y="${n}" min="${bd.min}" max="${bd.max}" step="${bd.step}" value="${yv}" ${xyOn && !dis ? "" : "disabled"}></td>`;
     tb.appendChild(tr);
   }
+  /* 启用列（受约束）：4k 的「启用档位数」就是 levels，只能是 1..4 的**前缀**。
+     勾第 N 档 ⇒ levels = N+1（前面全部连带勾上）；
+     取消第 N 档 ⇒ levels = N（后面全部连带取消）。
+     这是唯一能写回 blob 的语义 —— 固件里没有逐档 enable 位。 */
+  tb.querySelectorAll<HTMLInputElement>("input[data-on]").forEach((el) => {
+    el.onchange = () => {
+      const n = +el.dataset.on!;
+      if (el.checked) S.stage.levels = Math.max(S.stage.levels, n + 1);
+      else S.stage.levels = Math.min(S.stage.levels, n);
+      /* levels 变了，勾选态与各行的 disabled 都要跟着变 —— 重画一次。 */
+      render();
+    };
+  });
+  /* 当前档：radio。gen=1 时硬件只认鼠标底部的 CPI 键，不能软件切。 */
+  tb.querySelectorAll<HTMLInputElement>("input[data-act]").forEach((el) => {
+    el.onchange = () => { S.stage.active = +el.dataset.act!; render(); };
+  });
   tb.querySelectorAll<HTMLInputElement>("input[data-xy]").forEach((el) => el.onchange = () => {
     const n = +el.dataset.xy!; S.stage.cpi[n][0] = el.checked ? 1 : 0;
     const yEl: any = tb.querySelector(`input[data-y="${n}"]`);
@@ -264,18 +328,14 @@ export function render() {
       if (yEl) yEl.value = String(v);
     }
   });
-  /* 开关含义提示：不勾 = 官方那套单值 CPI，勾上才独立 */
-  const hint = document.createElement("tr");
-  hint.innerHTML = `<td colspan="5" class="muted">${t("xyHint")}</td>`;
-  tb.appendChild(hint);
+  /* 开关含义提示：改到右栏的折叠说明卡里（两族同位置，见 setSensorNote）。 */
+  setSensorNote("fourK");
 
-  $el<HTMLSelectElement>("cpiLevels").value = String(S.stage.levels);
-  $el("cpiLevels").onchange = (e: Event) => S.stage.levels = +(e.target as HTMLSelectElement).value;
-  const actSel = $el<HTMLSelectElement>("cpiActive");
-  fillSelect(actSel, [[0,"CPI 1"],[1,"CPI 2"],[2,"CPI 3"],[3,"CPI 4"]], S.stage.active);
-  actSel.disabled = S.gen === 1;
+  /* 「启用档位数 / 当前档位」两个下拉已删除（2026-10-20）：
+     启用改由表内受约束勾选承载、当前改由表内 radio 承载 ——
+     两个下拉与表内控件是同一份状态的两个入口，必然漂移。
+     v1（gen=1）的硬件只认鼠标底部的 CPI 键，这条提示留在表格下方。 */
   $el("cpiActiveNote").textContent = S.gen === 1 ? t("v1StageNote") : "";
-  actSel.onchange = (e: Event) => S.stage.active = +(e.target as HTMLSelectElement).value;
 
   const lodSel = $el<HTMLSelectElement>("lod");
   if (S.gen === 1 || S.stage.glass) {
@@ -395,8 +455,9 @@ export function render() {
   /* 未真机验证的型号：禁用全部写入入口（guard4k 还会再兜一层）。
      读取、导出照常可用 —— 只读本身是有价值的，写入必须等硬件确认。 */
   if (S.unverified) {
+    /* cpiLevels / cpiActive 两个下拉已于 2026-10-20 删除（启用与当前改由表内控件承载）。 */
     for (const id of ["btnApplySensor", "btnApplyPerf", "btnReset", "btnLoad",
-                      "cpiLevels", "cpiActive", "lod", "glass", "angleSnap", "ripple",
+                      "lod", "glass", "angleSnap", "ripple",
                       "ledLiftoff", "angleTune"]) {
       const el = $(id);
     if (el) (el as HTMLButtonElement).disabled = true;
@@ -411,6 +472,9 @@ export function render() {
   setMetric("mCpi", String(S.stage.cpi[S.stage.active][1]));
   setMetric("mPoll", pollLabel());
   setMetric("mStage", `${S.stage.active + 1} / ${S.stage.levels}`);
+  /* 档位指标的分母在两族下含义不同（4k = 启用的档位数，XM1 = 固定 4 档），
+     数值本身都没错，但光看数字看不出差别 —— title 里说明。 */
+  const mStage = $("mStage"); if (mStage) mStage.title = t("stageEnabledCount");
 }
 
 export function describeMap(b: any) {
@@ -445,6 +509,11 @@ const PRESETS: any[] = [
 ];
 
 function applyPreset(p: any) {
+  /* ★ XM1 不显示预设条（layout 的 xm1 rows 不含 presetBar），
+     这里再加一道守卫：万一按钮还在（DOM 常驻），也不该改 XM1 的编辑状态 ——
+     此前 XM1 下点预设会改 S.stage 然后 render() 短路到 renderXm1()，
+     界面没变却弹「预设已填」，是"点了没反应"的坏体验。 */
+  if (S.xm1) return;
   for (let n = 0; n < 4; n++) {
     const split = S.stage.cpi[n][0];          // 保留 XY 独立开关，独立时不动 Y
     S.stage.cpi[n] = [split, p.cpi, split ? S.stage.cpi[n][2] : p.cpi];

@@ -88,7 +88,7 @@ export async function refreshAll() {
         xm1Snapshot(t("xm1SnapRead"));
         parseBlob();
         render();
-        banner("warn", t("xm1EditNote"));
+        banner("ok", t("bReadOkXm1"));
         log(`✓ XM1 blob 已读取（可编辑 23 个已核实字段）`);
       } catch (e) {
         renderXm1();

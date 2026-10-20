@@ -166,20 +166,21 @@
       <div class="row" id="presetBar"></div>
       <table>
         <thead><tr>
-          <th data-i18n="stage">档位</th><th data-i18n="ledColor">LED 颜色</th><th data-i18n="xySplit">XY 独立</th>
+          <th data-i18n="stage">档位</th><th data-i18n="xm1On">启用</th><th data-i18n="xm1ActiveCol">当前</th>
           <th>CPI X</th><th>CPI Y</th>
         </tr></thead>
         <tbody id="cpiRows"></tbody>
       </table>
       <div class="muted" id="cpiStepNote" style="margin-top:6px"></div>
+      <div class="muted" id="cpiActiveNote" style="margin-top:6px"></div>
+      <div class="grp" id="grpSensorNote">
+        <details class="noteBox">
+          <summary data-i18n="sensorNoteTitle">本型号说明</summary>
+          <div id="sensorNoteBody"></div>
+        </details>
+      </div>
     </div>
     <div class="splitCol settings">
-      <div class="grp" id="rowStages">        <label data-i18n="cpiLevels">启用档位数</label>
-        <select id="cpiLevels"><option>1</option><option>2</option><option>3</option><option>4</option></select>
-        <label data-i18n="activeStage">当前档位</label>
-        <select id="cpiActive"></select>
-        <span class="note" id="cpiActiveNote"></span>
-      </div>
       <div class="grp" id="rowLod">
         <label data-i18n="lod">抬离距离 (LOD)</label>
         <select id="lod"></select>

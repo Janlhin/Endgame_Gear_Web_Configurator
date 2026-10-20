@@ -12,6 +12,7 @@ const ENTRIES = [
   ["re/test_cpi_step.ts", "re/.test_cpi_step.mjs"],
   ["re/test_diag.ts", "re/.test_diag.mjs"],
   ["re/test_btns.ts", "re/.test_btns.mjs"],
+  ["re/test_sensor_cols.ts", "re/.test_sensor_cols.mjs"],
   ["re/test_write_gates.ts", "re/.test_write_gates.mjs"],
   ["re/test_presence.ts", "re/.test_presence.mjs"],
 ];

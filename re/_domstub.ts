@@ -60,17 +60,35 @@ function mkEl(id: string) {
     set innerHTML(v: string) {
       this._html = v;
       this.children = [];
+      /* 只解析真正需要断言的结构：td/th 单元格，
+         以及单元格里的 input/select（表格行断言要读到它们的 checked / dataset）。 */
       const re2 = /<(td|th)([^>]*)>([\s\S]*?)<\/\1>/g;
       let m2: RegExpExecArray | null;
       while ((m2 = re2.exec(v))) {
         const c = mkEl("cell");
         c.tagName = m2[1].toUpperCase();
-        c.innerHTML = m2[3];
+        const cm = m2[2].match(/class="([^"]*)"/);
+        if (cm) c.className = cm[1];
         c.textContent = m2[3].replace(/<[^>]*>/g, "");
+        /* 先赋 innerHTML（它会重置 children），再把 input 收进来。 */
+        c.innerHTML = m2[3];
+        const re3 = /<(input|select)([^>]*)>/g;
+        let m3: RegExpExecArray | null;
+        while ((m3 = re3.exec(m2[3]))) {
+          const inp = mkEl("cell");
+          inp.tagName = m3[1].toUpperCase();
+          const attrs = m3[2];
+          const dm = attrs.match(/data-([\w-]+)="([^"]*)"/);
+          if (dm) inp.dataset[dm[1]] = dm[2];
+          if (/\bchecked\b/.test(attrs)) inp.checked = true;
+          if (/\bdisabled\b/.test(attrs)) inp.disabled = true;
+          const vm = attrs.match(/value="([^"]*)"/);
+          if (vm) inp.value = vm[1];
+          c.children.push(inp);
+        }
         this.children.push(c);
       }
-    },
-    get innerHTML() { return this._html ?? ""; },
+    },    get innerHTML() { return this._html ?? ""; },
     appendChild(c: any) {
       this.children.push(c);
       if (this.tagName === "SELECT" && c && c.tagName === "OPTION") this.options.push(c);
@@ -81,15 +99,30 @@ function mkEl(id: string) {
     querySelector(sel: string) { return this.querySelectorAll(sel)[0] ?? null; },
     /* 只支持本仓库实际用到的两种选择器：标签名 与 [attr] / [attr="v"]。 */
     querySelectorAll(sel: string) {
-      const wantAttr = sel.match(/^\[([\w-]+)(?:="([^"]*)")?\]$/);
+      /* 支持三种写法：标签名 / [attr] / [attr="v"] / 标签[attr]（如 input[data-on]）。 */
+      const m = sel.match(/^([A-Za-z]*)(?:\[([\w-]+)(?:="([^"]*)")?\])?$/);
+      if (!m) return [];
+      const [, tag, attr, attrVal] = m;
       const out: any[] = [];
-      for (const c of this.children) {
-        if (wantAttr) {
-          const [, k, v] = wantAttr;
-          const actual = c.dataset ? c.dataset[k] : undefined;
-          if (v === undefined ? actual !== undefined : String(actual) === v) out.push(c);
-        } else if (c.tagName === sel.toUpperCase()) out.push(c);
-      }
+      /* 递归：表格行里的 input 嵌在 td 内，渲染代码用 tb.querySelectorAll
+         找的是**后代**，不是直接子元素。 */
+      const walk = (nodes: any[]) => {
+        for (const c of nodes) {
+          /* ⚠️ 递归不能被「标签不匹配」跳过 —— 否则 <tr> 里的 <td> 永远走不到。 */
+          const tagOk = !tag || c.tagName === tag.toUpperCase();
+          if (tagOk) {
+            if (attr) {
+              /* ★ dataset 的键是 data-on → on，但选择器写的是属性名 data-on。
+                 浏览器按属性名匹配，这里要先把 data- 前缀剥掉。 */
+              const key = attr.startsWith("data-") ? attr.slice(5) : attr;
+              const actual = c.dataset ? c.dataset[key] : undefined;
+              if (attrVal === undefined ? actual !== undefined : String(actual) === attrVal) out.push(c);
+            } else out.push(c);
+          }
+          if (c.children) walk(c.children);
+        }
+      };
+      walk(this.children);
       return out;
     },
   };

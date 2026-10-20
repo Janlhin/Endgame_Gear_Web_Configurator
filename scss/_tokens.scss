@@ -166,6 +166,15 @@ $shadow-1:    var(--c-shadow-1);
 $shadow-2:    var(--c-shadow-2);
 $shadow-3:    var(--c-shadow-3);
 
+// ---------- 设备语义色（**不随 UI 主题变化**）----------
+// 档位 LED 的四色：4k 族的「第 n 档 = 第 n 色」是**设备上的固定约定**
+//（蓝 / 绿 / 黄 / 红），不是界面配色 —— 深浅主题下都必须是同一个颜色，
+// 否则同一个档位在两个主题里会显示成不同的灯。故不走 CSS 变量。
+$led-blue:    #3b82f6;
+$led-green:   #22c55e;
+$led-yellow:  #eab308;
+$led-red:     #ef4444;
+
 // ---------- 打印：强制白底黑字（覆盖深色主题，避免打印出黑页） ----------
 @media print {
   html, html[data-theme="dark"] {

@@ -18,9 +18,10 @@ BASE = "file:///" + os.path.abspath(os.path.join(os.path.dirname(__file__), ".."
 
 CARDS_4K = ["cardInfo", "cardSensor", "cardPerf", "cardBtns", "cardTools"]
 ALL_CARDS = CARDS_4K + ["cardWeInfo", "cardWeCpi", "cardWeBtns", "cardWeTools"]
-ALL_ROWS = ["rowDongleFw", "rowBattery", "rowStages", "rowLod", "cellGlass", "cellAngleSnap",
-            "cellRipple", "cellLedLiftoff", "rowAngleTune", "rowPolling", "rowMotionSync",
-            "rowSlamclick", "rowV1Jitter", "rowV2Max", "rowV2Multi", "rowPower", "rowPairing"]
+ALL_ROWS = ["rowDongleFw", "rowBattery", "grpSensorNote", "presetBar", "rowLod", "cellGlass",
+            "cellAngleSnap", "cellRipple", "cellLedLiftoff", "rowAngleTune", "rowPolling",
+            "rowMotionSync", "rowSlamclick", "rowV1Jitter", "rowV2Max", "rowV2Multi",
+            "rowPower", "rowPairing"]
 # filterRows 已随「按键卡两张表合并为一张」从 DOM 移除（#cardBtns 只剩 btnRows）。
 EMPTY_BODIES = ["cpiRows", "btnRows", "weCpiRows", "weBtnRows"]
 

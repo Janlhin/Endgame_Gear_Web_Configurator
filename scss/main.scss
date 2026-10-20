@@ -634,9 +634,27 @@ main > * { animation: rise $t-slow $ease-out both; }
 
   /* 同一组里的第二行（如「当前档位」）与第一行之间留一点呼吸。 */
   .grp > label + select + label { margin-top: 6px; }
+
 }
 
 .grp { display: contents; }
+
+/* 型号说明折叠卡（放在传感器卡的表格下方 —— 见上面的说明）。 */
+.noteBox {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: $muted;
+
+  summary {
+    cursor: pointer;
+    color: $sub;
+    font-weight: 500;
+    list-style-position: inside;
+  }
+
+  #sensorNoteBody { margin-top: 4px; }
+}
 
 select, input[type="number"] {
   height: 34px;
@@ -789,11 +807,42 @@ table {
 
   td input[type="number"] { width: 92px; height: 30px; }
 
-  /* 「不支持」占位：协议没有该按键的过滤槽，不给下拉框，
-     免得用户改了一个写不进去的值。 */
+  /* CPI Y 格：XY 独立勾选框 + Y 数字框并排（原来 XY 独占一列）。
+     左侧加一条竖线，明确「勾选框属于 CPI Y 这一列」——
+     否则它夹在 X 列和 Y 数字框之间，视觉上像自己占了一列。 */
+  td.yCell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 14px;
+    border-left: 1px solid $line;
+
+    input[type="number"] { width: 78px; }
+  }
+
+  /* 档位前的 LED 色点：4k 的「第 n 档 = 第 n 色」固定约定。
+     4k 固件不提供每档 RGB（那是 XM2we 族才有的），所以只能 CSS 硬编码四个颜色。
+     色点是**形状**信号，跨语言一致；颜色的含义靠档位顺序。 */
+  .stageDot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    margin-right: 6px;
+    border-radius: 50%;
+    vertical-align: middle;
+  }
+
+  .dot-blue { background: $led-blue; }
+  .dot-green { background: $led-green; }
+  .dot-yellow { background: $led-yellow; }
+  .dot-red { background: $led-red; }
+
+  /* 「不支持」占位：协议没有该按键的过滤槽（按键卡），或该型号固件不支持
+     该字段（XM1 的 CPI Y）—— 不给一个改了也写不进去的控件。 */
   .na {
     color: $muted;
     font-size: $fs-xs;
+    cursor: help;
   }
 
   /* 点击过滤列的下拉：定宽 + 靠左，让 8 行的控件左边缘成一条线。 */
@@ -1173,6 +1222,33 @@ a {
   #cardNotes {
     padding: 12px 16px;
   }
+
+  /* ★ 设置区在矮屏上收紧：4k 族右栏有 7 组「标签 + 控件」，
+     每组 38px 就是 266px —— 1366×768 这类屏上会顶出滚动条。
+     把行距与控件高度各压一点，7 组能省下 30~40px。 */
+  .settings {
+    row-gap: 0;
+
+    select,
+    input[type="number"] {
+      height: 30px;
+    }
+
+    .grp > label + select + label { margin-top: 3px; }
+  }
+
+  /* 传感器卡的表格也矮一点（表头与单元格的上下padding）。 */
+  #cardSensor table {
+    th,
+    td { padding: 6px 10px; }
+  }
+
+  /* ★ 左栏的设备信息卡：4k 族比 XM1 多两行（接收器固件 / 电量），
+     加上三格指标，每项 7px 上下padding 累计起来就把 1366×768 顶出滚动条。
+     这里把指标与规格行都压紧 —— 数值一个不少，只是不留那么多呼吸。 */
+  .metric { padding: 3px 0; }
+
+  .railSpec .spec { padding: 3px 0; }
 }
 
 @include below($bp-sm) {

@@ -74,7 +74,7 @@ export function resetToInitial(reasonKey: LostReason, detail?: string) {
                     "weModel", "weConn", "weBattery", "weLink"]) {
     const el = $(id); if (el) el.textContent = "—";
   }
-  for (const id of ["cpiStepNote", "cpiActiveNote", "pollNote"]) {
+  for (const id of ["cpiStepNote", "cpiActiveNote", "pollNote", "sensorNoteBody"]) {
     const el = $(id); if (el) el.textContent = "";
   }
   /* XM1 专属的两个按钮不在 layout 的登记表里（它们在 cardTools 内，由 renderXm1 直接

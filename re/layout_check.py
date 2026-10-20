@@ -21,27 +21,29 @@ CARDS_4K = ["cardInfo", "cardSensor", "cardPerf", "cardBtns", "cardTools"]
 EXPECT = {
     "(none)": {"cards": [], "rows": []},
     "v1": {"cards": CARDS_4K,
-           "rows": ["rowDongleFw", "rowBattery", "rowStages", "rowLod", "cellAngleSnap",
+           "rows": ["rowDongleFw", "rowBattery", "grpSensorNote", "presetBar", "rowLod", "cellAngleSnap",
                     "cellRipple", "cellLedLiftoff", "rowPolling", "rowMotionSync",
                     "rowSlamclick", "rowV1Jitter", "rowPower", "rowPairing"]},
     "v2": {"cards": CARDS_4K,
-           "rows": ["rowDongleFw", "rowBattery", "rowStages", "rowLod", "cellGlass",
+           "rows": ["rowDongleFw", "rowBattery", "grpSensorNote", "presetBar", "rowLod", "cellGlass",
                     "cellAngleSnap", "cellRipple", "cellLedLiftoff", "rowAngleTune",
                     "rowPolling", "rowMotionSync", "rowSlamclick", "rowV2Max",
                     "rowV2Multi", "rowPower", "rowPairing"]},
-    "xm1": {"cards": ["cardInfo", "cardSensor", "cardTools"], "rows": ["rowLod", "cellRipple"]},
+    "xm1": {"cards": ["cardInfo", "cardSensor", "cardTools"],
+            "rows": ["grpSensorNote", "rowLod", "cellRipple"]},
     "ro": {"cards": ["cardInfo", "cardSensor", "cardTools"],
-           "rows": ["rowDongleFw", "rowBattery", "cellAngleSnap", "cellRipple"]},
+           "rows": ["rowDongleFw", "rowBattery", "grpSensorNote", "presetBar", "cellAngleSnap", "cellRipple"]},
     "8k": {"cards": ["cardInfo", "cardSensor", "cardPerf", "cardTools"],
-           "rows": ["rowStages", "cellAngleSnap", "cellRipple", "rowPolling",
+           "rows": ["grpSensorNote", "presetBar", "cellAngleSnap", "cellRipple", "rowPolling",
                     "rowMotionSync", "rowSlamclick", "rowV1Jitter"]},
     "unsupported": {"cards": ["cardInfo"], "rows": []},
     "we": {"cards": ["cardWeInfo", "cardWeCpi", "cardWeBtns", "cardWeTools"], "rows": []},
 }
 ALL_CARDS = CARDS_4K + ["cardWeInfo", "cardWeCpi", "cardWeBtns", "cardWeTools"]
-ALL_ROWS = ["rowDongleFw", "rowBattery", "rowStages", "rowLod", "cellGlass", "cellAngleSnap", "cellRipple",
-            "cellLedLiftoff", "rowAngleTune", "rowPolling", "rowMotionSync", "rowSlamclick",
-            "rowV1Jitter", "rowV2Max", "rowV2Multi", "rowPower", "rowPairing"]
+ALL_ROWS = ["rowDongleFw", "rowBattery", "grpSensorNote", "presetBar", "rowLod", "cellGlass",
+            "cellAngleSnap", "cellRipple", "cellLedLiftoff", "rowAngleTune", "rowPolling",
+            "rowMotionSync", "rowSlamclick", "rowV1Jitter", "rowV2Max", "rowV2Multi",
+            "rowPower", "rowPairing"]
 
 
 def hidden(tag: str) -> bool:
