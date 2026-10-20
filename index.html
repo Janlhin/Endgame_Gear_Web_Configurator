@@ -252,9 +252,9 @@ header button {
 main {
   display: grid;
   gap: 18px;
-  max-width: 1080px;
+  max-width: 1440px;
   min-width: 0;
-  padding: 28px 20px 96px;
+  padding: 28px 20px 56px;
   margin: 0 auto;
 }
 
@@ -318,6 +318,26 @@ main > *:nth-child(11) {
 
 main > *:nth-child(12) {
   animation-delay: 440ms;
+}
+
+.cardSplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 4px 28px;
+  align-items: start;
+}
+
+.splitCol {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.footGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
 }
 
 .card {
@@ -1018,6 +1038,34 @@ a:hover {
   line-height: 1.65;
 }
 
+#cardChecklist summary,
+#cardCredits summary,
+#cardNotes summary {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--c-text);
+  cursor: pointer;
+  list-style: revert;
+}
+#cardChecklist summary::marker,
+#cardCredits summary::marker,
+#cardNotes summary::marker {
+  color: var(--c-sub);
+}
+#cardChecklist .mdBody,
+#cardCredits .mdBody,
+#cardNotes .mdBody {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--c-text);
+}
+#cardChecklist .mdBody ul,
+#cardCredits .mdBody ul,
+#cardNotes .mdBody ul {
+  margin: 6px 0;
+}
+
 #cardChecklist summary {
   font-weight: 600;
   color: var(--c-text);
@@ -1156,6 +1204,46 @@ a:hover {
   }
   .railNav button .navNo {
     display: none;
+  }
+}
+@media (max-width: 1280px) {
+  .cardSplit {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+@media (max-width: 1080px) {
+  .footGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+}
+@media (max-height: 860px) {
+  main {
+    gap: 12px;
+    padding: 18px 20px 32px;
+  }
+  .rail {
+    gap: 10px;
+    padding: 12px;
+  }
+  .railId {
+    gap: 9px;
+  }
+  .railNav {
+    padding-top: 9px;
+  }
+  .card {
+    padding: 16px 18px;
+  }
+  .card h2 {
+    margin-bottom: 10px;
+  }
+  
+  #cardChecklist,
+  #cardCredits,
+  #cardNotes {
+    padding: 12px 16px;
   }
 }
 @media (max-width: 560px) {
@@ -1409,69 +1497,87 @@ a:hover {
 
   <section class="card" id="cardSensor" data-off>
     <h2 data-i18n="secSensor">传感器 / CPI</h2>
-    <div class="row" id="presetBar"></div>
-    <table>
-      <thead><tr>
-        <th data-i18n="stage">档位</th><th data-i18n="ledColor">LED 颜色</th><th data-i18n="xySplit">XY 独立</th>
-        <th>CPI X</th><th>CPI Y</th>
-      </tr></thead>
-      <tbody id="cpiRows"></tbody>
-    </table>
-    <div class="muted" id="cpiStepNote" style="margin-top:6px"></div>
-    <div class="row" id="rowStages" style="margin-top:12px">
-      <label data-i18n="cpiLevels">启用档位数</label>
-      <select id="cpiLevels"><option>1</option><option>2</option><option>3</option><option>4</option></select>
-      <label style="min-width:auto" data-i18n="activeStage">当前档位</label>
-      <select id="cpiActive" style="width:90px"></select>
-      <span class="muted" id="cpiActiveNote"></span>
+    <div class="cardSplit">
+    <div class="splitCol">
+      <div class="row" id="presetBar"></div>
+      <table>
+        <thead><tr>
+          <th data-i18n="stage">档位</th><th data-i18n="ledColor">LED 颜色</th><th data-i18n="xySplit">XY 独立</th>
+          <th>CPI X</th><th>CPI Y</th>
+        </tr></thead>
+        <tbody id="cpiRows"></tbody>
+      </table>
+      <div class="muted" id="cpiStepNote" style="margin-top:6px"></div>
     </div>
-    <div class="row" id="rowLod">
-      <label data-i18n="lod">抬离距离 (LOD)</label>
-      <select id="lod" style="width:110px"></select>
-      <span class="cell" id="cellGlass">
-      <label style="min-width:auto" data-i18n="glassMode">玻璃面模式</label>
-      <select id="glass" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
-      <span class="muted" data-i18n="glassNote">v2 专属；切换时 LOD 编码会随之换算</span>
-      </span>
+    <div class="splitCol">
+      <div class="row" id="rowStages" style="margin-top:12px">
+        <label data-i18n="cpiLevels">启用档位数</label>
+        <select id="cpiLevels"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+        <label style="min-width:auto" data-i18n="activeStage">当前档位</label>
+        <select id="cpiActive" style="width:90px"></select>
+        <span class="muted" id="cpiActiveNote"></span>
+      </div>
+      <div class="row" id="rowLod">
+        <label data-i18n="lod">抬离距离 (LOD)</label>
+        <select id="lod" style="width:110px"></select>
+        <span class="cell" id="cellGlass">
+        <label style="min-width:auto" data-i18n="glassMode">玻璃面模式</label>
+        <select id="glass" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select>
+        <span class="muted" data-i18n="glassNote">v2 专属；切换时 LOD 编码会随之换算</span>
+        </span>
+      </div>
+      <div class="row">
+        <span class="cell" id="cellAngleSnap"><label data-i18n="angleSnap">角度捕捉</label><select id="angleSnap" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></span>
+        <span class="cell" id="cellRipple"><label style="min-width:auto" data-i18n="ripple">波纹控制</label><select id="ripple" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></span>
+        <span class="cell" id="cellLedLiftoff"><label style="min-width:auto" data-i18n="ledLiftoff">抬离时 LED</label><select id="ledLiftoff" style="width:80px"><option value="1" data-i18n="on">开</option><option value="0" data-i18n="off">关</option></select></span>
+      </div>
+      <div class="row" id="rowAngleTune">
+        <label data-i18n="angleTune">角度调校 (°)</label><input type="number" id="angleTune" min="-30" max="30" step="1" style="width:80px">
+        <span class="muted" data-i18n="angleTuneNote">v2 专属</span>
+      </div>
+      <div class="row"><button id="btnApplySensor" data-i18n="applySensor">应用传感器设置</button></div>
     </div>
-    <div class="row">
-      <span class="cell" id="cellAngleSnap"><label data-i18n="angleSnap">角度捕捉</label><select id="angleSnap" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></span>
-      <span class="cell" id="cellRipple"><label style="min-width:auto" data-i18n="ripple">波纹控制</label><select id="ripple" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></span>
-      <span class="cell" id="cellLedLiftoff"><label style="min-width:auto" data-i18n="ledLiftoff">抬离时 LED</label><select id="ledLiftoff" style="width:80px"><option value="1" data-i18n="on">开</option><option value="0" data-i18n="off">关</option></select></span>
     </div>
-    <div class="row" id="rowAngleTune">
-      <label data-i18n="angleTune">角度调校 (°)</label><input type="number" id="angleTune" min="-30" max="30" step="1" style="width:80px">
-      <span class="muted" data-i18n="angleTuneNote">v2 专属</span>
-    </div>
-    <div class="row"><button id="btnApplySensor" data-i18n="applySensor">应用传感器设置</button></div>
     <div id="sensorHelp" class="helpBox"></div>
   </section>
 
   <section class="card" id="cardPerf" data-off>
     <h2 data-i18n="secPerf">性能 / 电源</h2>
-    <div class="row" id="rowPolling"><label data-i18n="polling">回报率</label><select id="polling"></select><span class="muted" id="pollNote"></span></div>
-    <div class="row" id="rowMotionSync"><label>Motion Sync</label><select id="motionSync" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-    <div class="row" id="rowSlamclick"><label data-i18n="slamclick">Slamclick 过滤</label><select id="slamclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-    <div class="row" id="rowV1Jitter"><label data-i18n="jitter">抖动过滤 (v1)</label><select id="jitter" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-    <div class="row" id="rowV2Max"><label data-i18n="maxFps">强制最高传感器 FPS (v2)</label><select id="maxFps" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-    <div class="row" id="rowV2Multi"><label data-i18n="multiclick">多击确认过滤 (v2)</label><select id="multiclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
-    <div class="row" id="rowPower"><label data-i18n="powerSaving">省电超时 (分钟)</label><select id="powerSaving"></select>
-      <label style="min-width:auto" data-i18n="deepSleep">深度休眠 (分钟)</label><select id="deepSleep"></select></div>
-    <div class="row"><button id="btnApplyPerf" data-i18n="applyPerf">应用性能/电源</button></div>
+    <div class="cardSplit">
+    <div class="splitCol">
+      <div class="row" id="rowPolling"><label data-i18n="polling">回报率</label><select id="polling"></select><span class="muted" id="pollNote"></span></div>
+      <div class="row" id="rowMotionSync"><label>Motion Sync</label><select id="motionSync" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+      <div class="row" id="rowSlamclick"><label data-i18n="slamclick">Slamclick 过滤</label><select id="slamclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+      <div class="row" id="rowV1Jitter"><label data-i18n="jitter">抖动过滤 (v1)</label><select id="jitter" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+    </div>
+    <div class="splitCol">
+      <div class="row" id="rowV2Max"><label data-i18n="maxFps">强制最高传感器 FPS (v2)</label><select id="maxFps" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+      <div class="row" id="rowV2Multi"><label data-i18n="multiclick">多击确认过滤 (v2)</label><select id="multiclick" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
+      <div class="row" id="rowPower"><label data-i18n="powerSaving">省电超时 (分钟)</label><select id="powerSaving"></select>
+        <label style="min-width:auto" data-i18n="deepSleep">深度休眠 (分钟)</label><select id="deepSleep"></select></div>
+      <div class="row"><button id="btnApplyPerf" data-i18n="applyPerf">应用性能/电源</button></div>
+    </div>
+    </div>
     <div id="perfHelp" class="helpBox"></div>
   </section>
 
   <section class="card" id="cardBtns" data-off>
     <h2 data-i18n="secButtons">按键映射与点击过滤</h2>
-    <table>
-      <thead><tr><th data-i18n="button">按键</th><th data-i18n="mapping">映射</th><th data-i18n="clickFilter">点击过滤</th></tr></thead>
-      <tbody id="btnRows"></tbody>
-    </table>
-    <p class="muted" data-i18n="btnReadonly">按键重映射（0x16 双块写）已在协议层实现，暂未开放编辑；点击过滤可单独调整后随“应用性能/电源”下发。</p>
-    <table>
-      <thead><tr><th data-i18n="button">按键</th><th data-i18n="clickFilter">点击过滤</th></tr></thead>
-      <tbody id="filterRows"></tbody>
-    </table>
+    <div class="cardSplit">
+    <div class="splitCol">
+      <table>
+        <thead><tr><th data-i18n="button">按键</th><th data-i18n="mapping">映射</th><th data-i18n="clickFilter">点击过滤</th></tr></thead>
+        <tbody id="btnRows"></tbody>
+      </table>
+    </div>
+    <div class="splitCol">
+      <table>
+        <thead><tr><th data-i18n="button">按键</th><th data-i18n="clickFilter">点击过滤</th></tr></thead>
+        <tbody id="filterRows"></tbody>
+      </table>
+      <p class="muted" data-i18n="btnReadonly">按键重映射（0x16 双块写）已在协议层实现，暂未开放编辑；点击过滤可单独调整后随“应用性能/电源”下发。</p>
+    </div>
+    </div>
   </section>
 
   <section class="card" id="cardTools" data-off>
@@ -1501,6 +1607,7 @@ a:hover {
   </div>
   </div>
 
+  <div class="footGrid">
   <section class="card" id="cardChecklist">
     <details>
       <summary data-i18n="secChecklist">参与测试：逐条清单（点开）</summary>
@@ -1616,7 +1723,9 @@ Attachments: egg-mouse-diag-*.json (test data packet)</code></pre>
   </section>
 
   <section class="card" id="cardCredits">
-    <h2 data-i18n="secCredits">致谢与参考</h2>
+    <details>
+    <summary data-i18n="secCredits">致谢与参考</summary>
+    <div class="mdBody">
     <ul class="muted" style="line-height:1.9; padding-left:18px; margin:0">
       <li><a href="https://github.com/johanneszab/vole" target="_blank">johanneszab/vole</a> — <span data-i18n="crVole">完整的 USB 配置协议逆向（Ghidra 反汇编 + 44 次抓包 + 真机验证），4k 族协议层的唯一依据。</span></li>
       <li><a href="https://github.com/okms/xm2we-linux" target="_blank">okms/xm2we-linux</a> · <a href="https://github.com/daviddwk/xm2we-util" target="_blank">daviddwk/xm2we-util</a> — <span data-i18n="crXm2we">XM2we 2020 有线/2.4G 族的完整协议文档与两个独立实现（常量互证），本页 XM2we 功能的依据。</span></li>
@@ -1627,10 +1736,14 @@ Attachments: egg-mouse-diag-*.json (test data packet)</code></pre>
       <li><a href="https://www.endgamegear.com/" target="_blank">Endgame Gear (Pro Gamersware GmbH)</a> — <span data-i18n="crVendor">硬件本身，以及未混淆、可分析的官方工具。</span></li>
       <li><span data-i18n="crDisclaimer">本项目为独立开源工具，与 Endgame Gear / Pro Gamersware GmbH 无隶属关系；不修改固件，仅读写用户配置。</span></li>
     </ul>
+    </div>
+  </details>
   </section>
 
-  <section class="card">
-    <h2 data-i18n="secNotes">说明与已知限制</h2>
+  <section class="card" id="cardNotes">
+    <details>
+    <summary data-i18n="secNotes">说明与已知限制</summary>
+    <div class="mdBody">
     <ul class="muted" style="line-height:1.9; padding-left:18px; margin:0">
       <li data-i18n="noteWebhid">需要 Chrome / Edge 89+（WebHID）。本页通过 HID 特征报告直连设备，不装任何驱动。</li>
       <li data-i18n="noteRelease">⚠ 若连接后鼠标突然失灵：立刻关闭本页面/浏览器窗口即可恢复（WebHID 会独占所选接口，关闭即释放；插拔 USB 无效）。本页只打开厂商定义接口，不会碰鼠标指针接口。</li>
@@ -1641,7 +1754,10 @@ Attachments: egg-mouse-diag-*.json (test data packet)</code></pre>
       <li data-i18n="noteV1Stage">v1 的“当前档位”只能用鼠标底部的 CPI 键切换，软件改了也无效（硬件忽略）。</li>
       <li data-i18n="noteRe">协议已对照官方 v1.02 配置工具二进制逐字节验证：命令表、负载长度、blob 布局、双块写入与重试时序全部一致；0x71/0x72（默认配对/配对数据）为官方工具新增命令，本页已同步实现。</li>
     </ul>
+    </div>
+  </details>
   </section>
+  </div>
 </main>
 
 <script>

@@ -155,7 +155,9 @@ main {
   gap: 18px;
   max-width: $max-width;
   min-width: 0;
-  padding: 28px 20px 96px;
+  // 底部留白：原本 96px 是为了给「通讯日志」展开留位。
+  // 现在底部三卡都折叠成一行标题，主设置区已能一屏放下，留白收到 56px 即可。
+  padding: 28px 20px 56px;
   margin: 0 auto;
 }
 
@@ -169,6 +171,29 @@ main > * { animation: rise $t-slow $ease-out both; }
 
 @for $i from 1 through 12 {
   main > *:nth-child(#{$i}) { animation-delay: ($i - 1) * 40ms; }
+}
+
+// 卡片内并排双栏：宽屏下把「表格」与「参数行」左右分开，别让一列拉到天高。
+// 窄屏自动退回单列（下面有 media query）。
+.cardSplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 4px 28px;
+  align-items: start;
+}
+
+.splitCol {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+// 页面底部三张卡（清单 / 致谢 / 说明）并排，进一步压掉纵向滚动。
+.footGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
 }
 
 // ---------- 卡片 ----------
@@ -874,6 +899,32 @@ a {
 // ---------- 内嵌 Markdown（测试清单）----------
 // docs/test-checklist.md 在构建时被渲染进 #cardChecklist（见 tools/md2html.mjs）。
 // 清单是"给人读、给人逐条勾"的，所以排版目标是可读 + 可打印，不是花哨。
+//
+// ★ 2026-10-20：致谢 / 说明两张卡也改成默认折叠（details）。
+//   原先三张长列表卡纵向堆叠，页面高 1403px（视口仅 808px），逼用户滚动。
+//   折叠后底部只占一行标题，主设置区一屏可见；参考资料按需展开即可。
+// 三张卡共用同一套 summary 样式。
+#cardChecklist,
+#cardCredits,
+#cardNotes {
+  summary {
+    font-weight: 600;
+    font-size: 13px;
+    color: $text;
+    cursor: pointer;
+    list-style: revert;
+  }
+  summary::marker { color: $sub; }
+  .mdBody {
+    margin-top: $gap-sm;
+    font-size: 13px;
+    line-height: 1.75;
+    color: $text;
+
+    ul { margin: 6px 0; }
+  }
+}
+
 #cardChecklist {
   summary {
     font-weight: 600;
@@ -984,6 +1035,55 @@ a {
   }
 
   .railNav button .navNo { display: none; }
+}
+
+// 卡片内双栏（表格 | 参数）：只在足够宽时才用，
+// 否则 CPI 表格会被压得比单列还窄（实测 1080px 视口下被压到 339px）。
+@include below($bp-xl) {
+  .cardSplit {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+// 底部三卡并排：阈值比卡片内双栏低（实测 1440px 视口下三卡各 455px 足够）。
+@include below($bp-foot) {
+  .footGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+}
+
+// 矮屏（笔记本 768/800 高度）：压紧竖向间距，让主设置区仍能一屏放下。
+// 实测 1366×768 下文档高 747 > 视口 676，多出的 71px 全部来自间距而非内容。
+@include short($bp-height) {
+  main {
+    gap: 12px;
+    padding: 18px 20px 32px;
+  }
+
+  .rail {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .railId { gap: 9px; }
+  .railNav { padding-top: 9px; }
+
+  .card {
+    padding: 16px 18px;
+  }
+
+  .card h2 {
+    margin-bottom: 10px;
+  }
+
+  /* 折叠卡（清单 / 致谢 / 说明）只留一行标题，紧凑些。 */
+  #cardChecklist,
+  #cardCredits,
+  #cardNotes {
+    padding: 12px 16px;
+  }
 }
 
 @include below($bp-sm) {

@@ -7,6 +7,13 @@
   }
 }
 
+/// 媒体查询：视口高度小于某断点时应用（矮屏收紧竖向间距）
+@mixin short($breakpoint) {
+  @media (max-height: $breakpoint) {
+    @content;
+  }
+}
+
 /// 向上取整的像素值（避免子像素抖动，背景图/边框用）
 @function snap($value) {
   @return round($value);
