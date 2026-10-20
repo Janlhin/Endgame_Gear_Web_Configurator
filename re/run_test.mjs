@@ -11,6 +11,7 @@ const ENTRIES = [
   // ⚠️ 必须排在 test_presence 之前：它末尾是 process.exit(0)
   ["re/test_cpi_step.ts", "re/.test_cpi_step.mjs"],
   ["re/test_diag.ts", "re/.test_diag.mjs"],
+  ["re/test_btns.ts", "re/.test_btns.mjs"],
   ["re/test_write_gates.ts", "re/.test_write_gates.mjs"],
   ["re/test_presence.ts", "re/.test_presence.mjs"],
 ];

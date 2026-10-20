@@ -29,7 +29,23 @@ export const BTN_NAMES: Record<string, string[]> = {
   "ja": ["左", "右", "中", "戻る", "進む", "特殊(CPI)", "ホイール上", "ホイール下"],
   "ko": ["왼쪽", "오른쪽", "가운데", "뒤로", "앞으로", "특수(CPI)", "휠 위", "휠 아래"],
 };
-export const FILTER_OPTS = [["off","off"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"],["9","9"],["10","10"],["11","11"],["12","12"],["13","13"],["14","14"],["15","15"]];
+/* 点击过滤的可选值（运行时生成，避免多一张重复的表）。
+ *  ★ value 必须是**数字**（0 表示关闭），不能是 "off" 这类文本：
+ *    下拉的 value 要与 blob 里的字节值 String(filter) 精确相等才能选中，
+ *    而 onchange 也要靠 +value 解析回数字。文本 value 会导致两处都失效
+ *    ——选不中（显示空白），且 +"off" 得到 NaN。
+ *    0xF0 / 0xF1 两个特例也同理，必须给数字 0xF0 / 0xF1。 */
+export function filterOpts(): [number, string][] {
+  const o: [number, string][] = [[0, t("off")]];
+  for (let i = 1; i <= 15; i++) o.push([i, String(i)]);
+  return o;
+}
+/** 点击过滤槽的数量：协议只给前 5 个按键提供槽位
+ *  （0x15 帧 p[4..8] = blob 的 0x3D/0x44/0x4B/0x52/0x59）。 */
+export const FILTER_SLOTS = 5;
+/** 过滤值的两个特例：GX Safe / GX Speed（官方只给左右键用）。 */
+export const GX_SAFE = 0xF0;
+export const GX_SPEED = 0xF1;
 
 export function setConn(on: boolean, text: string) { const p = $el("connState"); p.className = "status-pill" + (on ? "" : " off"); p.textContent = text; }
 
@@ -323,22 +339,41 @@ export function render() {
   fillSelect($el<HTMLSelectElement>("deepSleep"), toOpts, S.stage.deepSleep); $el<HTMLSelectElement>("deepSleep").value = String(S.stage.deepSleep);
   $el("deepSleep").onchange = (e: Event) => S.stage.deepSleep = (e.target as HTMLSelectElement).value === "off" ? "off" : +(e.target as HTMLSelectElement).value;
 
+  /* ★ 按键表：**一张表 8 行 3 列**（按键 | 映射 | 点击过滤）。
+   * 此前是两个并排的独立 table：左表 8 行（#btnRows，读 blob 真值）、
+   * 右表 5 行（#filterRows，写一个从不被赋值的假数组）——
+   * 行数不同、行高不同（有 <select> 的那行更高），永远对不齐，
+   * 而且两边显示的根本不是同一份数据。合并后行数一致、下拉直接编辑真值。 */
   const br = $el("btnRows"); br.innerHTML = "";
   S.stage.buttons.forEach((btn: any, i: number) => {
-    br.insertAdjacentHTML("beforeend", `<tr><td>${BTN_NAMES[LANG]?.[i] ?? i + 1}</td><td>${describeMap(btn)}</td><td>${btn.filter === 0xF0 ? t("gxSafe") : btn.filter === 0xF1 ? t("gxSpeed") : (btn.filter & 0x7F)}</td></tr>`);
-  });
-  const fr = $el("filterRows"); fr.innerHTML = "";
-  (BTN_NAMES[LANG] ?? []).slice(0, 5).forEach((name: string, i: number) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${name}</td><td><select data-f="${i}"></select></td>`;
-    fr.appendChild(tr);
-    const sel = tr.querySelector("select");
-    const opts = FILTER_OPTS.slice();
-    if (i <= 1) opts.push(["0xF0", t("gxSafe")],["0xF1", t("gxSpeed")]);
-    if (!sel) return;
-    fillSelect(sel, opts, S.stage.filters[i]);
-    sel.value = String(S.stage.filters[i]);
-    sel.onchange = (e: Event) => S.stage.filters[i] = +(e.target as HTMLSelectElement).value;
+    tr.innerHTML = `<td>${BTN_NAMES[LANG]?.[i] ?? i + 1}</td><td>${describeMap(btn)}</td><td></td>`;
+    br.appendChild(tr);
+    const cell = tr.children[2] as HTMLTableCellElement;
+    /* 协议只有 5 个过滤槽（0x15 帧的 p[4..8] = blob 的 0x3D/0x44/0x4B/0x52/0x59），
+       第 6~8 个按键没有槽位 —— 置灰说明，不给一个改了也写不进去的下拉。 */
+    if (i >= FILTER_SLOTS) {
+      const na = document.createElement("span");
+      na.className = "na";
+      na.textContent = t("filterUnsupported");
+      na.title = t("filterUnsupported");
+      cell.appendChild(na);
+      return;
+    }
+    const sel = document.createElement("select");
+    sel.dataset.f = String(i);
+    cell.appendChild(sel);
+    const opts: [number, string][] = filterOpts();
+    /* 官方工具只有左右键两个过滤滑条（.rsrc: Left/Right Button Multiclick Filter），
+       且 0xF0/0xF1 两个特例正是给这两键用的。 */
+    if (i <= 1) opts.push([GX_SAFE, t("gxSafe")], [GX_SPEED, t("gxSpeed")]);
+    /* 设备上的值可能不在选项表里（例如官方上限是 25 而我们只列到 15）——
+       那就把这个值本身补进选项，否则下拉会**一个都不选中**（显示空白），
+       用户看到的就不是设备当前配置。 */
+    if (!opts.some((o) => o[0] === btn.filter)) opts.push([btn.filter, String(btn.filter)]);
+    fillSelect(sel, opts as any, btn.filter);
+    sel.value = String(btn.filter);
+    sel.onchange = (e: Event) => { btn.filter = +(e.target as HTMLSelectElement).value; };
   });
 
   /* 「没读到配置就不给写」的界面侧体现：按钮直接禁用，而不是等用户点了才弹错。

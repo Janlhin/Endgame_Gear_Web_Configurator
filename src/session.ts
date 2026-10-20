@@ -8,7 +8,7 @@ import { log, banner } from "./util.js";
 import { t } from "./i18n.js";
 import { S, blob } from "./state.js";
 import { buildSensorPayload, buildPowerPayload, parseBlob, xm1Parse } from "./blob.js";
-import { snapSensor, verifySensor, snapPerf, verifyPerf, reportVerify } from "./verify.js";
+import { snapSensor, verifySensor, snapPerf, verifyPerf, snapButtons, verifyButtons, reportVerify } from "./verify.js";
 import { readBlob } from "./device-4k.js";
 import { readBlob8k, store8k, verifySensor8k, verifyPerf8k } from "./device-8k.js";
 import { xm1QueryByte, xm1Snapshot } from "./device-xm1.js";
@@ -17,7 +17,19 @@ import { layoutFor, applyLayout } from "./layout.js";
 import { dev, guarded, probe } from "./transport.js";
 import { buildBlob8k, PID_FAMILY4, PID_8K, VID_22D4, MOUSE_PIDS, modelOf } from "./protocol.js";
 
-export function fwStr(v: number) { const h = v.toString(16).padStart(4, "0"); return `${parseInt(h.slice(0, 2), 16)}.${parseInt(h.slice(2), 16)}`; }
+/** 固件版本 → "major.minor"（次版本号十进制补零两位）。
+ *
+ *  ★ 设备是「major 在前、minor 在后」两个**独立字节**，不是一个小端 u16。
+ *    依据：第四族同样是这个布局（re/FAMILY4_NOTES.md:76 ——
+ *    MAJOR=payload[0] / MINOR=payload[+1] / BUILD=payload[+2]）。
+ *
+ *  ★ 2026-10-20 修正：此前把 r[22] | (r[23]<<8) 当 u16 拼起来，
+ *    再让本函数按「高字节=major」去拆 —— 两处方向相反，**双重反转**
+ *    把主次版本号对调了。官方工具显示「鼠标固件 1.07 / 接收器固件 1.01」，
+ *    我们却显示「7.1 / 1.1」。修正为直接收两个字节，主次不再靠拼装顺序隐含。 */
+export function fwStr(major: number, minor: number) {
+  return `${major}.${String(minor).padStart(2, "0")}`;
+}
 
 export async function refreshAll() {
   banner("warn", "");
@@ -86,7 +98,7 @@ export async function refreshAll() {
       return;
     }
 
-    try { const r = await guarded(0x0D, 0x00, null, { pace: 150 }); S.dongleFw = fwStr(r[16] | (r[17] << 8)); }
+    try { const r = await guarded(0x0D, 0x00, null, { pace: 150 }); S.dongleFw = fwStr(r[16], r[17]); }
     catch (e) { if (errCode(e) !== 0x07) throw e; S.dongleFw = "—"; }
     let mouseOk = false;
     try {
@@ -101,7 +113,7 @@ export async function refreshAll() {
         S.mouseName = `Unknown (PID 0x${pid.toString(16)})`;
         S.gen = null; S.unverified = true; S.unknownModel = true;
       }
-      S.mouseFw = fwStr(r[22] | (r[23] << 8));
+      S.mouseFw = fwStr(r[22], r[23]);
       mouseOk = true;
     } catch (e) { const c = errCode(e); if (c === undefined || ![0x08, 0x11].includes(c)) throw e; }
     try { const r = await guarded(0xB4, 0x00, null, { pace: 150 }); S.battery = r[16]; } catch (e) { S.battery = null; }
@@ -154,6 +166,7 @@ export async function applyPerf() {
     if (S.eightK) return await apply8k();          // 同上：8k 的性能项与传感器项在同一次整块写里
     const want = snapPerf();                       // 期望值（写入前）
     const wantSensor = snapSensor();               // 联动写 0x14 时传感器字段也在里面
+    const wantButtons = snapButtons();              // 点击过滤随 0x15 一起下发，一并快照
     const glassChanged = S.gen === 2 && (blob()[0x6F] ? 1 : 0) !== S.stage.glass;
     await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
     log("✓ cmd 0x15 written");
@@ -163,6 +176,10 @@ export async function applyPerf() {
     }
     await refreshAll();
     const bad = verifyPerf(want);
+    /* ★ 也校验按钮的 filter —— 0x15 的 p[4..8] 就是前 5 个按键的 filter 槽。
+       此前这条路径完全不校验按钮 filter，于是「点错了值把设备配置改坏」
+       在界面上是**静默**的。 */
+    bad.push(...verifyButtons(wantButtons));
     if (glassChanged) bad.push(...verifySensor(wantSensor));
     reportVerify("bPerf", bad);
   } finally { S.writing = false; }

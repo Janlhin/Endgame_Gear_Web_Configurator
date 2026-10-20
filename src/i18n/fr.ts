@@ -87,6 +87,7 @@ export default {
   errWrite: "Échec de l’écriture : ", cfgNoRead: "Aucune configuration lue",
   v1StageNote: " (le matériel v1 ignore le changement de palier logiciel — utilisez le bouton CPI sous la souris)", pollWiredNote: " (limité à 1000 Hz en filaire ; la valeur stockée reste inchangée)",
   gxSafe: "GX Safe", gxSpeed: "GX Speed", disabled: "Désactivé", fixedCpi: "CPI fixe", cpiCycle: "Cycle CPI",
+  filterUnsupported: "Non pris en charge",
   minutesFmt: "{0} min", keyboardMap: "Clavier (mods 0x{0}, touche 0x{1})", mouseBtn: "Bouton souris 0x{0}", specialFn: "Spécial 0x{0}", mediaKey: "Consumer 0x{0}", typeRaw: "Type 0x{0}",
   langName: "Français",
   crVole: "Rétro-ingénierie complète du protocole de configuration USB (désassemblage Ghidra + 44 captures USB + vérification sur appareil) ; seule base de la couche protocole de la famille 4k.",

@@ -788,6 +788,19 @@ table {
   tbody tr:last-child td { border-bottom: none; }
 
   td input[type="number"] { width: 92px; height: 30px; }
+
+  /* 「不支持」占位：协议没有该按键的过滤槽，不给下拉框，
+     免得用户改了一个写不进去的值。 */
+  .na {
+    color: $muted;
+    font-size: $fs-xs;
+  }
+
+  /* 点击过滤列的下拉：定宽 + 靠左，让 8 行的控件左边缘成一条线。 */
+  td select[data-f] {
+    width: 120px;
+    max-width: 100%;
+  }
 }
 
 // ---------- 状态胶囊 ----------
@@ -808,9 +821,13 @@ table {
     width: 6px;
     height: 6px;
     content: "";
-    background: currentColor;
+
+    /* 圆点用成功绿（与左栏 .eyebrow .dot 同一枚 $ok），文字仍走 accent 蓝。
+       此前圆点是 currentColor（= 蓝），于是页顶胶囊是蓝点、
+       左栏同一个"连接状态"却是绿点 —— 同一件事两种颜色，自相矛盾。 */
+    background: $ok;
     border-radius: 50%;
-    box-shadow: 0 0 8px currentColor;
+    box-shadow: 0 0 8px $ok;
   }
 
   &:not(.off)::before { animation: pulse 2.2s ease-in-out infinite; }
@@ -820,7 +837,9 @@ table {
     background: $surface-2;
     border-color: $line;
 
-    &::before { box-shadow: none; opacity: 0.65; }
+    /* 未连接时圆点回到中性灰 —— 上面把 background 写死成 $ok，
+       这里必须显式覆盖，否则断线后仍是个绿点。 */
+    &::before { background: $sub; box-shadow: none; opacity: 0.65; }
   }
 }
 

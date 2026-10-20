@@ -134,7 +134,14 @@ export function buildPowerPayload() {
   if (S.gen === 2 && S.stage.maxFps) f |= 0x40;
   p[2] = f;
   p[3] = S.stage.powerSaving === "off" ? 0x80 : S.stage.powerSaving;
-  for (let i = 0; i < 5; i++) p[4 + i] = S.stage.filters[i];
+  /* ★ 点击过滤写入 0x15 帧的 p[4..8] —— 这 5 个位置就是前 5 个按键的 filter 槽
+     （官方 XM2w-4k 工具 0x15 builder @0x404B50 取 obj[0x2E/0x36/0x3E/0x46/0x4E]，
+      重排到 blob[0x3D/0x44/0x4B/0x52/0x59] = 按钮块 0x37+7n 的第 7 字节，
+      见 re/PROTOCOL_NOTES.md:64）。
+     值取自 buttons[i].filter（blob 真值）—— 此前取的是 filters[]，
+     而那个数组从不被赋值、恒为默认 [8,8,8,8,8]，等于每次写回都把设备真实的
+     GX Safe / GX Speed 覆盖成 8ms。 */
+  for (let i = 0; i < 5; i++) p[4 + i] = S.stage.buttons[i]?.filter ?? 8;
   p[9] = S.stage.deepSleep === "off" ? 0x80 : S.stage.deepSleep;
   p[10] = S.gen === 2 ? S.stage.glass : 0;
   return p;

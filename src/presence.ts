@@ -66,7 +66,8 @@ export function resetToInitial(reasonKey: LostReason, detail?: string) {
 
   /* 3) 抹掉可能残留的数据行 / 数值 —— 卡片虽然收起了，但若将来某个入口
         又把它显示出来（例如 #layout= 预览），不该看到上一台设备的数据。 */
-  for (const id of ["cpiRows", "btnRows", "filterRows", "weCpiRows", "weBtnRows"]) {
+  /* filterRows 已随「两张表合并为一张」从 DOM 移除（#cardBtns 现在只有 btnRows）。 */
+  for (const id of ["cpiRows", "btnRows", "weCpiRows", "weBtnRows"]) {
     const el = $(id); if (el) el.innerHTML = "";
   }
   for (const id of ["iModel", "iMouseFw", "iDongleFw", "iBattery", "iConn", "iGen",

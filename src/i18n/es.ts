@@ -87,6 +87,7 @@ export default {
   errWrite: "Fallo de escritura: ", cfgNoRead: "Aún no se ha leído la configuración",
   v1StageNote: " (el hardware v1 ignora el cambio de nivel por software: usa el botón CPI bajo el ratón)", pollWiredNote: " (limitado a 1000 Hz por cable; el valor almacenado no cambia)",
   gxSafe: "GX Safe", gxSpeed: "GX Speed", disabled: "Desactivado", fixedCpi: "CPI fijo", cpiCycle: "Ciclo de CPI",
+  filterUnsupported: "No compatible",
   minutesFmt: "{0} min", keyboardMap: "Teclado (mods 0x{0}, tecla 0x{1})", mouseBtn: "Botón del ratón 0x{0}", specialFn: "Especial 0x{0}", mediaKey: "Consumer 0x{0}", typeRaw: "Tipo 0x{0}",
   langName: "Español",
   crVole: "Ingeniería inversa completa del protocolo de configuración USB (desensamblado con Ghidra + 44 capturas USB + verificación en el dispositivo); única base de la capa de protocolo de la familia 4k.",

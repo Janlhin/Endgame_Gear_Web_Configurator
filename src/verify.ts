@@ -51,7 +51,8 @@ export function snapPerf(): any {
     slamclick: !!(f & 1), jitter: !!(f & 0x10),
     multiclick: !!(f & 0x20), maxFps: !!(f & 0x40),
     powerSaving: S.stage.powerSaving, deepSleep: S.stage.deepSleep,
-    filters: (S.stage.filters || []).slice(),
+    /* 点击过滤：前 5 个按键的 filter（唯一事实源 = buttons[i].filter） */
+    filters: (S.stage.buttons || []).slice(0, 5).map((b) => b.filter),
   };
 }
 
@@ -66,8 +67,10 @@ export function verifyPerf(w: any): string[] {
   if (S.gen === 2 && w.maxFps !== !!(f & 0x40)) bad.push("Force max FPS");
   if (w.powerSaving !== S.stage.powerSaving) bad.push(`Power saving ${w.powerSaving}→${S.stage.powerSaving}`);
   if (w.deepSleep !== S.stage.deepSleep) bad.push(`Deep sleep ${w.deepSleep}→${S.stage.deepSleep}`);
-  for (let i = 0; i < w.filters.length; i++)
-    if (w.filters[i] !== S.stage.filters[i]) bad.push(`Filter ${i + 1} ${w.filters[i]}→${S.stage.filters[i]}`);
+  for (let i = 0; i < w.filters.length; i++) {
+    const now = (S.stage.buttons || [])[i]?.filter;
+    if (w.filters[i] !== now) bad.push(`Filter ${i + 1} ${w.filters[i]}→${now}`);
+  }
   return bad;
 }
 

@@ -87,6 +87,7 @@ export default {
   errWrite: "쓰기 실패:", cfgNoRead: "아직 구성을 읽지 않았습니다",
   v1StageNote: " (v1 하드웨어는 소프트웨어 단계 전환을 무시합니다 —— 마우스 바닥의 CPI 버튼을 사용하세요)", pollWiredNote: " (유선은 하드웨어 상한 1000 Hz, 저장된 값은 바뀌지 않습니다)",
   gxSafe: "GX Safe", gxSpeed: "GX Speed", disabled: "사용 안 함", fixedCpi: "고정 CPI", cpiCycle: "CPI 순환",
+  filterUnsupported: "지원 안 함",
   minutesFmt: "{0}분", keyboardMap: "키보드 (수정자 0x{0}, 키 0x{1})", mouseBtn: "마우스 버튼 0x{0}", specialFn: "특수 기능 0x{0}", mediaKey: "미디어 키 0x{0}", typeRaw: "유형 0x{0}",
   langName: "한국어",
   crVole: "USB 구성 프로토콜의 완전한 리버스 엔지니어링(Ghidra 디스어셈블 + 44회 USB 캡처 + 실기 검증). 4k 패밀리 프로토콜 계층의 유일한 근거입니다.",

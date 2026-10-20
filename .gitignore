@@ -52,6 +52,9 @@ re/upstream/xm2we_util_main.c
 # esbuild 生成的 sourcemap（re/run_test.mjs 开 sourcemap 时会产生）
 re/.test_*.mjs.map
 
+# 本地 UI 截图产物（无头 Edge 拍的效果图，可随时重新生成）
+ui3/
+
 # 覆盖率工具的输出目录（c8 / nyc）
 coverage/
 .nyc_output/

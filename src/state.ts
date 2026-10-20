@@ -82,8 +82,13 @@ export interface Stage {
 
   powerSaving: MinutesOrOff;
   deepSleep: MinutesOrOff;
-  filters: number[];
 
+  /* ★ 点击过滤的唯一事实源是 buttons[i].filter（blob 按钮块每项的第 7 字节）。
+     此前另有一份 filters: number[]，但**全代码库没有任何一处给它赋值** ——
+     它永远是 newStage() 的默认值 [8,8,8,8,8]。于是右表那个下拉显示的是假值，
+     而 buildPowerPayload 把它写进 0x15 帧的 p[4..8]（那 5 个位置确实是前 5 个
+     按键的 filter 槽）—— 每次点「应用性能/电源」都会把设备真实的 GX Safe /
+     GX Speed 静默覆盖成 8ms。两份状态必然漂移，故只保留一份。 */
   buttons: StageButton[];
 
   /* —— 以下为未核实字段，仅在「已核实字段不适用」的族里出现 —— */
@@ -128,7 +133,7 @@ export function newStage(): Stage {
     cpi: [[0, 400, 400], [0, 800, 800], [0, 1600, 1600], [0, 3200, 3200]], levels: 4, active: 1,
     lod: 3, lodMM: 1.0, glass: 0, angleSnap: 0, ripple: 0, angleTune: 0, ledLiftoff: 1,
     motionSync: 0, polling: 0x08, flags: 0, powerSaving: 1, deepSleep: 3,
-    filters: [8, 8, 8, 8, 8], buttons: [],
+    buttons: [],
   };
 }
 

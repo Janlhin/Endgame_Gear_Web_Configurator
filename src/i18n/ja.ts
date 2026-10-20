@@ -87,6 +87,7 @@ export default {
   errWrite: "書き込みに失敗しました：", cfgNoRead: "構成をまだ読み取っていません",
   v1StageNote: "（v1 のハードウェアはソフトウェアでの段切り替えを無視します。マウス底面の CPI ボタンをお使いください）", pollWiredNote: "（有線ではハードウェア上限 1000 Hz。保存値は変わりません）",
   gxSafe: "GX Safe", gxSpeed: "GX Speed", disabled: "無効", fixedCpi: "固定 CPI", cpiCycle: "CPI サイクル",
+  filterUnsupported: "非対応",
   minutesFmt: "{0} 分", keyboardMap: "キーボード（修飾 0x{0}、キー 0x{1}）", mouseBtn: "マウスボタン 0x{0}", specialFn: "特殊機能 0x{0}", mediaKey: "メディアキー 0x{0}", typeRaw: "タイプ 0x{0}",
   langName: "日本語",
   crVole: "USB 構成プロトコルの完全なリバースエンジニアリング（Ghidra による逆アセンブル + 44 回の USB キャプチャ + 実機検証）。4k ファミリーのプロトコル層の唯一の根拠です。",

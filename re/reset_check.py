@@ -21,7 +21,8 @@ ALL_CARDS = CARDS_4K + ["cardWeInfo", "cardWeCpi", "cardWeBtns", "cardWeTools"]
 ALL_ROWS = ["rowDongleFw", "rowBattery", "rowStages", "rowLod", "cellGlass", "cellAngleSnap",
             "cellRipple", "cellLedLiftoff", "rowAngleTune", "rowPolling", "rowMotionSync",
             "rowSlamclick", "rowV1Jitter", "rowV2Max", "rowV2Multi", "rowPower", "rowPairing"]
-EMPTY_BODIES = ["cpiRows", "btnRows", "filterRows", "weCpiRows", "weBtnRows"]
+# filterRows 已随「按键卡两张表合并为一张」从 DOM 移除（#cardBtns 只剩 btnRows）。
+EMPTY_BODIES = ["cpiRows", "btnRows", "weCpiRows", "weBtnRows"]
 
 # 每种布局都演练一遍：#layout= 先铺开，simulate=lost 再复位
 CASES = ["v1", "v2", "xm1", "ro", "8k", "unsupported", "we"]

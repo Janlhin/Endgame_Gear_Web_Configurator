@@ -41,7 +41,7 @@ console.log("[1] resetToInitial：状态与界面都回到「未连接」");
 
   el("iModel").textContent = "XM2w 4k v2"; el("iBattery").textContent = "88 %";
   el("cpiRows").innerHTML = "<tr><td>x</td></tr>";
-  el("btnRows").innerHTML = "<tr></tr>"; el("filterRows").innerHTML = "<tr></tr>";
+  el("btnRows").innerHTML = "<tr></tr>";
   el("weCpiRows").innerHTML = "<tr></tr>"; el("weBtnRows").innerHTML = "<tr></tr>";
   el("cpiStepNote").textContent = "note";
   el("cpiActiveNote").textContent = "note"; el("pollNote").textContent = "note";
@@ -65,8 +65,8 @@ console.log("[1] resetToInitial：状态与界面都回到「未连接」");
      "界面模型回到出厂默认（否则会把旧值当成设备当前值下发）");
 
   ok(el("iModel").textContent === "—" && el("iBattery").textContent === "—", "设备信息清空");
-  ok(el("cpiRows").innerHTML === "" && el("btnRows").innerHTML === "" && el("filterRows").innerHTML === "",
-     "CPI / 按键 / 过滤行清空");
+  ok(el("cpiRows").innerHTML === "" && el("btnRows").innerHTML === "",
+     "CPI / 按键行清空（点击过滤已并入按键表，无独立表）");
   ok(el("weCpiRows").innerHTML === "" && el("weBtnRows").innerHTML === "", "XM2we 的行也清空");
   ok(el("cpiStepNote").textContent === "" && el("cpiActiveNote").textContent === "" && el("pollNote").textContent === "",
      "说明文字清空");

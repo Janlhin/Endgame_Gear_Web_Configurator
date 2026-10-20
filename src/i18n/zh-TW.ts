@@ -86,6 +86,7 @@ export default {
   errWrite: "寫入失敗：", cfgNoRead: "尚未讀取設定",
   v1StageNote: "（v1 硬體忽略軟體切換，請用滑鼠底部按鍵）", pollWiredNote: "（有線連線硬體上限 1000 Hz，寫入的儲存值不變）",
   gxSafe: "GX Safe", gxSpeed: "GX Speed", disabled: "停用", fixedCpi: "固定 CPI", cpiCycle: "CPI 循環切換",
+  filterUnsupported: "不支援",
   minutesFmt: "{0} 分鐘", keyboardMap: "鍵盤 (修飾 0x{0}, 鍵 0x{1})", mouseBtn: "滑鼠鍵 0x{0}", specialFn: "特殊功能 0x{0}", mediaKey: "多媒體鍵 0x{0}", typeRaw: "類型 0x{0}",
   langName: "繁體中文",
   crVole: "完整的 USB 設定協定逆向（Ghidra 反組譯 + 44 次封包擷取 + 實機驗證），4k 族協定層的唯一依據。",

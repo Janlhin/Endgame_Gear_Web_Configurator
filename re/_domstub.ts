@@ -15,9 +15,9 @@ export const els: Record<string, any> = {};
 export const listeners: Record<string, Function[]> = {};
 
 function mkEl(id: string) {
-  return {
+  const el: any = {
     id, style: {} as any, dataset: {} as any,
-    className: "", textContent: "", innerHTML: "", value: "",
+    className: "", textContent: "",
     disabled: false, checked: false, scrollTop: 0, scrollHeight: 0, colSpan: 1,
     setAttribute(k: string, v: string) { this.attrs[k] = String(v); },
     removeAttribute(k: string) { delete this.attrs[k]; },
@@ -29,10 +29,71 @@ function mkEl(id: string) {
     hasAttribute(k: string) { return k in this.attrs; },
     getAttribute(k: string) { return k in this.attrs ? this.attrs[k] : null; },
     attrs: {} as Record<string, string>,
-    appendChild() {}, prepend() {},
+    children: [] as any[],
+    tagName: "DIV",
+    /* <select> 的 options 列表：value 赋值时若能匹配上就选中，
+       否则保持空（与浏览器一致：没有匹配项就显示空白）。 */
+    options: [] as any[],
+    _value: "",
+    get value() { return this._value; },
+    set value(v: string) {
+      this._value = String(v);
+      if (this.tagName === "SELECT" && this.options.length &&
+          !this.options.some((o: any) => o.value === this._value)) {
+        this._value = "";   // 与浏览器一致：没有匹配项则不选中
+      }
+    },
+    /* classList：paintBattery 等处对 SVG 元素做 classList.toggle。 */
+    classList: {
+      _set: new Set<string>(),
+      add(c: string) { this._set.add(c); },
+      remove(c: string) { this._set.delete(c); },
+      contains(c: string) { return this._set.has(c); },
+      toggle(c: string, force?: boolean) {
+        const on = force === undefined ? !this._set.has(c) : !!force;
+        if (on) this._set.add(c); else this._set.delete(c);
+        return on;
+      },
+    },
+    /* innerHTML 赋值时同步解析出 td/th 子元素 —— 渲染层用 innerHTML 建行，
+       断言层要读行里的格子。只需支持 <td>...</td> 与 <th>...</th>。 */
+    set innerHTML(v: string) {
+      this._html = v;
+      this.children = [];
+      const re2 = /<(td|th)([^>]*)>([\s\S]*?)<\/\1>/g;
+      let m2: RegExpExecArray | null;
+      while ((m2 = re2.exec(v))) {
+        const c = mkEl("cell");
+        c.tagName = m2[1].toUpperCase();
+        c.innerHTML = m2[3];
+        c.textContent = m2[3].replace(/<[^>]*>/g, "");
+        this.children.push(c);
+      }
+    },
+    get innerHTML() { return this._html ?? ""; },
+    appendChild(c: any) {
+      this.children.push(c);
+      if (this.tagName === "SELECT" && c && c.tagName === "OPTION") this.options.push(c);
+      return c;
+    },
+    prepend() {},
     insertAdjacentHTML() {}, addEventListener() {},
-    querySelector() { return null; }, querySelectorAll() { return []; },
+    querySelector(sel: string) { return this.querySelectorAll(sel)[0] ?? null; },
+    /* 只支持本仓库实际用到的两种选择器：标签名 与 [attr] / [attr="v"]。 */
+    querySelectorAll(sel: string) {
+      const wantAttr = sel.match(/^\[([\w-]+)(?:="([^"]*)")?\]$/);
+      const out: any[] = [];
+      for (const c of this.children) {
+        if (wantAttr) {
+          const [, k, v] = wantAttr;
+          const actual = c.dataset ? c.dataset[k] : undefined;
+          if (v === undefined ? actual !== undefined : String(actual) === v) out.push(c);
+        } else if (c.tagName === sel.toUpperCase()) out.push(c);
+      }
+      return out;
+    },
   };
+  return el;
 }
 
 /** 取（必要时新建）一个桩元素 —— 测试里也用它预置「上一台设备的残留」。 */
@@ -63,7 +124,7 @@ w.document = {
   },
   getElementById: (id: string) => el(id),
   querySelectorAll: () => [],
-  createElement: () => mkEl("created"),
+  createElement: (tag: string) => { const e = mkEl("created"); e.tagName = String(tag).toUpperCase(); return e; },
 };
 Object.defineProperty(w, "navigator", {
   configurable: true, writable: true,

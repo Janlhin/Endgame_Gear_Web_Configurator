@@ -65,7 +65,7 @@ function parsed(): any {
     maxFps: st.maxFps ?? null,
     powerSaving: st.powerSaving ?? null,
     deepSleep: st.deepSleep ?? null,
-    filters: Array.isArray(st.filters) ? st.filters.slice() : null,
+    filters: Array.isArray(st.buttons) ? st.buttons.slice(0, 5).map((b: { filter?: number }) => b?.filter) : null,
     buttons: Array.isArray(st.buttons) ? st.buttons.map((b: any) => ({ type: b?.type, code: b?.code, key: b?.key, filter: b?.filter })) : null,
   };
 }

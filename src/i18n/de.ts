@@ -87,6 +87,7 @@ export default {
   errWrite: "Schreiben fehlgeschlagen: ", cfgNoRead: "Noch keine Konfiguration gelesen",
   v1StageNote: " (v1-Hardware ignoriert das Umschalten per Software – nutze die CPI-Taste unter der Maus)", pollWiredNote: " (am Kabel auf 1000 Hz begrenzt; der gespeicherte Wert bleibt unverändert)",
   gxSafe: "GX Safe", gxSpeed: "GX Speed", disabled: "Deaktiviert", fixedCpi: "Fester CPI", cpiCycle: "CPI-Zyklus",
+  filterUnsupported: "Nicht unterstützt",
   minutesFmt: "{0} min", keyboardMap: "Tastatur (Mods 0x{0}, Taste 0x{1})", mouseBtn: "Maustaste 0x{0}", specialFn: "Spezial 0x{0}", mediaKey: "Consumer 0x{0}", typeRaw: "Typ 0x{0}",
   langName: "Deutsch",
   crVole: "Vollständiges Reverse Engineering des USB-Konfigurationsprotokolls (Ghidra-Disassemblierung + 44 USB-Mitschnitte + Verifikation am Gerät); die einzige Grundlage der Protokollebene der 4k-Familie.",
