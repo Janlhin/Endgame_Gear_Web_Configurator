@@ -4,6 +4,17 @@
 
 ## Unreleased
 
+### 2026-10-20 — 设备仪表盘（连接后首屏重构）
+
+- 设备信息卡改为 hero：左侧设备主视觉、中间型号与固件芯片、右侧电量环
+  （`pathLength=100` 归一化，电量由 `render.ts` 直接写偏移量），下方三格指标
+  （CPI / 回报率 / 档位）。只读展示，不影响任何写入闸门。
+- XM1 与 XM2we 复用同一套 hero；XM1 隐藏电量环与接收器芯片（原有 layout 规则不变），
+  XM2we 用链路/电量芯片。
+- 新增 `render.ts` 的 `paintBattery()` / `metric` 写入点；未连接、只读、第四族一律显示 `—`，
+  不伪造 0%。
+- 体积预算 320 → 325 KB（增量 1.7 KB，纯自有 HTML/SCSS/TS）。
+
 ### 2026-10-20 — 有线 4k 鼠标误路由到 XM2we 族（`Failed to write the feature report.`）
 
 - **判族修复**：`isXm2weFamily` 改为三层判据 —— PID 表优先（`0x1960`/`0x1961`/`0x1962`）；

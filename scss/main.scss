@@ -229,28 +229,216 @@ main > * { animation: rise $t-slow $ease-out both; }
   }
 }
 
-// 设备信息卡：当作 hero 处理 —— 型号最大、带一圈冷光
-#cardInfo {
+// ---------- 设备仪表盘（B 方案）----------
+// 「连上之后的第一屏」：左侧设备主视觉、中间型号与固件、右侧电量环，
+// 底部三格指标（CPI / 回报率 / 档位）。分区卡片仍沿用原来的四张，
+// 只是把「一进页面就是一堆表单」换成先看设备、再看指标、最后调参数。
+.hero {
+  display: grid;
+  gap: 18px;
+  padding: 24px 24px 20px;
+  overflow: hidden;
   background:
-    radial-gradient(120% 150% at 0% 0%, $glow-1, transparent 58%),
+    radial-gradient(90% 140% at 0% 0%, $glow-1, transparent 62%),
     $card;
   border-color: $line-strong;
+  box-shadow: $shadow-2;
+}
 
-  #iModel {
-    font-family: $font-display;
-    font-size: $fs-2xl;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.15;
-    color: $text;
+.heroMain {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 22px;
+}
+
+.heroArt {
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  background:
+    linear-gradient(155deg, $acc-soft, transparent 70%),
+    $surface-2;
+  border: 1px solid $line;
+  border-radius: 22px;
+
+  svg { width: 52px; height: 80px; }
+  .artBody { fill: $acc-soft; stroke: $acc; stroke-width: 2.4; }
+  .artLine { stroke: $acc; stroke-width: 2.4; stroke-linecap: round; opacity: 0.5; }
+  .artDot { fill: $acc; }
+}
+
+.heroId { min-width: 0; }
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 7px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: $sub;
+  text-transform: uppercase;
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    background: $ok;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px $acc-soft;
+  }
+}
+
+// 型号是这一屏唯一的大字：30px，其余全部退到 13px 以下
+.hero .heroModel {
+  margin: 0 0 12px;
+  font-family: $font-display;
+  font-size: $fs-2xl;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: $text;
+
+  &::before { display: none; }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 10px;
+  background: $surface-2;
+  border: 1px solid $line;
+  border-radius: $radius-pill;
+
+  .ck {
+    font-size: 11px;
+    color: $muted;
+    white-space: nowrap;
   }
 
-  #iBattery {
+  .cv {
+    overflow: hidden;
     font-family: $font-mono;
-    font-size: $fs-xl;
-    font-weight: 600;
-    color: $acc;
+    font-size: 12px;
+    font-weight: 500;
+    color: $text;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
+}
+
+// 电量环：pathLength=100 后，dashoffset 直接等于「剩余百分比」
+.battery {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 118px;
+  height: 118px;
+}
+
+.batRing {
+  width: 118px;
+  height: 118px;
+  transform: rotate(-90deg);
+}
+
+.batTrack {
+  fill: none;
+  stroke: $line;
+  stroke-width: 6;
+}
+
+.batFill {
+  fill: none;
+  stroke: $acc;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+
+  // 起始值 = 整圈偏移（不画任何弧）；真实值由 render.ts 按电量写入像素偏移，
+  // 不依赖 calc() 与无单位数值在不同浏览器里的解析差异。
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset $t-slow $ease-out;
+}
+
+.batRing.empty .batFill { stroke: $line-strong; }
+
+.batText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.batVal {
+  max-width: 84px;
+  font-family: $font-mono;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: $text;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.batLabel {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  color: $muted;
+  text-transform: uppercase;
+}
+
+// 三格指标：比卡片更密的「仪表」，让第一屏有可读数字
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid $line;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 10px 14px;
+  background: $surface-2;
+  border: 1px solid $line;
+  border-radius: $radius-md;
+}
+
+.mk {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  color: $muted;
+  text-transform: uppercase;
+}
+
+.mv {
+  overflow: hidden;
+  font-family: $font-mono;
+  font-size: 20px;
+  font-weight: 600;
+  color: $text;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 // ---------- 行与表单 ----------
@@ -657,6 +845,43 @@ a {
   }
 }
 
+// hero 在中等宽度：主视觉与身份并排，电量环换到第二行
+@include below($bp-md) {
+  .heroMain {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "art id"
+      "bat bat";
+    gap: 16px;
+  }
+
+  .heroArt {
+    grid-area: art;
+    width: 76px;
+    height: 76px;
+    border-radius: 18px;
+
+    svg { width: 38px; height: 58px; }
+  }
+
+  .heroId { grid-area: id; }
+
+  .battery {
+    display: flex;
+    grid-area: bat;
+    align-items: center;
+    justify-self: start;
+    gap: 10px;
+    width: auto;
+    height: auto;
+  }
+
+  .batRing { width: 42px; height: 42px; }
+  .batText { position: static; flex-direction: row; align-items: baseline; gap: 6px; }
+  .batVal { font-size: 15px; }
+  .hero .heroModel { font-size: $fs-xl; }
+}
+
 @include below($bp-sm) {
   main { gap: 14px; padding: 18px 12px 72px; }
   .card { padding: 18px 16px; border-radius: 14px; }
@@ -664,7 +889,10 @@ a {
   .row { gap: 8px; }
   .row label { min-width: 88px; }
   .row .muted { flex: 1 1 100%; }
-  #cardInfo #iModel { font-size: $fs-xl; }
+  .hero { padding: 18px 16px 16px; }
+  .metrics { gap: 6px; padding-top: 14px; }
+  .metric { padding: 8px 10px; }
+  .mv { font-size: 16px; }
 
   /* 多列表格在窄屏改为「卡片内横向滚动」，不撑破页面。
      table 改 block 后浏览器会保留内部表格排版，只是多出一个滚动容器。 */

@@ -33,6 +33,37 @@ export const FILTER_OPTS = [["off","off"],["1","1"],["2","2"],["3","3"],["4","4"
 
 export function setConn(on: boolean, text: string) { const p = $el("connState"); p.className = "status-pill" + (on ? "" : " off"); p.textContent = text; }
 
+/* ---------- 设备仪表盘（hero）的展示层 ----------
+   只读 S 里的值，**不参与任何写入判定**：电量环、三格指标都是纯展示，
+   拿不到数值就显示「—」。这样未连接 / 只读型号也不会出现「0%」这种假数据。 */
+function paintBattery() {
+  const ring = document.getElementById("batRing");
+  if (!ring) return;
+  const b = S.battery;
+  const has = typeof b === "number" && isFinite(b) && b >= 0;
+  const pct = has ? Math.max(0, Math.min(100, b)) : 0;
+  ring.classList.toggle("empty", !has);
+  /* pathLength="100" 把整圈归一化成 100，所以这里直接写偏移量：
+     82% → dashoffset 18（画出 82 个单位）。 */
+  const fill = ring.querySelector<SVGCircleElement>(".batFill");
+  if (fill) fill.style.strokeDashoffset = String(100 - pct);
+}
+
+function setMetric(id: string, v: string) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = v;
+}
+
+/** 回报率编码 → 显示值。0x80 是「1000 Hz 省电」、0x40 是「125 Hz 办公」，
+ *  指标里只给频率，细分语义留给下拉框。 */
+function pollLabel(): string {
+  const map: Record<number, string> = {
+    0x01: "8000 Hz", 0x02: "4000 Hz", 0x04: "2000 Hz",
+    0x08: "1000 Hz", 0x80: "1000 Hz", 0x40: "125 Hz",
+  };
+  return map[S.stage.polling] ?? "—";
+}
+
 export function fillSelect(sel: HTMLSelectElement, opts: (string | number)[][], val: string | number) {
   sel.innerHTML = "";
   for (const [v, tt] of opts) {
@@ -48,6 +79,8 @@ export function renderXm1() {
      此前 S 是 any，编译器不会报，实际跑到这里会白屏。 */
   if (!S.xm1Edit) {
     $el("iModel").textContent = S.mouseName;
+    paintBattery();
+    setMetric("mCpi", "—"); setMetric("mPoll", "—"); setMetric("mStage", "—");
     return;
   }
   // 提取局部别名：判空结果不会传进下面的闭包，闭包里再用 S.xm1Edit 会重新报错。
@@ -59,6 +92,14 @@ export function renderXm1() {
   $el("iBattery").textContent = "—";
   $el("iConn").textContent = t("wiredMode");
   $el("iGen").textContent = "2020 (XM1)";
+
+  /* 仪表盘指标：XM1 的回报率由底部硬件拨动开关决定，软件读不到；
+     档位固定 4 档（见下方 cpiLevels 只读）。 */
+  paintBattery();
+  const cur = ed.stages[ed.active] ?? ed.stages[0];
+  setMetric("mCpi", cur ? String(cur.x) : "—");
+  setMetric("mPoll", "—");
+  setMetric("mStage", `${ed.active + 1} / 4`);
 
   // 表头由 layout.ts 的 applyLayout("xm1") 设置（XM1 是单值 CPI，固件只读 X）
 
@@ -149,6 +190,9 @@ export function renderInfoOnly() {
   $el("iBattery").textContent = "—";
   $el("iConn").textContent = t("wiredMode");
   $el("iGen").textContent = t("family4Name");
+  /* 第四族只识别、不通信：没有任何可读的实时量 */
+  paintBattery();
+  setMetric("mCpi", "—"); setMetric("mPoll", "—"); setMetric("mStage", "—");
 }
 
 export function render() {
@@ -326,6 +370,12 @@ export function render() {
        像是页面坏了，而不是"这个型号暂不支持写入"。 */
     document.querySelectorAll<HTMLInputElement>("#cpiRows input").forEach((el) => { el.disabled = true; });
   }
+
+  /* 仪表盘：电量环 + 三格指标。放在最后统一刷新，避免上面任何 early return 漏掉。 */
+  paintBattery();
+  setMetric("mCpi", String(S.stage.cpi[S.stage.active][1]));
+  setMetric("mPoll", pollLabel());
+  setMetric("mStage", `${S.stage.active + 1} / ${S.stage.levels}`);
 }
 
 export function describeMap(b: any) {

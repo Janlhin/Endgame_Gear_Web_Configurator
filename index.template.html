@@ -47,32 +47,60 @@
 <main>
   <div id="banner" class="banner"></div>
 
-  <section class="card" id="cardInfo" style="display:none">
-    <h2 data-i18n="secInfo">设备信息</h2>
-    <div class="grid2">
-      <div>
-        <div class="row"><label data-i18n="model">型号</label><span class="val" id="iModel">—</span></div>
-        <div class="row"><label data-i18n="mouseFw">鼠标固件</label><span class="val" id="iMouseFw">—</span></div>
-        <div class="row" id="rowDongleFw"><label data-i18n="dongleFw">接收器固件</label><span class="val" id="iDongleFw">—</span></div>
+  <section class="card hero" id="cardInfo" style="display:none">
+    <div class="heroMain">
+      <div class="heroArt" aria-hidden="true">
+        <svg viewBox="0 0 96 148" fill="none">
+          <path class="artBody" d="M48 5c18.5 0 29.5 13.5 29.5 33.5v55c0 26-13 45.5-29.5 45.5S18.5 119.5 18.5 93.5v-55C18.5 18.5 29.5 5 48 5Z"/>
+          <path class="artLine" d="M48 5v31"/>
+          <path class="artLine" d="M20 43h10M66 43h10"/>
+          <circle class="artDot" cx="48" cy="47" r="3.2"/>
+        </svg>
       </div>
-      <div>
-        <div class="row" id="rowBattery"><label data-i18n="battery">电量</label><span class="val" id="iBattery">—</span></div>
-        <div class="row"><label data-i18n="connMode">连接方式</label><span class="val" id="iConn">—</span></div>
-        <div class="row"><label data-i18n="gen">协议代数</label><span class="val" id="iGen">—</span></div>
+      <div class="heroId">
+        <p class="eyebrow"><span class="dot"></span><span id="iConn">—</span></p>
+        <h2 class="heroModel" id="iModel">—</h2>
+        <div class="chips">
+          <span class="chip"><span class="ck" data-i18n="mouseFw">鼠标固件</span><span class="cv" id="iMouseFw">—</span></span>
+          <span class="chip" id="rowDongleFw"><span class="ck" data-i18n="dongleFw">接收器固件</span><span class="cv" id="iDongleFw">—</span></span>
+          <span class="chip"><span class="ck" data-i18n="gen">协议代数</span><span class="cv" id="iGen">—</span></span>
+        </div>
       </div>
+      <div class="battery" id="rowBattery">
+        <svg class="batRing" id="batRing" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="batTrack" cx="60" cy="60" r="52" pathLength="100"/>
+          <circle class="batFill" cx="60" cy="60" r="52" pathLength="100"/>
+        </svg>
+        <span class="batText">
+          <span class="batVal" id="iBattery">—</span>
+          <span class="batLabel" data-i18n="battery">电量</span>
+        </span>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><span class="mk">CPI</span><span class="mv" id="mCpi">—</span></div>
+      <div class="metric"><span class="mk" data-i18n="polling">回报率</span><span class="mv" id="mPoll">—</span></div>
+      <div class="metric"><span class="mk" data-i18n="stage">档位</span><span class="mv" id="mStage">—</span></div>
     </div>
   </section>
 
-  <section class="card" id="cardWeInfo" style="display:none">
-    <h2 data-i18n="secWeInfo">设备信息（XM2we / 有线代）</h2>
-    <div class="grid2">
-      <div>
-        <div class="row"><label data-i18n="model">型号</label><span class="val" id="weModel">—</span></div>
-        <div class="row"><label data-i18n="connMode">连接方式</label><span class="val" id="weConn">—</span></div>
+  <section class="card hero" id="cardWeInfo" style="display:none">
+    <div class="heroMain">
+      <div class="heroArt" aria-hidden="true">
+        <svg viewBox="0 0 96 148" fill="none">
+          <path class="artBody" d="M48 5c18.5 0 29.5 13.5 29.5 33.5v55c0 26-13 45.5-29.5 45.5S18.5 119.5 18.5 93.5v-55C18.5 18.5 29.5 5 48 5Z"/>
+          <path class="artLine" d="M48 5v31"/>
+          <path class="artLine" d="M20 43h10M66 43h10"/>
+          <circle class="artDot" cx="48" cy="47" r="3.2"/>
+        </svg>
       </div>
-      <div>
-        <div class="row"><label data-i18n="battery">电量</label><span class="val" id="weBattery">—</span></div>
-        <div class="row"><label data-i18n="weLink">鼠标链路</label><span class="val" id="weLink">—</span></div>
+      <div class="heroId">
+        <p class="eyebrow"><span class="dot"></span><span id="weConn">—</span></p>
+        <h2 class="heroModel" id="weModel">—</h2>
+        <div class="chips">
+          <span class="chip"><span class="ck" data-i18n="weLink">鼠标链路</span><span class="cv" id="weLink">—</span></span>
+          <span class="chip"><span class="ck" data-i18n="battery">电量</span><span class="cv" id="weBattery">—</span></span>
+        </div>
       </div>
     </div>
     <p class="muted" data-i18n="weFamilyNote">本型号属 2020 年有线/2.4G 协议族（接口页 0xFF02、报告 0x08/0x09、17 字节带校验帧、配置存于 EEPROM），与 4k 无线族完全不兼容。</p>

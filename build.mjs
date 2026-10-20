@@ -115,8 +115,11 @@ const kbOf = (s) => Buffer.byteLength(s, "utf8") / 1024;
  *   当前产物 301.7 KB，余量 ~3 KB —— 仍足以在有人塞进任何库时立刻报红。
  *   2026-10-20  305 → 320：UI 视觉改版（双主题、玻璃卡片、背景光晕/网格/
  *   颗粒、入场与悬停动效）。CSS 6.7 → 18.9 KB，全部为自有 SCSS，
- *   无外部字体/图片/脚本；产物 314.2 KB，余量 ~6 KB。 */
-const SIZE_BUDGET_KB = 320;
+ *   无外部字体/图片/脚本；产物 314.2 KB，余量 ~6 KB。
+ *   2026-10-20  320 → 325：设备仪表盘 hero（主视觉 + 电量环 + 三格指标）。
+ *   增量 1.7 KB：hero 结构、仪表盘样式、电量环/指标的只读渲染逻辑。
+ *   产物 321.7 KB，余量 ~3 KB —— 仍是紧约束，塞进任何库都会立刻报红。 */
+const SIZE_BUDGET_KB = 325;
 const actualKb = kbOf(html);
 console.log(`dist/index.html + index.html written, ${kb(html)} KB  (js ${kb(js)} KB, css ${kb(css)} KB)`);
 if (actualKb > SIZE_BUDGET_KB) {
