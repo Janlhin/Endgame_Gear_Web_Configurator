@@ -25,17 +25,26 @@ function setConn(on: boolean, text: string) {
   p.textContent = text;
 }
 
-/** 安全闸门：只拒绝鼠标指针 / 键盘集合；其余系统集合允许
- *  （厂商接口可能同时暴露消费者控制等集合，误拒会导致连不上）。
- *  详见 main.ts isSafeToOpen 的注释（事故背景）。 */
-function isSafeToOpen(d: HIDDevice): { ok: boolean; why?: string } {
+/** 安全闸门：与 connect.ts 的 isSafeToOpen **保持同步**（两份是刻意的——
+ *  互相 import 会成环；改这里必须同步改那边，反之亦然）。
+ *  只拒绝鼠标指针集合；键盘集合仅在与已知厂商配置集合共存时放行（警告提示）：
+ *  Chrome 155 起同一 USB 接口的顶层集合合并成一个设备，有线复合鼠标必然
+ *  带键盘/消费集合，一刀切拒绝会让有线路径彻底不可用（2026-10-20 诊断）。
+ *  纯键盘设备没有厂商集合，在 bNotVendor 就被拦住。 */
+function isSafeToOpen(d: HIDDevice): { ok: boolean; why?: string; note?: string } {
   const cols = d.collections || [];
   if (!cols.length) return { ok: false, why: t("bNoCollections") };
   if (cols.some(c => c.usagePage === 0x0001 && c.usage === 0x0002))
     return { ok: false, why: t("bRefusePointer") };
-  if (cols.some(c => c.usagePage === 0x0001 && c.usage === 0x0006))
-    return { ok: false, why: t("bRefuseKeyboard") };
   if (!cols.some(c => c.usagePage >= 0xFF00)) return { ok: false, why: t("bNotVendor") };
+  if (cols.some(c => c.usagePage === 0x0001 && c.usage === 0x0006)) {
+    const hasConfig = cols.some(c =>
+      (c.usagePage === 0xFF01 && c.usage === 0x02) ||
+      c.usagePage === 0xFF02 ||
+      (c.usagePage === 0xFFA1 && c.usage === 0x00A5));
+    if (!hasConfig) return { ok: false, why: t("bRefuseKeyboard") };
+    return { ok: true, note: t("bKeyboardMerged") };
+  }
   return { ok: true };
 }
 
@@ -48,6 +57,7 @@ async function openGuarded(d: any): Promise<boolean> {
     banner("err", guard.why);
     return false;
   }
+  if (guard.note) { log("⚠ " + guard.note); banner("warn", guard.note); }
   await d.open();
   const after = isSafeToOpen(d);
   if (!after.ok) {

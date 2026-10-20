@@ -40,17 +40,30 @@ export async function onDeviceLost(reason: LostReason) {
    XM2we 是另一个模块自己的设备，由 xm2we-ui.ts 单独登记 —— 两族不会同时打开。 */
 watchPresence("main", () => S.dev, reason => { void onDeviceLost(reason); });
 
-export function isSafeToOpen(d: HIDDevice) {
+export function isSafeToOpen(d: HIDDevice): { ok: boolean; why?: string; note?: string } {
   const cols = d.collections || [];
   if (!cols.length) return { ok: false, why: t("bNoCollections") };
-  // ① 致命项：鼠标指针 / 键盘 —— 独占会让系统输入设备失效
+  // ① 致命项：鼠标指针集合 —— 无条件拒绝（2026-10-09 事故：独占后鼠标彻底无法移动）
   if (cols.some(c => c.usagePage === POINTER_PAGE && c.usage === POINTER_USAGE))
     return { ok: false, why: t("bRefusePointer") };
-  if (cols.some(c => c.usagePage === KEYBOARD_PAGE && c.usage === KEYBOARD_USAGE))
-    return { ok: false, why: t("bRefuseKeyboard") };
-  // ② 必须含厂商集合，否则不是配置接口
+  // ② 必须含厂商集合，否则不是配置接口（纯键盘 / 纯消费设备在这里被挡）
   if (!cols.some(c => c.usagePage >= VENDOR_PAGE_MIN))
     return { ok: false, why: t("bNotVendor") };
+  // ③ 键盘集合：原先一刀切拒绝。但 Chrome 155 起会把同一 USB 接口的全部顶层集合
+  //    合并成一个 HIDDevice（键盘 + 厂商配置同设备，2026-10-20 实测 4k 有线鼠如此），
+  //    一刀切等于禁掉全部有线配置 —— 这正是「修好判族后有线路径仍不可用」的原因。
+  //    新策略：仅当设备同时含**已知厂商配置集合**（FF01:02 / FF02 / FFA1:00A5）时
+  //    放行并警告（note）。能走到这里的设备必先通过 VID+厂商页 filter，不会是
+  //    真正的系统键盘；真纯键盘在 ② 就被 bNotVendor 拦住，含键盘却无厂商配置
+  //    集合的仍被 bRefuseKeyboard 拦住。
+  if (cols.some(c => c.usagePage === KEYBOARD_PAGE && c.usage === KEYBOARD_USAGE)) {
+    const hasConfig = cols.some(c =>
+      (c.usagePage === 0xFF01 && c.usage === 0x02) ||
+      c.usagePage === 0xFF02 ||
+      (c.usagePage === USAGE_FAMILY4.page && c.usage === USAGE_FAMILY4.usage));
+    if (!hasConfig) return { ok: false, why: t("bRefuseKeyboard") };
+    return { ok: true, note: t("bKeyboardMerged") };
+  }
   return { ok: true };
 }
 
@@ -61,6 +74,7 @@ export async function openGuarded(d: HIDDevice) {
     banner("err", guard.why);
     return false;
   }
+  if (guard.note) { log("⚠ " + guard.note); banner("warn", guard.note); }
   await d.open();
   // open 后复验：接口集合在拿到权限后更完整，此时判断更准
   const after = isSafeToOpen(d);

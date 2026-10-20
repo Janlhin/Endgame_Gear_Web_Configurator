@@ -104,8 +104,13 @@ const kbOf = (s) => Buffer.byteLength(s, "utf8") / 1024;
  *
  * ⚠️ 只想让体积变大时，先问「这个功能值不值这几十 KB」——
  * 本项目的硬约束是**零外部依赖单文件**（见 README）。
- * 确需上调时连同理由写进本注释，不要只改数字。 */
-const SIZE_BUDGET_KB = 300;
+ * 确需上调时连同理由写进本注释，不要只改数字。
+ *
+ * 上调记录：
+ *   2026-10-20  300 → 302：修复 "Failed to write the feature report."
+ *   （判族收紧 isXm2weFamily + 键盘集合合并放行策略 + bKeyboardMerged
+ *   八语言词条）。纯自有代码增量 ~0.6 KB，未引入任何外部依赖。 */
+const SIZE_BUDGET_KB = 302;
 const actualKb = kbOf(html);
 console.log(`dist/index.html + index.html written, ${kb(html)} KB  (js ${kb(js)} KB, css ${kb(css)} KB)`);
 if (actualKb > SIZE_BUDGET_KB) {

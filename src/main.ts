@@ -343,24 +343,27 @@ $el("btnConnect").onclick = async () => {
     }
     if (!devs.length) return;
     for (const d of devs) {
-      const fam = isXm2weFamily(d.productId, d.collections) ? "XM2we/2020"
+      const fam = isXm2weFamily(d.productId, d.collections, d.vendorId) ? "XM2we/2020"
                 : isXm1(d.vendorId) ? "XM1/2020" : "4k";
       log(`candidate: "${d.productName}" VID=0x${d.vendorId.toString(16)} PID=0x${d.productId.toString(16)} [${fam}] collections=` +
           (d.collections || []).map(c => `pg0x${c.usagePage.toString(16)}/u0x${c.usage.toString(16)}`).join(","));
     }
     /* 挑选优先级：
-       ① XM2we 族（PID 0x1960/0x1961 明确）
+       ① XM2we 族（PID 0x1960/0x1961/0x1962 明确；未知 PID 须 FF02 集合真的声明
+          report 0x08 才认 —— 2026-10-20 修复：4k 鼠标 0x1982 也带 FF02 集合，
+          旧的「见 FF02 就当 WE」判据把有线 4k 鼠标误送进 WE 协议，
+          导致 "Failed to write the feature report."）
        ② XM1 的**配置接口** VID 0x22D4 + FF01:02（实测该集合才是配置通道）
        ③ 任意 vendor 用法页（>=0xFF00）接口
        ④ 第一个
        注意 XM1 同时暴露 FF02:01 / FF02:02 等集合（后者与 XM2we 同页），
        所以不能只看"有没有 vendor 页"，要优先 FF01:02。 */
-    const pick = devs.find(d => isXm2weFamily(d.productId, d.collections))
+    const pick = devs.find(d => isXm2weFamily(d.productId, d.collections, d.vendorId))
               || devs.find(d => isXm1(d.vendorId) && (d.collections || []).some(c => c.usagePage === 0xFF01 && c.usage === 0x02))
               || devs.find(d => isXm1(d.vendorId))
               || devs.find(d => (d.collections || []).some(c => c.usagePage >= 0xFF00))
               || devs[0];
-    if (isXm2weFamily(pick.productId, pick.collections)) {
+    if (isXm2weFamily(pick.productId, pick.collections, pick.vendorId)) {
       await openXm2we(pick);
       return;
     }

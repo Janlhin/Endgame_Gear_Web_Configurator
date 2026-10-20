@@ -1,4 +1,5 @@
 import { errMsg } from "./err.js";
+import { isFamily4, is8k, isXm1 } from "./protocol.js";
 // XM2we / XM1（2020 有线·2.4G 代）协议层
 /* 依据 okms/xm2we-linux 的 PROTOCOL.md（真机验证）+ re/upstream/xm2we_linux.py 实现。
  *
@@ -373,10 +374,30 @@ export class Xm2weSession {
 }
 
 /** 从 hid.requestDevice 返回值里挑出 XM2we/OP1we 族设备
- *  （有线 0x1960 / 0x1962、接收器 0x1961，接口页 0xFF02） */
-function isXm2weFamily(pid: number, collections?: any[]): boolean {
+ *  （有线 0x1960 / 0x1962、接收器 0x1961，接口页 0xFF02）
+ *
+ *  ★ 2026-10-20 修复 "Failed to write the feature report."：
+ *    旧判据「collections 里有 usagePage===0xFF02 就算 WE 族」是错的——
+ *    4k 鼠标（XM2w 4k v2 = 0x1982）的厂商接口同样带 FF02 集合（实测 FF02:01/FF02:02），
+ *    但那些集合上根本没有 WE 协议的 0x08/0x09 报告，被误送进 WE 协议后
+ *    sendFeatureReport(0x08) 找不到承载句柄，Chromium 抛 NotAllowedError。
+ *    新判据分三层：
+ *      ① PID 表最强证据，命中即认（旧浏览器没有 report 描述也能识别真 WE 设备）；
+ *      ② 已知其他族 PID（4k / 8k）一票否决；XM1（VID 0x22D4）同理 —— 它们带 FF02
+ *         集合只是「厂商页撞号」，永远不该走 WE 协议；
+ *      ③ 未知 PID：仅当 FF02 集合真的声明了 report 0x08（featureReports/outputReports，
+ *         Chrome 155+ 暴露）才认 —— 写入目标存在，WE 协议才有意义。
+ *         旧浏览器上这两个字段是 undefined → 返回 false，宁可落到 4k/XM1 的
+ *         FF01:02 路径，也不要重蹈「认错族」的覆辙。 */
+function isXm2weFamily(pid: number, collections?: HIDCollection[], vendorId?: number): boolean {
   if (pid === WE_MOUSE_PID || pid === WE_MOUSE_PID2 || pid === WE_DONGLE_PID) return true;
-  return !!collections?.some(c => c.usagePage === 0xFF02);
+  if (isFamily4(pid) || is8k(pid)) return false;
+  if (vendorId !== undefined && isXm1(vendorId)) return false;
+  /* HIDCollection（src/types/webhid.d.ts）已声明 featureReports/outputReports；
+     运行时仍用 ?. 防御：不填充报告描述的浏览器上视为「无法证实」→ false。 */
+  return !!collections?.some(c => c.usagePage === 0xFF02 && (
+    c.featureReports?.some(r => r.reportId === RPT_OUT) ||
+    c.outputReports?.some(r => r.reportId === RPT_OUT)));
 }
 
 export { WE_VID, WE_MOUSE_PID, WE_MOUSE_PID2, WE_DONGLE_PID, RPT_OUT, RPT_IN, FRAME_LEN, EE_LIMIT, OP_PROFILE,
