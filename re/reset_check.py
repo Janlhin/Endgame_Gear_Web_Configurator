@@ -46,14 +46,21 @@ def text(dom: str, el_id: str) -> str:
 
 
 def hidden(dom: str, el_id: str) -> bool:
+    """行：仍是内联 style.display。"""
     return re.search(r"display:\s*none", tag(dom, el_id)) is not None
+
+
+def card_off(dom: str, el_id: str) -> bool:
+    """卡片：改用 data-off 属性表示「该型号没有这张卡」（2026-10-20 起，
+    卡片显隐由 layout.ts / cockpit.ts 用属性裁决，不再写内联 display）。"""
+    return re.search(r"\bdata-off\b", tag(dom, el_id)) is not None
 
 
 fails = 0
 print("演练「设备丢失 → 复位到初始界面」：")
 for kind in CASES:
     dom = dump("#layout=%s&simulate=lost" % kind)
-    shown = [c for c in ALL_CARDS if not hidden(dom, c)]
+    shown = [c for c in ALL_CARDS if not card_off(dom, c)]
     rows = [r for r in ALL_ROWS if not hidden(dom, r)]
     leftover = [i for i in EMPTY_BODIES if not re.search(r"id=\"" + i + r"\"[^>]*>\s*</", dom)]
     conn = tag(dom, "connState")
@@ -80,7 +87,7 @@ for kind in CASES:
 #    （util.ts 的全局错误处理），拿整份 DOM 去 grep 会假命中。
 print("\n对照（#layout=v2，不带 simulate）：布局应保持")
 dom = dump("#layout=v2")
-ctrl = ([c for c in CARDS_4K if not hidden(dom, c)] == CARDS_4K
+ctrl = ([c for c in CARDS_4K if not card_off(dom, c)] == CARDS_4K
         and "err" not in tag(dom, "banner"))
 if not ctrl:
     fails += 1

@@ -140,19 +140,32 @@ function setSensorHeader(kind: LayoutKind) {
 /** 当前生效的布局（语言切换时用它重建表头等由 t() 生成的文本） */
 let CURRENT: LayoutKind = "none";
 
-/** 按设备类别重排界面。任何时候都显式设置全部卡片与行，因此不存在状态残留。 */
+/** 按设备类别重排界面。任何时候都显式设置全部卡片与行，因此不存在状态残留。
+ *
+ *  ★ 卡片用 `data-off` 属性而不是内联 display：驾驶舱（cockpit.ts）要按「当前分区」
+ *    再叠一层显示控制，两者若都写 style.display 会互相覆盖——属性让 CSS 统一裁决：
+ *      [data-off]            → 该型号没有这张卡（layout 决定）
+ *      .stage.tabbed > .card → 默认收起，只有 [data-active] 显示（cockpit 决定）
+ */
 function applyLayout(kind: LayoutKind) {
   CURRENT = kind;
   const L = LAYOUT[kind] || LAYOUT.none;
   for (const id of ALL_CARDS) {
     const el = byId(id);
-    if (el) el.style.display = L.cards.indexOf(id) >= 0 ? "" : "none";
+    if (el) el.toggleAttribute("data-off", L.cards.indexOf(id) < 0);
   }
   for (const id of ALL_ROWS) {
     const el = byId(id);
     if (el) el.style.display = L.rows.indexOf(id) >= 0 ? "" : "none";
   }
   setSensorHeader(kind);
+
+  /* 未连接时整块驾驶舱收起（只剩清单/致谢）；不再依赖卡片各自的 display。 */
+  const cockpit = byId("cockpit");
+  if (cockpit) cockpit.toggleAttribute("data-off", kind === "none");
+
+  /* 通知驾驶舱重建导航：layout 只负责「有哪些卡」，导航由 cockpit.ts 生成。 */
+  document.dispatchEvent(new CustomEvent("layoutchange", { detail: { kind } }));
 
   /* 工具卡片的持久化说明是 4k 专属的（提到 0x13），XM1 换成它自己的表述。
      同时改写 data-i18n，这样后续 applyI18n() 也不会把它换回去。 */

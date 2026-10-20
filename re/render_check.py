@@ -49,13 +49,15 @@ open(probe_path, "w", encoding="utf-8").write(html.replace("</body>", PROBE + "<
 URL = "file:///" + probe_path.replace("\\", "/") + "#layout=v2"
 
 # 语言 → (accept-lang, 期望的字体栈首项)
+# ★ 2026-10-20：字体栈改为优先 Win11 的「Segoe UI Variable Text」（d6e359b 的零外部资源改版），
+#   拉丁文系的期望值同步更新；中日韩各有专用字体，仍单独校验字形。
 EXPECT = {
-    "zh-CN": ("zh-CN,zh", "Segoe UI"),
+    "zh-CN": ("zh-CN,zh", "Segoe UI Variable Text"),
     "zh-TW": ("zh-TW",    "Microsoft JhengHei"),   # 微軟正黑體，别落到简体字形
-    "en":    ("en-US,en", "Segoe UI"),
-    "de":    ("de-DE,de", "Segoe UI"),
-    "fr":    ("fr-FR,fr", "Segoe UI"),
-    "es":    ("es-ES,es", "Segoe UI"),
+    "en":    ("en-US,en", "Segoe UI Variable Text"),
+    "de":    ("de-DE,de", "Segoe UI Variable Text"),
+    "fr":    ("fr-FR,fr", "Segoe UI Variable Text"),
+    "es":    ("es-ES,es", "Segoe UI Variable Text"),
     "ja":    ("ja-JP,ja", "Yu Gothic UI"),         # 否则日文汉字会套简体字形
     "ko":    ("ko-KR,ko", "Malgun Gothic"),
 }

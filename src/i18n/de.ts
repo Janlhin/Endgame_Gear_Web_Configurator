@@ -30,6 +30,7 @@ export default {
   bFamily4: "Erkannt als **vierte Protokollfamilie** (XM1r / OP1 / OP1 RGB, Usage Page 0xFFA1). Ihr Rahmenformat unterscheidet sich vollständig von den drei bekannten Familien (64-Byte-Pakete, 54 kCom*-Befehle, Passwort-Handshake) und ist hier nicht umgesetzt; das Tool erkennt sie nur, kommuniziert aber nicht mit ihr. Bitte das offizielle Tool verwenden.",
   f4Unknown: "Unbekannt (4. Protokollfamilie)",
   family4Name: "4. Familie (nicht unterstützt)",
+  family4Body: "Als vierte Protokollfamilie erkannt (usagePage 0xFFA1). Sie nutzt einen eigenen Befehlssatz mit Handshake, den dieses Tool noch nicht umsetzt — daher wird nur das Modell angezeigt, kein Lesen oder Schreiben.",
   gen8k: "8k (Kabel)",
   verifyOk: "Rückleseprüfung bestanden",
   verifyFail: "Rückleseprüfung nach dem Schreiben abweichend (Gerät hat nicht übernommen): ",

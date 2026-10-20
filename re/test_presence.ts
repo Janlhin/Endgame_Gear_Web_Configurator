@@ -76,7 +76,8 @@ console.log("[1] resetToInitial：状态与界面都回到「未连接」");
   ok(el("banner").textContent === t("devLost") && /err/.test(el("banner").className), "横幅用 err 样式告知断开");
   ok(el("btnXm1Echo").style.display === "none" && el("btnXm1Undo").style.display === "none",
      "XM1 实验按钮收起（否则换到 4k 族后它们会一直留在工具卡片里）");
-  ok(ALL_CARDS.every(c => el(c).style.display === "none"), "全部设备卡片收起（回到初始界面）");
+  /* 卡片改用 data-off 属性控制显隐（layout.ts）——不再断言内联 style.display。 */
+  ok(ALL_CARDS.every(c => el(c).hasAttribute("data-off")), "全部设备卡片收起（回到初始界面）");
 }
 
 console.log("[2] disconnect 事件：一次触发即复位");

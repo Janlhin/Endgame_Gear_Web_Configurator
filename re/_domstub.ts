@@ -19,7 +19,17 @@ function mkEl(id: string) {
     id, style: {} as any, dataset: {} as any,
     className: "", textContent: "", innerHTML: "", value: "",
     disabled: false, checked: false, scrollTop: 0, scrollHeight: 0, colSpan: 1,
-    setAttribute() {}, removeAttribute() {}, appendChild() {}, prepend() {},
+    setAttribute(k: string, v: string) { this.attrs[k] = String(v); },
+    removeAttribute(k: string) { delete this.attrs[k]; },
+    toggleAttribute(k: string, force?: boolean) {
+      const on = force === undefined ? !(k in this.attrs) : !!force;
+      if (on) this.attrs[k] = ""; else delete this.attrs[k];
+      return on;
+    },
+    hasAttribute(k: string) { return k in this.attrs; },
+    getAttribute(k: string) { return k in this.attrs ? this.attrs[k] : null; },
+    attrs: {} as Record<string, string>,
+    appendChild() {}, prepend() {},
     insertAdjacentHTML() {}, addEventListener() {},
     querySelector() { return null; }, querySelectorAll() { return []; },
   };
@@ -47,6 +57,10 @@ w.document = {
   documentElement: { dataset: {}, lang: "" },
   visibilityState: "visible",
   addEventListener(t: string, f: Function) { (listeners[t] ||= []).push(f); },
+  dispatchEvent(e: any) {
+    for (const f of listeners[e?.type] || []) f(e);
+    return true;
+  },
   getElementById: (id: string) => el(id),
   querySelectorAll: () => [],
   createElement: () => mkEl("created"),

@@ -229,58 +229,75 @@ main > * { animation: rise $t-slow $ease-out both; }
   }
 }
 
-// ---------- 设备仪表盘（B 方案）----------
-// 「连上之后的第一屏」：左侧设备主视觉、中间型号与固件、右侧电量环，
-// 底部三格指标（CPI / 回报率 / 档位）。分区卡片仍沿用原来的四张，
-// 只是把「一进页面就是一堆表单」换成先看设备、再看指标、最后调参数。
-.hero {
+// ---------- 驾驶舱（A 方案）----------
+// 左侧常驻：设备身份 + 三项指标 + 分区导航；右侧一次只显示一个分区。
+// 窄屏（≤920px）退化为「顶部设备条 + 横向分区条」，不保留 sticky。
+.cockpit {
   display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 18px;
-  padding: 24px 24px 20px;
-  overflow: hidden;
-  background:
-    radial-gradient(90% 140% at 0% 0%, $glow-1, transparent 62%),
-    $card;
-  border-color: $line-strong;
-  box-shadow: $shadow-2;
+  align-items: start;
 }
 
-.heroMain {
+.rail {
+  position: sticky;
+  top: 74px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 22px;
+  gap: 14px;
+  max-height: calc(100vh - 92px);
+  padding: 16px;
+  overflow-y: auto;
+  background:
+    radial-gradient(120% 90% at 0% 0%, $glow-1, transparent 62%),
+    $card;
+  border: 1px solid $line-strong;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-2;
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
 }
 
-.heroArt {
+.railId {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.railTop {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.railArt {
   display: grid;
   place-items: center;
-  width: 104px;
-  height: 104px;
+  width: 46px;
+  height: 46px;
   background:
     linear-gradient(155deg, $acc-soft, transparent 70%),
     $surface-2;
   border: 1px solid $line;
-  border-radius: 22px;
+  border-radius: 12px;
 
-  svg { width: 52px; height: 80px; }
-  .artBody { fill: $acc-soft; stroke: $acc; stroke-width: 2.4; }
-  .artLine { stroke: $acc; stroke-width: 2.4; stroke-linecap: round; opacity: 0.5; }
+  svg { width: 24px; height: 36px; }
+  .artBody { fill: $acc-soft; stroke: $acc; stroke-width: 3; }
+  .artLine { stroke: $acc; stroke-width: 3; stroke-linecap: round; opacity: 0.5; }
   .artDot { fill: $acc; }
 }
 
-.heroId { min-width: 0; }
+.railName { min-width: 0; }
 
 .eyebrow {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin: 0 0 7px;
+  gap: 6px;
+  margin: 0 0 3px;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: $sub;
-  text-transform: uppercase;
 
   .dot {
     width: 6px;
@@ -291,83 +308,45 @@ main > * { animation: rise $t-slow $ease-out both; }
   }
 }
 
-// 型号是这一屏唯一的大字：30px，其余全部退到 13px 以下
-.hero .heroModel {
-  margin: 0 0 12px;
+.railModel {
+  margin: 0;
+  overflow-wrap: anywhere;
   font-family: $font-display;
-  font-size: $fs-2xl;
+  font-size: 17px;
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   color: $text;
-
-  &::before { display: none; }
 }
 
-.chips {
+// 电量：小环 + 右侧读数 —— 在 300px 的窄栏里比大环更省空间
+.railPower {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  max-width: 100%;
-  padding: 4px 10px;
-  background: $surface-2;
-  border: 1px solid $line;
-  border-radius: $radius-pill;
-
-  .ck {
-    font-size: 11px;
-    color: $muted;
-    white-space: nowrap;
-  }
-
-  .cv {
-    overflow: hidden;
-    font-family: $font-mono;
-    font-size: 12px;
-    font-weight: 500;
-    color: $text;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-// 电量环：pathLength=100 后，dashoffset 直接等于「剩余百分比」
-.battery {
-  position: relative;
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 118px;
-  height: 118px;
+  align-items: center;
+  gap: 10px;
 }
 
 .batRing {
-  width: 118px;
-  height: 118px;
+  flex: none;
+  width: 40px;
+  height: 40px;
   transform: rotate(-90deg);
 }
 
 .batTrack {
   fill: none;
   stroke: $line;
-  stroke-width: 6;
+  stroke-width: 7;
 }
 
 .batFill {
   fill: none;
   stroke: $acc;
-  stroke-width: 6;
+  stroke-width: 7;
   stroke-linecap: round;
   stroke-dasharray: 100;
 
-  // 起始值 = 整圈偏移（不画任何弧）；真实值由 render.ts 按电量写入像素偏移，
+  // 起始值 = 整圈偏移（不画任何弧）；真实值由 render.ts 按电量写像素值，
   // 不依赖 calc() 与无单位数值在不同浏览器里的解析差异。
   stroke-dashoffset: 100;
   transition: stroke-dashoffset $t-slow $ease-out;
@@ -376,70 +355,174 @@ main > * { animation: rise $t-slow $ease-out both; }
 .batRing.empty .batFill { stroke: $line-strong; }
 
 .batText {
-  position: absolute;
-  inset: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-}
-
-.batVal {
-  max-width: 84px;
-  font-family: $font-mono;
-  font-size: 19px;
-  font-weight: 600;
-  line-height: 1.15;
-  color: $text;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
+  min-width: 0;
 }
 
 .batLabel {
   font-size: 11px;
-  letter-spacing: 0.09em;
   color: $muted;
-  text-transform: uppercase;
 }
 
-// 三格指标：比卡片更密的「仪表」，让第一屏有可读数字
+.batVal {
+  font-family: $font-mono;
+  font-size: 15px;
+  font-weight: 600;
+  color: $text;
+  font-variant-numeric: tabular-nums;
+}
+
+// 规格行：dt 左、dd 右
+.railSpec {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid $line;
+
+  .spec {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid $line;
+
+    &:last-child { border-bottom: 0; }
+  }
+
+  dt {
+    flex: none;
+    font-size: 11px;
+    color: $muted;
+  }
+
+  dd {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    font-family: $font-mono;
+    font-size: 12px;
+    color: $text;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 .metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  padding-top: 18px;
   border-top: 1px solid $line;
 }
 
 .metric {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  padding: 10px 14px;
-  background: $surface-2;
-  border: 1px solid $line;
-  border-radius: $radius-md;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid $line;
+
+  &:last-child { border-bottom: 0; }
 }
 
 .mk {
   font-size: 11px;
-  letter-spacing: 0.09em;
   color: $muted;
-  text-transform: uppercase;
 }
 
 .mv {
-  overflow: hidden;
   font-family: $font-mono;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 600;
   color: $text;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+// 分区导航：编号 + 标题
+.railNav {
+  display: grid;
+  gap: 2px;
+  padding-top: 12px;
+  border-top: 1px solid $line;
+
+  &:empty { display: none; }
+}
+
+.railNav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  padding: 8px 10px;
+  overflow: visible;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: $sub;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: $radius-md;
+  box-shadow: none;
+
+  /* 全局按钮是 nowrap（单行按钮文案），但导航项在 300px 左栏里遇到德语/西语长词
+     会撑破栅格 —— 这里允许换行，宁可两行也不横向溢出。 */
+  white-space: normal;
+  overflow-wrap: anywhere;
+
+  // 关掉全局按钮的扫光与抬升，导航要安静
+  &::after { display: none; }
+
+  &:hover {
+    color: $text;
+    background: $surface-2;
+    filter: none;
+    box-shadow: none;
+    translate: 0;
+  }
+
+  &[data-active] {
+    color: $text;
+    background: $acc-soft;
+    border-color: $line;
+  }
+
+  .navNo {
+    flex: none;
+    font-family: $font-mono;
+    font-size: 10.5px;
+    color: $muted;
+  }
+
+  &[data-active] .navNo { color: $acc; }
+}
+
+// 右侧舞台：一次只显示一张卡
+.stage {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.stage.tabbed > .card { display: none; }
+.stage.tabbed > .card[data-active] { display: block; }
+
+.stageEmpty {
+  padding: 24px;
+  margin: 0;
+  font-size: $fs-sm;
+  line-height: 1.7;
+  color: $sub;
+  background: $card;
+  border: 1px solid $line;
+  border-radius: $radius-lg;
+
+  &[hidden] { display: none; }
+}
+
+// layout.ts 用它标记「这个型号没有这张卡」；!important 保证胜过 .card 的 display
+[data-off] { display: none !important; }
 
 // ---------- 行与表单 ----------
 .row {
@@ -845,41 +928,62 @@ a {
   }
 }
 
-// hero 在中等宽度：主视觉与身份并排，电量环换到第二行
-@include below($bp-md) {
-  .heroMain {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "art id"
-      "bat bat";
-    gap: 16px;
+// 驾驶舱折叠：左栏移到顶部，导航变成横向条；指标并排成三格
+@include below($bp-lg) {
+  .cockpit {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
   }
 
-  .heroArt {
-    grid-area: art;
-    width: 76px;
-    height: 76px;
-    border-radius: 18px;
-
-    svg { width: 38px; height: 58px; }
+  .rail {
+    position: static;
+    gap: 12px;
+    max-height: none;
+    padding: 14px;
+    overflow: visible;
   }
 
-  .heroId { grid-area: id; }
+  .railSpec {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16px;
+    border-top: 1px solid $line;
 
-  .battery {
+    .spec { border-bottom: 0; padding: 4px 0; }
+  }
+
+  .metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid $line;
+  }
+
+  .metric {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    padding: 8px 10px;
+    border: 1px solid $line;
+    border-radius: $radius-md;
+  }
+
+  .railNav {
     display: flex;
-    grid-area: bat;
-    align-items: center;
-    justify-self: start;
-    gap: 10px;
-    width: auto;
-    height: auto;
+    gap: 6px;
+    padding: 10px 0 2px;
+    overflow-x: auto;
+    border-top: 1px solid $line;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar { display: none; }
   }
 
-  .batRing { width: 42px; height: 42px; }
-  .batText { position: static; flex-direction: row; align-items: baseline; gap: 6px; }
-  .batVal { font-size: 15px; }
-  .hero .heroModel { font-size: $fs-xl; }
+  .railNav button {
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .railNav button .navNo { display: none; }
 }
 
 @include below($bp-sm) {
@@ -889,10 +993,12 @@ a {
   .row { gap: 8px; }
   .row label { min-width: 88px; }
   .row .muted { flex: 1 1 100%; }
-  .hero { padding: 18px 16px 16px; }
-  .metrics { gap: 6px; padding-top: 14px; }
-  .metric { padding: 8px 10px; }
-  .mv { font-size: 16px; }
+  .rail { padding: 12px; }
+  .railTop { gap: 8px; }
+  .railModel { font-size: 15px; }
+  .metrics { gap: 6px; }
+  .metric { padding: 7px 8px; }
+  .mv { font-size: 13px; }
 
   /* 多列表格在窄屏改为「卡片内横向滚动」，不撑破页面。
      table 改 block 后浏览器会保留内部表格排版，只是多出一个滚动容器。 */

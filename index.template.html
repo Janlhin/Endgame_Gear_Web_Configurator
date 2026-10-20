@@ -47,66 +47,73 @@
 <main>
   <div id="banner" class="banner"></div>
 
-  <section class="card hero" id="cardInfo" style="display:none">
-    <div class="heroMain">
-      <div class="heroArt" aria-hidden="true">
-        <svg viewBox="0 0 96 148" fill="none">
-          <path class="artBody" d="M48 5c18.5 0 29.5 13.5 29.5 33.5v55c0 26-13 45.5-29.5 45.5S18.5 119.5 18.5 93.5v-55C18.5 18.5 29.5 5 48 5Z"/>
-          <path class="artLine" d="M48 5v31"/>
-          <path class="artLine" d="M20 43h10M66 43h10"/>
-          <circle class="artDot" cx="48" cy="47" r="3.2"/>
-        </svg>
-      </div>
-      <div class="heroId">
-        <p class="eyebrow"><span class="dot"></span><span id="iConn">—</span></p>
-        <h2 class="heroModel" id="iModel">—</h2>
-        <div class="chips">
-          <span class="chip"><span class="ck" data-i18n="mouseFw">鼠标固件</span><span class="cv" id="iMouseFw">—</span></span>
-          <span class="chip" id="rowDongleFw"><span class="ck" data-i18n="dongleFw">接收器固件</span><span class="cv" id="iDongleFw">—</span></span>
-          <span class="chip"><span class="ck" data-i18n="gen">协议代数</span><span class="cv" id="iGen">—</span></span>
+  <div class="cockpit" id="cockpit" data-off>
+  <aside class="rail" id="rail">
+    <section class="railId" id="cardInfo" data-off>
+      <div class="railTop">
+        <div class="railArt" aria-hidden="true">
+          <svg viewBox="0 0 96 148" fill="none">
+            <path class="artBody" d="M48 5c18.5 0 29.5 13.5 29.5 33.5v55c0 26-13 45.5-29.5 45.5S18.5 119.5 18.5 93.5v-55C18.5 18.5 29.5 5 48 5Z"/>
+            <path class="artLine" d="M48 5v31"/>
+            <path class="artLine" d="M20 43h10M66 43h10"/>
+            <circle class="artDot" cx="48" cy="47" r="3.2"/>
+          </svg>
+        </div>
+        <div class="railName">
+          <p class="eyebrow"><span class="dot"></span><span id="iConn">—</span></p>
+          <h2 class="railModel" id="iModel">—</h2>
         </div>
       </div>
-      <div class="battery" id="rowBattery">
+      <div class="railPower" id="rowBattery">
         <svg class="batRing" id="batRing" viewBox="0 0 120 120" aria-hidden="true">
           <circle class="batTrack" cx="60" cy="60" r="52" pathLength="100"/>
           <circle class="batFill" cx="60" cy="60" r="52" pathLength="100"/>
         </svg>
         <span class="batText">
-          <span class="batVal" id="iBattery">—</span>
           <span class="batLabel" data-i18n="battery">电量</span>
+          <span class="batVal" id="iBattery">—</span>
         </span>
       </div>
-    </div>
-    <div class="metrics">
-      <div class="metric"><span class="mk">CPI</span><span class="mv" id="mCpi">—</span></div>
-      <div class="metric"><span class="mk" data-i18n="polling">回报率</span><span class="mv" id="mPoll">—</span></div>
-      <div class="metric"><span class="mk" data-i18n="stage">档位</span><span class="mv" id="mStage">—</span></div>
-    </div>
-  </section>
-
-  <section class="card hero" id="cardWeInfo" style="display:none">
-    <div class="heroMain">
-      <div class="heroArt" aria-hidden="true">
-        <svg viewBox="0 0 96 148" fill="none">
-          <path class="artBody" d="M48 5c18.5 0 29.5 13.5 29.5 33.5v55c0 26-13 45.5-29.5 45.5S18.5 119.5 18.5 93.5v-55C18.5 18.5 29.5 5 48 5Z"/>
-          <path class="artLine" d="M48 5v31"/>
-          <path class="artLine" d="M20 43h10M66 43h10"/>
-          <circle class="artDot" cx="48" cy="47" r="3.2"/>
-        </svg>
+      <dl class="railSpec">
+        <div class="spec"><dt data-i18n="mouseFw">鼠标固件</dt><dd id="iMouseFw">—</dd></div>
+        <div class="spec" id="rowDongleFw"><dt data-i18n="dongleFw">接收器固件</dt><dd id="iDongleFw">—</dd></div>
+        <div class="spec"><dt data-i18n="gen">协议代数</dt><dd id="iGen">—</dd></div>
+      </dl>
+      <div class="metrics">
+        <div class="metric"><span class="mk">CPI</span><span class="mv" id="mCpi">—</span></div>
+        <div class="metric"><span class="mk" data-i18n="polling">回报率</span><span class="mv" id="mPoll">—</span></div>
+        <div class="metric"><span class="mk" data-i18n="stage">档位</span><span class="mv" id="mStage">—</span></div>
       </div>
-      <div class="heroId">
-        <p class="eyebrow"><span class="dot"></span><span id="weConn">—</span></p>
-        <h2 class="heroModel" id="weModel">—</h2>
-        <div class="chips">
-          <span class="chip"><span class="ck" data-i18n="weLink">鼠标链路</span><span class="cv" id="weLink">—</span></span>
-          <span class="chip"><span class="ck" data-i18n="battery">电量</span><span class="cv" id="weBattery">—</span></span>
+    </section>
+
+    <section class="railId" id="cardWeInfo" data-off>
+      <div class="railTop">
+        <div class="railArt" aria-hidden="true">
+          <svg viewBox="0 0 96 148" fill="none">
+            <path class="artBody" d="M48 5c18.5 0 29.5 13.5 29.5 33.5v55c0 26-13 45.5-29.5 45.5S18.5 119.5 18.5 93.5v-55C18.5 18.5 29.5 5 48 5Z"/>
+            <path class="artLine" d="M48 5v31"/>
+            <path class="artLine" d="M20 43h10M66 43h10"/>
+            <circle class="artDot" cx="48" cy="47" r="3.2"/>
+          </svg>
+        </div>
+        <div class="railName">
+          <p class="eyebrow"><span class="dot"></span><span id="weConn">—</span></p>
+          <h2 class="railModel" id="weModel">—</h2>
         </div>
       </div>
-    </div>
-    <p class="muted" data-i18n="weFamilyNote">本型号属 2020 年有线/2.4G 协议族（接口页 0xFF02、报告 0x08/0x09、17 字节带校验帧、配置存于 EEPROM），与 4k 无线族完全不兼容。</p>
-  </section>
+      <dl class="railSpec">
+        <div class="spec"><dt data-i18n="weLink">鼠标链路</dt><dd id="weLink">—</dd></div>
+        <div class="spec"><dt data-i18n="battery">电量</dt><dd id="weBattery">—</dd></div>
+      </dl>
+      <p class="muted" data-i18n="weFamilyNote">本型号属 2020 年有线/2.4G 协议族（接口页 0xFF02、报告 0x08/0x09、17 字节带校验帧、配置存于 EEPROM），与 4k 无线族完全不兼容。</p>
+    </section>
 
-  <section class="card" id="cardWeCpi" style="display:none">
+    <nav class="railNav" id="railNav"></nav>
+  </aside>
+
+  <div class="stage" id="stage">
+
+  <section class="card" id="cardWeCpi" data-off>
     <h2 data-i18n="secWeCpi">CPI 与回报率</h2>
     <table>
       <thead><tr>
@@ -128,7 +135,7 @@
     </div>
   </section>
 
-  <section class="card" id="cardWeBtns" style="display:none">
+  <section class="card" id="cardWeBtns" data-off>
     <h2 data-i18n="secWeBtns">按键矩阵（EEPROM 0x60）</h2>
     <table>
       <thead><tr><th data-i18n="button">按键</th><th data-i18n="mapping">映射</th><th>type / code / param</th><th data-i18n="weCheck">校验</th></tr></thead>
@@ -137,7 +144,7 @@
     <p class="muted" data-i18n="weKeyNote">本族仅 type 0x01（鼠标键位掩码：0x01 左 / 0x02 右 / 0x04 中 / 0x08 后退 / 0x10 前进）被社区解出；其余类型语义未知，工具原样读取展示，不做改写。</p>
   </section>
 
-  <section class="card" id="cardWeTools" style="display:none">
+  <section class="card" id="cardWeTools" data-off>
     <h2 data-i18n="secWeTools">EEPROM 备份 / 恢复</h2>
     <div class="row">
       <button id="btnWeExport" class="ghost" data-i18n="weExport">导出 EEPROM (.txt)</button>
@@ -148,7 +155,7 @@
     <p class="muted" data-i18n="weWriteNote">配置区为 EEPROM 0x00–0xB4（共 181 字节），每帧最多带 10 字节，故读取需约 19 个来回；每条记录都带 0x55 补码校验，校验只保证记录边界正确、不代表字段语义已解出。写入一律回读验证。</p>
   </section>
 
-  <section class="card" id="cardSensor" style="display:none">
+  <section class="card" id="cardSensor" data-off>
     <h2 data-i18n="secSensor">传感器 / CPI</h2>
     <div class="row" id="presetBar"></div>
     <table>
@@ -188,7 +195,7 @@
     <div id="sensorHelp" class="helpBox"></div>
   </section>
 
-  <section class="card" id="cardPerf" style="display:none">
+  <section class="card" id="cardPerf" data-off>
     <h2 data-i18n="secPerf">性能 / 电源</h2>
     <div class="row" id="rowPolling"><label data-i18n="polling">回报率</label><select id="polling"></select><span class="muted" id="pollNote"></span></div>
     <div class="row" id="rowMotionSync"><label>Motion Sync</label><select id="motionSync" style="width:80px"><option value="0" data-i18n="off">关</option><option value="1" data-i18n="on">开</option></select></div>
@@ -202,7 +209,7 @@
     <div id="perfHelp" class="helpBox"></div>
   </section>
 
-  <section class="card" id="cardBtns" style="display:none">
+  <section class="card" id="cardBtns" data-off>
     <h2 data-i18n="secButtons">按键映射与点击过滤</h2>
     <table>
       <thead><tr><th data-i18n="button">按键</th><th data-i18n="mapping">映射</th><th data-i18n="clickFilter">点击过滤</th></tr></thead>
@@ -215,7 +222,7 @@
     </table>
   </section>
 
-  <section class="card" id="cardTools" style="display:none">
+  <section class="card" id="cardTools" data-off>
     <h2 data-i18n="secTools">配置备份 / 恢复 / 工具</h2>
     <div class="row">
       <button id="btnSave" class="ghost" data-i18n="exportCfg">导出配置 (.json)</button>
@@ -237,6 +244,10 @@
     <p class="muted"><a href="tools/blob-studio.html" target="_blank" rel="noopener" data-i18n="studioLink">离线 blob 分析器（tools/blob-studio.html）：粘贴 hex 或导出的 JSON 解析成字段表，粘两份自动差分 —— 不需要连接设备。</a></p>
     <p class="muted" id="persistNote" data-i18n="persistNote">写入立即持久化（无需保存操作）；0x13 是恢复出厂而非保存，慎用。</p>
   </section>
+
+    <p class="stageEmpty" id="stageEmpty" hidden data-i18n="family4Body">该型号属于第四协议族，本工具只识别、不通信。</p>
+  </div>
+  </div>
 
   <section class="card" id="cardChecklist">
     <details>

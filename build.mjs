@@ -118,8 +118,11 @@ const kbOf = (s) => Buffer.byteLength(s, "utf8") / 1024;
  *   无外部字体/图片/脚本；产物 314.2 KB，余量 ~6 KB。
  *   2026-10-20  320 → 325：设备仪表盘 hero（主视觉 + 电量环 + 三格指标）。
  *   增量 1.7 KB：hero 结构、仪表盘样式、电量环/指标的只读渲染逻辑。
- *   产物 321.7 KB，余量 ~3 KB —— 仍是紧约束，塞进任何库都会立刻报红。 */
-const SIZE_BUDGET_KB = 325;
+ *   产物 321.7 KB，余量 ~3 KB —— 仍是紧约束，塞进任何库都会立刻报红。
+ *   2026-10-20  325 → 330：改为双栏驾驶舱（左栏常驻 + 右侧单分区 + 分区导航）。
+ *   增量 1.8 KB：cockpit.ts 导航逻辑、rail/stage 样式、family4Body 八语言词条。
+ *   产物 326.8 KB，余量 ~3 KB。 */
+const SIZE_BUDGET_KB = 330;
 const actualKb = kbOf(html);
 console.log(`dist/index.html + index.html written, ${kb(html)} KB  (js ${kb(js)} KB, css ${kb(css)} KB)`);
 if (actualKb > SIZE_BUDGET_KB) {

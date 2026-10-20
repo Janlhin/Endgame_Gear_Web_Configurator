@@ -12,6 +12,9 @@ import { VID, VID_22D4, DONGLE_PIDS, isXm1, USAGE_FAMILY4 } from "./protocol.js"
 import { isXm2weFamily } from "./xm2we.js";
 import { buildDiag } from "./diag.js";
 import { applyLayout, applyLayoutFromHash, reapplyLayout } from "./layout.js";
+/* 驾驶舱导航：只挂一个 layoutchange 监听，自身无导出依赖。
+   必须在 applyLayout 之前 import —— 模块求值时注册监听，才能接住启动时的第一次布局。 */
+import "./cockpit.js";
 import { openXm2we, refreshWe, bindXm2weUI, isXm2weOpen } from "./xm2we-ui.js";
 import { S, blob } from "./state.js";
 import { guarded } from "./transport.js";

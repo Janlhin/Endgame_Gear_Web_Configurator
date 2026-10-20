@@ -30,6 +30,7 @@ export default {
   bFamily4: "Détecté comme **quatrième famille de protocole** (XM1r / OP1 / OP1 RGB, usage page 0xFFA1). Son format de trame est totalement différent des trois familles connues (paquets de 64 octets, 54 commandes kCom*, poignée de main par mot de passe) et n’est pas implémenté ici : l’outil l’identifie mais ne communique pas avec lui. Veuillez utiliser l’outil officiel.",
   f4Unknown: "Inconnu (4e famille de protocole)",
   family4Name: "4e famille (non prise en charge)",
+  family4Body: "Reconnue comme la quatrième famille de protocole (usagePage 0xFFA1). Elle utilise un jeu de commandes et un handshake propres, non implémentés ici : seul le modèle est affiché, sans lecture ni écriture.",
   gen8k: "8k (filaire)",
   verifyOk: "vérifié par relecture",
   verifyFail: "Écart de relecture après écriture (l’appareil n’a pas accepté) : ",
