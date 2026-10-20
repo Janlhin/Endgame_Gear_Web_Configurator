@@ -269,31 +269,15 @@ document.addEventListener("visibilitychange", () => {
   setTimeout(() => { void onDeviceLost("devReleased"); }, 50);
 });
 
-/** 安全闸门：只允许打开厂商配置集合。
- *  绝不能打开系统鼠标指针集合（UP:0001/0002）——WebHID 打开即独占该接口，
- *  Windows HID 驱动会失去访问权，导致**鼠标无法移动**（实测发生过：
- *  用户插拔无反应，必须关闭浏览器窗口才释放）。
- *  规则：宁可拒绝连接，也绝不能猜错接口。 */
-/* 安全闸门：只拒绝真正会致残的系统集合。
- *
- * 事故背景（2026-10-09）：曾因 filter 里放裸 vendorId，把 XM1 的 MI_00
- * 鼠标指针集合暴露到选择器；用户选中后 WebHID 独占该接口，
- * Windows HID 驱动失去访问权 → **鼠标完全无法移动，插拔无用，
- * 必须关闭浏览器窗口才释放**。硬件与固件均无损坏。
- *
- * 因此这里**只**拦两类：
- *   · 鼠标指针  UP:0001/0002 —— 会让鼠标变砖
- *   · 键盘      UP:0001/0006 —— 会让键盘失效，同类风险
- * 其余系统集合（消费者控制 000C:0001 等）**允许**——
- * 厂商接口在 Windows 上可能同时暴露这些，误拒会让 XM1 完全连不上。
- * 只要集合里含厂商用法页（>=0xFF00），且不含指针/键盘，就放行。 */
+/* ================= 安全闸门 =================
+ * 打开前的判定（指针集合一律拒绝 / 键盘集合仅在与已知厂商配置集合共存时放行 /
+ * 必须含厂商集合）与 open() 后的复验，都在 connect.ts 的 isSafeToOpen() /
+ * openGuarded() 里 —— 2026-10-20 起本文件不再保留副本，避免"两处各改一半"。
+ * 事故背景（2026-10-09 独占指针集合导致鼠标无法移动）见 connect.ts 顶部注释。 */
 
 
 
 
-/** 保险丝：open() 之后再复验一次 collections，若判定危险则立即 close()。
- *  即使未来有人误加了宽泛 filter，这条也能兜住（浏览器仍可能短暂独占接口，
- *  所以必须尽快释放）。 */
 
 
 
@@ -331,14 +315,17 @@ $el("btnConnect").onclick = async () => {
     if (!devs.length) {
       /* 精确 filter 全落空 → 回退到**只列厂商用法页**的集合（仍然不会暴露鼠标指针）。
          注意：不能退到 filters:[]，那会把键盘/鼠标/摄像头全列出来，
-         用户很容易误选危险接口。 */
+         用户很容易误选危险接口。
+         ★ 2026-10-20 审计修正：DeviceFilter 的 usagePage 是**精确匹配**，没有
+           "范围"语义。原写法 { usagePage: 0xFF00 } 想覆盖 FF00–FFFF，实际只匹配
+           0xFF00 这一页，回退列表恒为空（死代码）。这里改为把厂商定义区间
+           FF00–FFFF 逐页展开（256 页 × 2 个 VID），语义与注释一致。 */
       log("⚠ 精确配置接口未匹配到，回退到厂商用法页（FF00–FFFF）");
       banner("warn", t("bFallbackVendor"));
+      const vendorPages = Array.from({ length: 256 }, (_, i) => 0xFF00 + i);
       devs = await (navigator as any).hid.requestDevice({
-        filters: [
-          { vendorId: VID,     usagePage: 0xFF00 },
-          { vendorId: VID_22D4, usagePage: 0xFF00 },
-        ],
+        filters: [VID, VID_22D4].flatMap((vendorId: number) =>
+          vendorPages.map((usagePage: number) => ({ vendorId, usagePage }))),
       });
     }
     if (!devs.length) return;
@@ -489,9 +476,14 @@ $el("fileLoad").onchange = async (e: Event) => {
      此前这里没有 guard4k() —— 单靠按钮 disabled 是不设防的：
      只要 handler 能被触发（旧文件选择器、脚本调用），只读型号就会被写。 */
   try { guard4k(); } catch { (e.target as HTMLInputElement).value = ""; return; }
+  /* 写入互斥：导入是一串 0x14 + 0x15 + 0x16×2，不能与「应用」并发，
+     否则两次写入交错会让设备停在半应用状态（2026-10-20 审计）。 */
+  if (S.writing) { banner("warn", t("bBusy")); (e.target as HTMLInputElement).value = ""; return; }
   /* 8k 的写是整块写：导入一个来自别的型号的 blob 等于把未知偏移整体覆盖 ——
      这正是 XM1 事故的形态。故 8k 暂不支持导入（导出不受影响）。 */
   if (S.eightK) { banner("err", t("b8kNoImport")); (e.target as HTMLInputElement).value = ""; return; }
+  const prevBlob = S.blob;                 // 写失败时回滚界面状态，别让 S.blob 指向没写进设备的数据
+  S.writing = true;
   try {
     const j = JSON.parse(await f.text());
     /* ★ 跨代拦截：不同 gen 的字段编码不同（LOD：gen1 整毫米 / gen2 round(mm×10)−7；
@@ -522,7 +514,12 @@ $el("fileLoad").onchange = async (e: Event) => {
     await refreshAll();
     const bad = [...verifySensor(wantSensor), ...verifyPerf(wantPerf), ...verifyButtons(wantBtns)];
     reportVerify("bImportOk", bad);
-  } catch (err) { banner("err", t("bImportFail") + errMsg(err)); }
+  } catch (err) {
+    banner("err", t("bImportFail") + errMsg(err));
+    /* 回滚：导入的 blob 只存在于内存、没（完整）写进设备时，恢复成导入前那份，
+       否则后续读取/写入会以为自己知道设备当前状态（那是 2026-10-09 事故的同类前提）。 */
+    if (prevBlob) { S.blob = prevBlob; parseBlob(); }
+  } finally { S.writing = false; }
   (e.target as HTMLInputElement).value = "";
 };
 function download(data: any, name: string, type = "application/octet-stream") {

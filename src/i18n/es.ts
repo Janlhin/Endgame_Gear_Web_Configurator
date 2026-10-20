@@ -124,6 +124,7 @@ export default {
   bRefusePointer: "Apertura rechazada: esta es la colección del puntero del ratón del sistema. Abrirla con WebHID toma acceso exclusivo y dejaría el ratón inservible. Vuelve a conectar y elige el dispositivo definido por el proveedor.",
   bRefuseKeyboard: "Apertura rechazada: esta es la colección del teclado del sistema (HID Keyboard Device). El acceso exclusivo dejaría el teclado inservible. Vuelve a conectar y elige el dispositivo definido por el proveedor.",
   bKeyboardMerged: "Aviso: esta es una interfaz compuesta que también contiene colecciones de teclado/teclas multimedia (Chrome fusiona las colecciones de una misma interfaz en un solo dispositivo). Se permite para poder leer la configuración; desconecta esta página si el teclado o el ratón funcionan mal.",
+  bBusy: "Hay una escritura en curso; espera a que termine e inténtalo de nuevo.",
   bNotVendor: "Apertura rechazada: la interfaz seleccionada no es una colección definida por el proveedor (usage page < 0xFF00) y no puede transportar configuración. Elige un dispositivo definido por el proveedor.",
   bNoCollections: "No se pudo leer la lista de colecciones de este dispositivo, así que se rechazó la apertura por seguridad (para no capturar la interfaz del puntero del ratón). Vuelve a conectar y elige el dispositivo definido por el proveedor.",
   /* ---- explicaciones de los ajustes / preajustes / normalización de CPI (A4, A5) ---- */

@@ -124,6 +124,7 @@ export default {
   bRefusePointer: "Öffnen abgelehnt: Dies ist die System-Mauszeiger-Collection. Ein Öffnen über WebHID belegt sie exklusiv und macht die Maus unbrauchbar. Bitte neu verbinden und das herstellerspezifische Gerät wählen.",
   bRefuseKeyboard: "Öffnen abgelehnt: Dies ist die System-Tastatur-Collection (HID Keyboard Device). Ein exklusiver Zugriff würde die Tastatur lahmlegen. Bitte neu verbinden und das herstellerspezifische Gerät wählen.",
   bKeyboardMerged: "Hinweis: Dies ist eine zusammengesetzte Schnittstelle, die neben der Hersteller-Konfigurationscollection auch Tastatur-/Multimediatasten-Collections enthält (Chrome fasst die Collections einer Schnittstelle zu einem Gerät zusammen). Zum Lesen und Schreiben der Konfiguration freigegeben; trenne diese Seite, wenn Tastatur oder Maus fehlerhaft reagieren.",
+  bBusy: "Ein Schreibvorgang läuft; bitte warten, bis er abgeschlossen ist.",
   bNotVendor: "Öffnen abgelehnt: Die gewählte Schnittstelle ist keine herstellerspezifische Collection (Usage Page < 0xFF00) und kann keine Konfiguration übertragen. Bitte ein herstellerspezifisches Gerät wählen.",
   bNoCollections: "Die Collection-Liste dieses Geräts konnte nicht gelesen werden; das Öffnen wurde daher sicherheitshalber abgelehnt (um nicht versehentlich die Mauszeiger-Schnittstelle zu belegen). Bitte neu verbinden und das herstellerspezifische Gerät wählen.",
   /* ---- Einstellungserklärungen / Vorlagen / CPI-Normalisierung (A4, A5) ---- */

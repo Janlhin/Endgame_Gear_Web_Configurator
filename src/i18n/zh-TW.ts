@@ -123,6 +123,7 @@ export default {
   bRefusePointer: "已拒絕開啟：該介面是系統滑鼠指標集合（HID-compliant mouse）。WebHID 開啟它會獨佔介面，導致滑鼠無法移動。請重新連接並選擇「符合 HID 標準的廠商定義裝置」。",
   bRefuseKeyboard: "已拒絕開啟：該介面是系統鍵盤集合（HID Keyboard Device）。獨佔它會導致鍵盤失效。請重新連接並選擇「符合 HID 標準的廠商定義裝置」。",
   bKeyboardMerged: "提示：該裝置是複合介面，除廠商設定集合外還帶鍵盤/多媒體鍵集合（Chrome 會把同一介面的集合合併成一個裝置）。已放行以讀寫設定；若連接後鍵鼠輸入異常，請中斷本頁面。",
+  bBusy: "正在寫入，請等待本次操作完成後再試。",
   bNotVendor: "已拒絕開啟：所選介面裡沒有廠商定義集合（usage page ≥ 0xFF00），不是設定介面。請在選擇器中改選名稱為「符合 HID 標準的廠商定義裝置」的那一項，不要選「HID-compliant mouse」或「HID Keyboard Device」。",
   bNoCollections: "無法讀取該裝置的集合資訊，出於安全考量已拒絕開啟（防止誤開滑鼠指標介面導致滑鼠失效）。請重新連接並選擇「符合 HID 標準的廠商定義裝置」。",
   /* ---- 設定說明 / 預設組合 / CPI 正規化 (A4, A5) ---- */

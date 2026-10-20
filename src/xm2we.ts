@@ -6,6 +6,9 @@ import { isFamily4, is8k, isXm1 } from "./protocol.js";
  * 与 4k 族的根本差异（务必勿混）：
  *   - 报告 ID：0x08 出 / 0x09 入（4k 族是 0xA1 / 0xA0）
  *   - 接口页：usage page 0xFF02（4k 族是 0xFF01）
+ *     ⚠️ 0xFF02 只是**必要不充分**条件：4k 鼠标（如 0x1982）的厂商接口也可能
+ *        带 FF02 集合（FF02:01/FF02:02），但其上没有 0x08/0x09 报告。
+ *        判族见 isXm2weFamily 的三层判据（PID 优先，未知 PID 须见到 report 0x08）。
  *   - 帧长  ：17 字节定长，每帧最多 10 字节数据
  *   - 校验  ：(0x55 - sum(bytes[0..15])) & 0xFF，双向同一套
  *   - 配置  ：EEPROM 逐字节读写（0x00–0xB4），不是 1024B blob

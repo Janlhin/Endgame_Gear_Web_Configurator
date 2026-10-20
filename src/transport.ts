@@ -55,7 +55,10 @@ export async function rawReceive(reportId: number, size?: number) {
      size：某些实现需要显式长度，XM1 走 1041B 时传它。 */
   const d = size !== undefined ? await dev().receiveFeatureReport(reportId, size)
                                : await dev().receiveFeatureReport(reportId);
-  let u8 = new Uint8Array(d.buffer);
+  /* ★ 必须尊重 DataView 的 byteOffset/byteLength：规范允许实现返回底层缓冲区
+     的一段视图（而非整块）。直接 new Uint8Array(d.buffer) 会把视图前后的
+     无关字节一并读进来，导致长度/偏移判定错乱（2026-10-20 审计）。 */
+  let u8 = new Uint8Array(d.buffer, d.byteOffset, d.byteLength);
   if (u8.length && u8[0] === 0x00) u8 = u8.slice(1);              // 零占位 → 丢弃
   if (u8.length && u8[0] === reportId) return u8;                 // 已含 reportId
   const out = new Uint8Array(u8.length + 1); out[0] = reportId; out.set(u8, 1); return out;

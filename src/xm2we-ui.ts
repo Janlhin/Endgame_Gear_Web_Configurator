@@ -7,7 +7,7 @@ import { t } from "./i18n.js";
 import { applyLayout } from "./layout.js";
 import { resetToInitial, watchDisconnect, watchPresence } from "./presence.js";
 import type { LostReason } from "./presence.js";
-import { Xm2weSession, WE_MOUSE_PID, POLLING_BY_MASK, WE_WRITES_ENABLED, setWeWrites } from "./xm2we.js";
+import { Xm2weSession, WE_MOUSE_PID, WE_MOUSE_PID2, POLLING_BY_MASK, WE_WRITES_ENABLED, setWeWrites } from "./xm2we.js";
 import { buildWeDiag } from "./diag.js";
 
 const WE_POLL_OPTS = [125, 250, 500, 1000];
@@ -97,7 +97,9 @@ function ensureWeArmed(): boolean {
 export async function openXm2we(d: any) {
   await closeXm2we();
   dev = d;
-  wired = d.productId === WE_MOUSE_PID;
+  /* 有线判定必须覆盖两个鼠标 PID：0x1960 = XM2we、0x1962 = OP1we
+     （2026-10-20 审计：原实现只认 0x1960，OP1we 有线会被标成 2.4G）。 */
+  wired = d.productId === WE_MOUSE_PID || d.productId === WE_MOUSE_PID2;
   model = wired ? "XM2we (wired)" : "XM2we (2.4G dongle)";
   if (!(await openGuarded(d))) { dev = null; return; }
   sess = new Xm2weSession(d);

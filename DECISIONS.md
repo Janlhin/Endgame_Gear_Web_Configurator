@@ -619,3 +619,29 @@ typescript-eslint 的 peer 上限覆盖 TS7 后，删掉两个别名、恢复
 - **连带修正**：T-106 状态更新为「CI 全绿 2026-10-11」（原记录已过时）；
   T-113d 作废；README 两处 TODO.md 链接改指 TASKS.md。
 - **状态**：已执行。
+
+### 判例二十三：判族以 PID 表为准，「页面撞号」不能当身份；键盘合并放行（2026-10-20）
+
+- **背景**：用户报告有线 4k 鼠标（XM2w 4k v2，PID `0x1982`）连接即报
+  `Failed to write the feature report.`。
+- **根因**：`isXm2weFamily` 的兜底判据 `collections.some(c => c.usagePage === 0xFF02)`
+  把 4k 鼠标误判为 XM2we 族。实测该鼠标 MI_01 含 `FF02:01`/`FF02:02` 集合，
+  但**没有任何集合声明 feature report `0x08`/`0x09`**。WE 协议连接后立即
+  `sendFeatureReport(0x08)`，Windows 侧 `HidConnectionWin::GetHandleForReportId`
+  找不到承载句柄 → Chromium 抛 `NotAllowedError`（`kSendFeatureReportFailed`）。
+  该错误串不在本项目代码中，是浏览器层文案。
+- **决策一（判族）**：PID 表是第一判据（`0x1960`/`0x1961`/`0x1962`）；已知 4k/8k PID
+  与 XM1 VID 一票否决；未知 PID 仅在 FF02 集合**声明 report `0x08`** 时才认。
+  旧浏览器不暴露报告描述 → 不认（宁可落到 FF01:02 路径，也不重蹈误判）。
+- **决策二（键盘闸门）**：不再一刀切。指针集合无条件拒绝；键盘集合仅在与已知厂商
+  配置集合（FF01:02 / FF02 / FFA1:00A5）共存时放行并警告；纯键盘仍被拦。
+  理由：Chrome 155 起同一 USB 接口的顶层集合合并成一个 HIDDevice，有线复合鼠标
+  必然带键盘集合，一刀切等于禁掉全部有线配置。
+- **被否决的方案**：B1 保持一律拒绝（有线功能不可用）；B2 每次弹 confirm（Chrome
+  设备选择器已经是一次显式授权，重复确认只增摩擦）。采纳 B3（仅对含厂商配置集合
+  的复合设备放宽）。
+- **连带修正（同轮审计发现）**：`DeviceFilter.usagePage` 为精确匹配，原回退列表
+  `{usagePage: 0xFF00}` 恒为空（死代码），改为 FF00–FFFF 逐页展开；OP1we 有线
+  （`0x1962`）被误标为 2.4G；`rawReceive` 忽略 `byteOffset`；写入缺少互斥
+  （新增 `S.writing` + 导入失败回滚 `S.blob`）。
+- **状态**：已执行（判族修复 `895264a`；审计修复与文档见后续提交）。

@@ -65,7 +65,7 @@
 >
 > **8k 有线家族已被证明与 4k 家族同构**：对从官方 CDN 下载的 XM2 8k 工具 v1.12 的静态分析显示，首字节同为报文 ID `0xA1`、同样的 7 个 `HidD_*` API、PDB 记号 `K26_046_config_v1.12_8k_motion_jjitter`。因此支持它们**不需要任何新协议代码** —— 只需把 VID/PID 加进 `MOUSE_PIDS` 表。
 >
-> 四款 4k 无线型号共用接收器 PID `0x1970`，USB 层无法区分；本工具用 cmd `0x0E` 返回的鼠标自身 PID 判别，并分别处理 v1/v2 不兼容的字段编码（LOD、回报率枚举、标志位）。变体 PID `0x1969`/`0x1981` 来自官方 v1.02 工具二进制里的设备表（见 `re/PROTOCOL_NOTES.md`）。XM2we 家族由 PID `0x1960`/`0x1961` 与 interface page `0xFF02` 双重判据识别。
+> 四款 4k 无线型号共用接收器 PID `0x1970`，USB 层无法区分；本工具用 cmd `0x0E` 返回的鼠标自身 PID 判别，并分别处理 v1/v2 不兼容的字段编码（LOD、回报率枚举、标志位）。变体 PID `0x1969`/`0x1981` 来自官方 v1.02 工具二进制里的设备表（见 `re/PROTOCOL_NOTES.md`）。XM2we 家族**先按 PID** 识别（`0x1960`/`0x1962` 鼠标、`0x1961` 接收器）；只有未知 PID 才退回 interface page `0xFF02` 兜底，且要求该集合声明 report `0x08` —— 4k 鼠标（如 `0x1982`）同样带 FF02 集合，只按页面判族会把它误送进 WE 协议并触发 `Failed to write the feature report.`（2026-10-20 修复）。
 
 ## 功能
 

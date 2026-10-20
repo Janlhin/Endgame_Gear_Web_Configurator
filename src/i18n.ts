@@ -133,6 +133,7 @@ const I18N: Record<string, Record<string, string>> = {
     bRefusePointer: "已拒绝打开：该接口是系统鼠标指针集合（HID-compliant mouse）。WebHID 打开它会独占接口，导致鼠标无法移动。请重新连接并选择「符合 HID 标准的供应商定义设备」。",
     bRefuseKeyboard: "已拒绝打开：该接口是系统键盘集合（HID Keyboard Device）。独占它会导致键盘失效。请重新连接并选择「符合 HID 标准的供应商定义设备」。",
     bKeyboardMerged: "提示：该设备是复合接口，除厂商配置集合外还带键盘/多媒体键集合（Chrome 会把同一接口的集合合并成一个设备）。已放行以读写配置；若连接后键鼠输入异常，请断开本页面。",
+    bBusy: "正在写入，请等待本次操作完成后再试。",
     bNotVendor: "已拒绝打开：所选接口里没有厂商定义集合（usage page ≥ 0xFF00），不是配置接口。请在选择器中改选名称为「符合 HID 标准的供应商定义设备」的那一项，不要选「HID-compliant mouse」或「HID Keyboard Device」。",
     bNoCollections: "无法读取该设备的集合信息，出于安全考虑已拒绝打开（防止误开鼠标指针接口导致鼠标失效）。请重新连接并选择「符合 HID 标准的供应商定义设备」。",
     /* ---- 设置说明 / 预设 / CPI 归一化（A4、A5）---- */
@@ -281,6 +282,7 @@ const I18N: Record<string, Record<string, string>> = {
     bRefusePointer: "Refused to open: this is the system mouse pointer collection. Opening it via WebHID takes exclusive access and would make the mouse unusable. Reconnect and pick the vendor-defined device instead.",
     bRefuseKeyboard: "Refused to open: this is the system keyboard collection (HID Keyboard Device). Taking exclusive access would break the keyboard. Reconnect and pick the vendor-defined device.",
     bKeyboardMerged: "Note: this is a composite interface that also carries keyboard/multimedia-key collections (Chrome merges same-interface collections into one device). Allowed so vendor config can be read; disconnect this page if keyboard or mouse input misbehaves.",
+    bBusy: "A write is in progress; wait for it to finish and try again.",
     bNotVendor: "Refused to open: the selected interface is not a vendor-defined collection (usage page < 0xFF00) and cannot carry configuration. Please pick a vendor-defined device.",
     bNoCollections: "Could not read this device's collection list, so opening was refused for safety (avoids grabbing the mouse pointer interface). Reconnect and pick the vendor-defined device.",
     /* ---- setting descriptions / presets / CPI normalisation (A4, A5) ---- */

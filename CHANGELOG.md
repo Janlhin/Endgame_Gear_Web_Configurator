@@ -2,9 +2,27 @@
 
 本项目从 v1.3 起记录变更。更早的版本看 git 历史（`git log --oneline`）。
 
-## Unreleased — 2026-10-11
+## Unreleased
 
-### 仓库整洁化（接手审查整改）
+### 2026-10-20 — 有线 4k 鼠标误路由到 XM2we 族（`Failed to write the feature report.`）
+
+- **判族修复**：`isXm2weFamily` 改为三层判据 —— PID 表优先（`0x1960`/`0x1961`/`0x1962`）；
+  已知 4k/8k PID 与 XM1 VID 一票否决；未知 PID 仅当 FF02 集合声明 report `0x08`
+  （Chrome 155+ 的 `featureReports`/`outputReports`）才认。根因：4k 鼠标 `0x1982`
+  的厂商接口同样带 FF02 集合，旧判据把它送进 WE 协议，`sendFeatureReport(0x08)`
+  找不到承载句柄，Chromium 抛 `NotAllowedError`。
+- **键盘闸门改策**：指针集合仍无条件拒绝；键盘集合仅在与已知厂商配置集合
+  （FF01:02 / FF02 / FFA1:00A5）共存时放行并给出警告。Chrome 155 起同一 USB 接口的
+  顶层集合合并成一个 HIDDevice，有线 4k 鼠标必然带键盘集合，旧的一刀切等于禁掉
+  全部有线配置。新增 `bKeyboardMerged` 八语言词条。
+- **审计修复**：`DeviceFilter.usagePage` 是精确匹配，原回退列表 `{usagePage: 0xFF00}`
+  恒为空 → 改为厂商区间 FF00–FFFF 逐页展开；OP1we 有线（`0x1962`）不再被标成 2.4G；
+  `rawReceive` 尊重 `DataView.byteOffset/byteLength`；新增写入互斥 `S.writing`，
+  导入失败回滚 `S.blob`。
+- **文档**：README 两版、发布安全审计、FAMILY4 备注同步；新增
+  `docs/audit-2026-10-20.md`（代码/架构审计报告）；DECISIONS 判例二十三。
+
+### 2026-10-11 — 仓库整洁化（接手审查整改）
 
 - **删除 11 个一次性过程文档**：docs/ 下 9 个（推送前需授权 / 接手报告 /
   push-to-github / scan-push-plan / publish-inventory / community-code-scan /

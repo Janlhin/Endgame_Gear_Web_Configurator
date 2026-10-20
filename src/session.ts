@@ -127,37 +127,45 @@ export async function apply8k() {
 }
 
 export async function applySensor() {
-  if (S.eightK) return apply8k();                  // 8k 是整块写，两张卡共用一条路径
-  const want = snapSensor();                     // 期望值（写入前）
-  const wantPerf = snapPerf();                   // 联动写 0x15 时玻璃模式也在里面
-  const glassChanged = S.gen === 2 && (blob()[0x6F] ? 1 : 0) !== S.stage.glass;
-  await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
-  log("✓ cmd 0x14 written");
-  if (glassChanged) {
-    await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
-    log("✓ glass-mode linked cmd 0x15 written");
-  }
-  await refreshAll();                            // 内部 readBlob + parseBlob
-  const bad = verifySensor(want);
-  if (glassChanged) bad.push(...verifyPerf(wantPerf));   // 联动写过的字段一并核对
-  reportVerify("bSensor", bad);
+  if (S.writing) return banner("warn", t("bBusy"));
+  S.writing = true;
+  try {
+    if (S.eightK) return await apply8k();          // 8k 是整块写，两张卡共用一条路径
+    const want = snapSensor();                     // 期望值（写入前）
+    const wantPerf = snapPerf();                   // 联动写 0x15 时玻璃模式也在里面
+    const glassChanged = S.gen === 2 && (blob()[0x6F] ? 1 : 0) !== S.stage.glass;
+    await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
+    log("✓ cmd 0x14 written");
+    if (glassChanged) {
+      await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
+      log("✓ glass-mode linked cmd 0x15 written");
+    }
+    await refreshAll();                            // 内部 readBlob + parseBlob
+    const bad = verifySensor(want);
+    if (glassChanged) bad.push(...verifyPerf(wantPerf));   // 联动写过的字段一并核对
+    reportVerify("bSensor", bad);
+  } finally { S.writing = false; }
 }
 
 export async function applyPerf() {
-  if (S.eightK) return apply8k();                  // 同上：8k 的性能项与传感器项在同一次整块写里
-  const want = snapPerf();                       // 期望值（写入前）
-  const wantSensor = snapSensor();               // 联动写 0x14 时传感器字段也在里面
-  const glassChanged = S.gen === 2 && (blob()[0x6F] ? 1 : 0) !== S.stage.glass;
-  await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
-  log("✓ cmd 0x15 written");
-  if (glassChanged) {
-    await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
-    log("✓ glass-mode linked cmd 0x14 written");
-  }
-  await refreshAll();
-  const bad = verifyPerf(want);
-  if (glassChanged) bad.push(...verifySensor(wantSensor));
-  reportVerify("bPerf", bad);
+  if (S.writing) return banner("warn", t("bBusy"));
+  S.writing = true;
+  try {
+    if (S.eightK) return await apply8k();          // 同上：8k 的性能项与传感器项在同一次整块写里
+    const want = snapPerf();                       // 期望值（写入前）
+    const wantSensor = snapSensor();               // 联动写 0x14 时传感器字段也在里面
+    const glassChanged = S.gen === 2 && (blob()[0x6F] ? 1 : 0) !== S.stage.glass;
+    await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
+    log("✓ cmd 0x15 written");
+    if (glassChanged) {
+      await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
+      log("✓ glass-mode linked cmd 0x14 written");
+    }
+    await refreshAll();
+    const bad = verifyPerf(want);
+    if (glassChanged) bad.push(...verifySensor(wantSensor));
+    reportVerify("bPerf", bad);
+  } finally { S.writing = false; }
 }
 
 

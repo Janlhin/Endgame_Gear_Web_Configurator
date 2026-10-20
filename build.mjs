@@ -109,8 +109,11 @@ const kbOf = (s) => Buffer.byteLength(s, "utf8") / 1024;
  * 上调记录：
  *   2026-10-20  300 → 302：修复 "Failed to write the feature report."
  *   （判族收紧 isXm2weFamily + 键盘集合合并放行策略 + bKeyboardMerged
- *   八语言词条）。纯自有代码增量 ~0.6 KB，未引入任何外部依赖。 */
-const SIZE_BUDGET_KB = 302;
+ *   八语言词条）。纯自有代码增量 ~0.6 KB，未引入任何外部依赖。
+ *   2026-10-20  302 → 305：同日审计修复（回退过滤器厂商区间展开、
+ *   写入互斥 bBusy×8、OP1we 有线判定、rawReceive 视图偏移）。
+ *   当前产物 301.7 KB，余量 ~3 KB —— 仍足以在有人塞进任何库时立刻报红。 */
+const SIZE_BUDGET_KB = 305;
 const actualKb = kbOf(html);
 console.log(`dist/index.html + index.html written, ${kb(html)} KB  (js ${kb(js)} KB, css ${kb(css)} KB)`);
 if (actualKb > SIZE_BUDGET_KB) {

@@ -82,6 +82,7 @@
 | `xm1-diff-kit.md` | XM1 差分实验包说明 |
 | `official-product-catalog.md` | 16 款鼠标的固件/工具版本与官方下载目录 |
 | `ecosystem-survey.md` | 社区同类工具生态调研 |
+| `audit-2026-10-20.md` | 全量代码/架构审计报告（原子性、严谨性、潜在缺陷与结论） |
 | `release-safety-audit.md` | 发布安全审计：逐型号写权限的理由与残余风险 |
 | `cpi-step-check.md` / `field-parity.md` / `user-facing-settings.md` / `web-driver-extra-features.md` | 专项分析：CPI 步进一致性 / 各族字段对齐表 / 用户可见设置清单 / 官方工具额外功能盘点 |
 

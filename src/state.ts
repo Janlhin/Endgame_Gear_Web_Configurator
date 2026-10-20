@@ -143,6 +143,10 @@ export interface GlobalState {
   dev: HIDDevice | null;
   /** 事务串行队列。串成一条链，保证 HID 报文不并发（见 transport.ts）。 */
   queue: Promise<void>;
+  /** 写入互斥：一次 apply / 导入从「发第一份报文」到「回读校验结束」期间为 true。
+   *  重复点击或并发入口（导入 vs 应用）在此期间直接拒绝，避免两次写入交错
+   *  造成设备停在半应用状态（2026-10-20 审计）。只读刷新不受限。 */
+  writing: boolean;
   /** 上次事务失败 → 下次先 probe。 */
   lastFail: boolean;
 
@@ -205,6 +209,7 @@ export const S: GlobalState = {
   /* —— 传输层 —— */
   dev: null,                                    // 已打开的 HIDDevice
   queue: Promise.resolve(),                // 事务串行队列
+  writing: false,                          // 写入互斥（apply / 导入期间为 true）
   lastFail: false,// 上次事务失败 → 下次先 probe
 
   /* —— 设备识别 —— */

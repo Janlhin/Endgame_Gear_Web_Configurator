@@ -56,6 +56,7 @@ export function resetToInitial(reasonKey: LostReason, detail?: string) {
   S.stage = newStage();
   S.xm1LastRead = null; S.xm1Armed = false; S.xm1Edit = null; S.xm1Snaps = [];
   S.lastFail = false;
+  S.writing = false;   // 写入互斥必须随设备丢失一起复位，否则界面会永远"忙"
 
   /* 2) 收起全部设备卡片（applyLayout 是白名单式，一次设置全部）*/
   applyLayout("none");
