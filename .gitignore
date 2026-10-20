@@ -11,6 +11,7 @@ re/.test_*.mjs
 # 大文件与第三方版权物；结论已沉淀在 re/upstream/SOURCES.md
 re/upstream/*.html
 re/upstream/*.exe
+re/upstream/_dl8k/
 re/upstream/*.tgz
 re/upstream/_src/
 re/upstream/*.json

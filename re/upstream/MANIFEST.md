@@ -6,6 +6,12 @@
 >
 > 2026-10-09 清理：这些文件累计约 32 MB，全部从仓库与工作目录删除（可再生）。
 > 需要重跑分析时执行 `bash re/upstream/fetch.sh`，再核对 SHA256。
+>
+> **2026-10-20 复核**：11 个官方工具/软件已重新下载并逐项对照（设备表 / CPI 常量 /
+> 版本资源 / WE Cfg.ini / XM1 主程序），结论见 `VERIFY-2026-10-20.md`，
+> 复现脚本 `verify_official_data.py`（零依赖，不一致时返回非零）。
+> 复核发现：4k 工具的设备表是**10 字节步长的数据记录**而非 `push` 立即数，
+> 只扫指令（`tool8k_pids.py`）会漏掉变体 PID；8k v2 的官方资产已由 zip 改为 exe。
 
 ## 一、官方配置工具（VID/PID 设备表的来源）
 
@@ -19,8 +25,8 @@
 | `OP1-8k-v2_tool.exe` | `EndgameGear/OP1-8k-v2` @ `Firmware_1.04` → `Endgame.Gear.OP1.8k.v2.Configuration.Tool.v1.00.exe` | `00ee4b20…5be9fc` | OP1 8k v2 = `0x1978` |
 | `endgame-gear-xm2-8k-configuration-tool.v1.12.exe` | `EndgameGear/XM2-8k` release（v1.12 配置工具） | `580a47db…b3c7dfe` | XM2 8k = `0x1966` |
 | `Endgame_Gear_OP1_8k_Configuration_Tool_V1.12.exe` | `EndgameGear/OP1-8k` release（v1.12 配置工具） | `128478d3…127069` | OP1 8k = `0x1964` |
-| `Endgame_Gear_XM2_8k_v2_Configuration_Tool_v1.07.zip` | `EndgameGear/XM2-8k-v2`（v1.07，内含工具） | `2d15d586…9ca2320` | XM2 8k v2 = `0x1980` |
-| `Endgame_Gear_OP1_8k_v2_Configuration_Tool_v1.07.zip` | `EndgameGear/OP1-8k-v2`（v1.07，内含工具） | `05612cdc…babee723742` | 交叉验证 `0x1980` |
+| `Endgame.Gear.XM2.8k.v2.Configuration.Tool.v1.01.exe` | `EndgameGear/XM2-8k-v2` @ `Firmware_1.04`（2026-10-20 复查：官方资产已由 v1.07 zip 改为 v1.01 exe） | `29a5cb3a…cffe0fcbe0` | XM2 8k v2 = `0x1980` |
+| `Endgame.Gear.OP1.8k.v2.Configuration.Tool.v1.00.exe` | `EndgameGear/OP1-8k-v2` @ `Firmware_1.04`（同上，zip → exe） | `00ee4b20…92355be9fc` | 交叉验证 `0x1980` / `0x1978` |
 
 > 前四个设备的表是"每款工具都列 4 个 PID"（鼠标 / 鼠标变体 / 接收器 / 接收器变体），
 > 这条规律本身就是"变体不能用同 PID 猜"的依据。
