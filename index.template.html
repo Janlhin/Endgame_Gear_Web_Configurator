@@ -325,8 +325,8 @@
     <ul class="muted" style="line-height:1.9; padding-left:18px; margin:0">
       <li data-i18n="noteWebhid">需要 Chrome / Edge 89+（WebHID）。本页通过 HID 特征报告直连设备，不装任何驱动。</li>
       <li data-i18n="noteRelease">⚠ 若连接后鼠标突然失灵：立刻关闭本页面/浏览器窗口即可恢复（WebHID 会独占所选接口，关闭即释放；插拔 USB 无效）。本页只打开厂商定义接口，不会碰鼠标指针接口。</li>
-      <li data-i18n="noteModels">支持全部四个无线型号：XM2w 4k / XM2w 4k v2 / OP1w 4k / OP1w 4k v2，有线（USB-C）与无线（4k 接收器）均可。型号由 cmd 0x0E 返回的鼠标 PID 自动识别。</li>
-      <li data-i18n="noteWiredOnly">有线专用型号（XM2we、XM1 系列等）使用另一套未公开协议，暂不支持。</li>
+      <li data-i18n="noteModels">支持：4k 无线 XM2w/OP1w 4k（v1/v2）、XM1/XM1 RGB 已真机验证；8k 有线 XM2 8k/OP1 8k（含 v2）读写已实现、XM2we/OP1we 代码就绪，均未真机验证。型号由 cmd 0x0E 的 PID 自动识别。</li>
+      <li data-i18n="noteWiredOnly">XM1：写入限已实测的 23 字节，其余须与读回一致。XM2we/OP1we：写入默认关闭。</li>
       <li data-i18n="noteSleep">鼠标深度休眠后读不到配置：动一下鼠标再点“重新读取”。软件会自动发探测命令恢复通道。</li>
       <li data-i18n="noteWired">有线连接时 0x0D（接收器固件）会返回“不适用”；有线回报率硬件上限 1000 Hz。</li>
       <li data-i18n="noteV1Stage">v1 的“当前档位”只能用鼠标底部的 CPI 键切换，软件改了也无效（硬件忽略）。</li>
