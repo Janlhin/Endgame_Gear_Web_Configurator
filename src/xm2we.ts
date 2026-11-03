@@ -29,7 +29,9 @@ const WE_MOUSE_PID2 = 0x1962;  // OP1we（有线）
 const WE_DONGLE_PID = 0x1961;  // 2.4G 接收器（两者共用）
 const RPT_OUT = 0x08, RPT_IN = 0x09;
 const FRAME_LEN = 17;
-const EE_MAX = 10;             // [6..15] 共 10 字节，其后是校验位
+const EE_MAX = 8;              // 单次读上限。帧本可容 10 字节，但 OpenMouse 的 WE 驱动
+                               // 写死 ≤8（WE_MAX_EEPROM_CHUNK）；issue #1 里"整片读空"疑似
+                               // 因发 10 被拒，故收到 8 —— 待真机复测确认
 const EE_LIMIT = 0xB4;         // 配置区上界（之上读出来是 0xff）
 
 const OP_LINK = 0x03, OP_BATTERY = 0x04, OP_EE_WRITE = 0x07, OP_EE_READ = 0x08, OP_PROFILE = 0x0F;
