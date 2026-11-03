@@ -308,7 +308,7 @@ export function bindXm2weUI(download: (data: any, name: string, type?: string) =
     download(JSON.stringify(sess.toJSON(), null, 2), `xm2we-config-${Date.now()}.json`, "application/json");
   };
   $el("btnWeDiag").onclick = () => {
-    if (!sess?.mem.size) return banner("err", t("weNoDevice"));
+    if (!sess) return banner("err", t("weNoDevice"));
     try {
       download(JSON.stringify(buildWeDiag(sess, model), null, 2), `xm2we-diag-${Date.now()}.json`, "application/json");
       banner("ok", t("diagSaved"));
@@ -317,7 +317,8 @@ export function bindXm2weUI(download: (data: any, name: string, type?: string) =
   };
   $el("btnWeLog").onclick = () => {
     const l = $el("log");
-    l.style.display = l.style.display === "none" ? "block" : "none";
+    $el("cardWeTools").appendChild(l);
+    l.style.display = l.style.display === "block" ? "none" : "block";
   };
   document.addEventListener("langchange", () => { renderInfo(); renderCpi(); renderKeys(); });
 }

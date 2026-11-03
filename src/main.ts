@@ -530,7 +530,7 @@ function download(data: any, name: string, type = "application/octet-stream") {
   a.href = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type }));
   a.download = name; a.click(); URL.revokeObjectURL(a.href);
 }
-$el("btnLog").onclick = () => { const l = $el("log"); l.style.display = l.style.display === "none" ? "block" : "none"; };
+$el("btnLog").onclick = () => { const l = $el("log"); $el("cardTools").appendChild(l); l.style.display = l.style.display === "block" ? "none" : "block"; };
 bindXm2weUI(download);
 
 /* ================= 主题切换 =================
