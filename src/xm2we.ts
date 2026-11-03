@@ -29,9 +29,8 @@ const WE_MOUSE_PID2 = 0x1962;  // OP1we（有线）
 const WE_DONGLE_PID = 0x1961;  // 2.4G 接收器（两者共用）
 const RPT_OUT = 0x08, RPT_IN = 0x09;
 const FRAME_LEN = 17;
-const EE_MAX = 8;              // 单次读上限。帧本可容 10 字节，但 OpenMouse 的 WE 驱动
-                               // 写死 ≤8（WE_MAX_EEPROM_CHUNK）；issue #1 里"整片读空"疑似
-                               // 因发 10 被拒，故收到 8 —— 待真机复测确认
+const EE_MAX = 10;             // 单次读上限。[6..15] 共 10 字节，其后 [16] 是校验位
+                               // （官方工具反汇编结论：10 bytes per frame is the ceiling）
 const EE_LIMIT = 0xB4;         // 配置区上界（之上读出来是 0xff）
 
 const OP_LINK = 0x03, OP_BATTERY = 0x04, OP_EE_WRITE = 0x07, OP_EE_READ = 0x08, OP_PROFILE = 0x0F;
@@ -63,6 +62,8 @@ function buildFrame(opcode: number, payload: number[] = []): Uint8Array {
   b[0] = RPT_OUT;
   b[1] = opcode;
   b[2] = 0x00;                                  // 保留
+  /* payload 从 [3] 起落位 —— 因此 EEPROM 命令就是 [3..4]=地址 BE16、[5]=长度、[6..]=数据，
+     **调用方不要再自己加前导 0x00**（加过一版，整帧后移一字节，设备把长度读成 0 便不回应）。 */
   for (let i = 0; i < payload.length && i < EE_MAX; i++) b[3 + i] = payload[i];
   b[2] = payload.length > 10 ? payload.length : b[2];  // 长负载走 data length 位
   b[16] = ck(...Array.from(b.slice(0, 16)));
@@ -249,7 +250,7 @@ export class Xm2weSession {
 
   /** EEPROM 读 n 字节（n ≤ 10）。响应 data 区在 [6..]，地址回显在 [3..4]。 */
   private async eeRead(addr: number, n: number, timeoutMs = 1200): Promise<number[] | null> {
-    const r = await this.transact(OP_EE_READ, [0x00, (addr >> 8) & 0xFF, addr & 0xFF, n], timeoutMs);
+    const r = await this.transact(OP_EE_READ, [(addr >> 8) & 0xFF, addr & 0xFF, n], timeoutMs);
     const got = (r[3] << 8) | r[4];
     if (r[5] !== n || got !== addr) return null;
     return Array.from(r.slice(6, 6 + n));
@@ -257,7 +258,7 @@ export class Xm2weSession {
 
   /** EEPROM 写。写后由调用方回读校验。 */
   private async eeWrite(addr: number, data: number[]): Promise<boolean> {
-    const payload = [0x00, (addr >> 8) & 0xFF, addr & 0xFF, data.length, ...data];
+    const payload = [(addr >> 8) & 0xFF, addr & 0xFF, data.length, ...data];
     await this.transact(OP_EE_WRITE, payload, 1500);
     return true;
   }

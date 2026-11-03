@@ -15,6 +15,7 @@ const ENTRIES = [
   ["re/test_sensor_cols.ts", "re/.test_sensor_cols.mjs"],
   ["re/test_write_gates.ts", "re/.test_write_gates.mjs"],
   ["re/test_we_diagnostics.ts", "re/.test_we_diagnostics.mjs"],
+  ["re/test_we_frame.ts", "re/.test_we_frame.mjs"],
   ["re/test_presence.ts", "re/.test_presence.mjs"],
 ];
 
