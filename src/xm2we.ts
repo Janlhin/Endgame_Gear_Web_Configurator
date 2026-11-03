@@ -84,9 +84,9 @@ function frameValid(u8: Uint8Array): boolean {
  *    X_hw = ((M & 0x0C) << 6) | x      mulX = M & 0x03
  *    Y_hw = ((M & 0xC0) << 2) | y      mulY = (M >> 4) & 0x03
  *  出厂默认 400/800/1600/3200 = 07/0f/1f/3f（M=0，纯 50 步进）。 */
-function decodeCpi(mem: Map<number, number>) {
+function decodeCpi(mem: Map<number, number>, count = 8) {
   const out: any[] = [];
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < count; i++) {
     const a = 0x0C + i * 4;
     const rec = [mem.get(a), mem.get(a + 1), mem.get(a + 2), mem.get(a + 3)];
     if (rec.some(v => v === undefined)) continue;
@@ -315,7 +315,14 @@ export class Xm2weSession {
   }
 
   /* ---------- 高层字段 ---------- */
-  cpiTable() { return decodeCpi(this.mem); }
+  /** 启用的 CPI 档数：EEPROM 0x02（厂商工具里的 "DM"），值与 0x55 补码成对存放。
+   *  硬件总是保留 8 条记录，但只有前 N 条生效 —— 官方工具只显示 N 档
+   *  （issue #1 真机：0x02=0x04，官方工具 4 档，槽 5–8 是残留的 3200）。 */
+  levels() {
+    const n = paired(this.mem, 0x02);
+    return n === null ? 8 : Math.min(8, Math.max(1, n));
+  }
+  cpiTable() { return decodeCpi(this.mem, this.levels()); }
   keyTable() { return decodeKeys(this.mem); }
   polling() { return decodePolling(this.mem); }
   debounce() { return paired(this.mem, 0xA9); }

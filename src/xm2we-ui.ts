@@ -7,7 +7,7 @@ import { t } from "./i18n.js";
 import { applyLayout } from "./layout.js";
 import { resetToInitial, watchDisconnect, watchPresence } from "./presence.js";
 import type { LostReason } from "./presence.js";
-import { Xm2weSession, WE_MOUSE_PID, WE_MOUSE_PID2, POLLING_BY_MASK, WE_WRITES_ENABLED, setWeWrites } from "./xm2we.js";
+import { Xm2weSession, WE_MOUSE_PID, WE_MOUSE_PID2, WE_WRITES_ENABLED, setWeWrites } from "./xm2we.js";
 import { buildWeDiag } from "./diag.js";
 
 const WE_POLL_OPTS = [125, 250, 500, 1000];
@@ -194,7 +194,10 @@ function renderCpi() {
     pol.appendChild(o);
   }
   const cur = s.polling();
-  pol.value = cur !== null && POLLING_BY_MASK[0] !== undefined ? String(cur) : "";
+  /* 直接按 Hz 回填即可：cur 不在 <option> 里时浏览器会自行置空。
+     曾误写成 `POLLING_BY_MASK[0] !== undefined` —— 该表没有键 0，守卫恒假，
+     下拉于是恒空（issue #1 真机复现：packet 明明解出 1000 Hz，界面仍是空）。 */
+  pol.value = cur !== null ? String(cur) : "";
   if (cur === null) { const o = document.createElement("option"); o.value = ""; o.textContent = "—"; pol.prepend(o); }
 
   const db = $el<HTMLInputElement>("weDebounce");
