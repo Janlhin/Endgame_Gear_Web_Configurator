@@ -9,7 +9,20 @@
 import { build } from "esbuild";
 import * as sass from "sass";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { mdToHtml } from "./tools/md2html.mjs";
+
+/* 构建指纹：commit 短哈希 + UTC 分钟。写进页面页脚与诊断包 meta.build，
+ * 让志愿者与维护者能对齐「测的是哪一版」——Pages 有 10 分钟缓存，本地打过
+ * 补丁的页面又与线上产物无从区分，issue #1 就卡在这上面。
+ * 取不到 git 时退化为 dev，不阻断构建。 */
+function buildStamp() {
+  let hash = "dev";
+  try { hash = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim(); } catch (_) { /* 非 git 环境 */ }
+  const t = new Date().toISOString().slice(0, 16).replace("T", " ") + "Z";
+  return `${hash} · ${t}`;
+}
+const STAMP = buildStamp();
 
 mkdirSync("dist", { recursive: true });
 
@@ -79,7 +92,10 @@ const checklistHtml =
 const html = template
   .replace("/*__STYLES__*/", () => css)
   .replace("/*__CHECKLIST__*/", () => checklistHtml)
-  .replace("/*__BUNDLE__*/", () => js);
+  .replace("/*__BUNDLE__*/", () => js)
+  /* 指纹在 bundle 注入之后替换：模板页脚与 src/version.ts 里的字面量都要命中。
+     用函数形式替换，避免 STAMP 里的 $ 被当成特殊模式。 */
+  .replace(/__BUILD_STAMP__/g, () => STAMP);
 
 assertNoDevComments(html, "index.html");
 

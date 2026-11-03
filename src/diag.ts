@@ -8,6 +8,7 @@
  *  WE 族走 `we` 字段（EEPROM 转储 + 解码表），4k/8k/XM1 走 `blob`。
  */
 import { S } from "./state.js";
+import { BUILD_STAMP } from "./version.js";
 
 function hexDump(b: Uint8Array | null): string | null {
   if (!b || !b.length) return null;
@@ -117,6 +118,9 @@ export function buildDiag(extra: any = {}): any {
       feltDifferent: "",  // ★最关键：实际手感/速度真的变了吗
       notes: "",
     },
+    /* 构建指纹：志愿者的诊断包要能回答「测的是哪一版」——
+       Pages 有 10 分钟缓存，本地打补丁的页面也与线上产物无从区分（issue #1）。 */
+    meta: { build: BUILD_STAMP, exportedAt: new Date().toISOString() },
     ...extra,
   };
 }
