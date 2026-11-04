@@ -204,6 +204,23 @@ function renderCpi() {
   const db = $el<HTMLInputElement>("weDebounce");
   const d = s.debounce();
   if (document.activeElement !== db) db.value = d === null ? "" : String(d);
+
+  /* LOD 只有两档（官方工具亦如此），标签用 "1 mm"/"2 mm" 语言中立，无需新增词条。
+     若读到的值不在 1/2 之内，补一个原始值选项，避免界面假装只有两档。 */
+  const lodEl = $el<HTMLSelectElement>("weLod");
+  lodEl.innerHTML = "";
+  for (const mm of [1, 2]) {
+    const o = document.createElement("option");
+    o.value = String(mm); o.textContent = `${mm} mm`;
+    lodEl.appendChild(o);
+  }
+  const lod = s.lod();
+  if (lod !== null && lod !== 1 && lod !== 2) {
+    const o = document.createElement("option");
+    o.value = String(lod); o.textContent = `0x${lod.toString(16)}`;
+    lodEl.prepend(o);
+  }
+  lodEl.value = lod === null ? "" : String(lod);
 }
 
 function renderKeys() {
@@ -289,6 +306,12 @@ async function applyPerf() {
     if (document.activeElement !== dbEl) {
       const db = parseInt(dbEl.value, 10);
       if (isFinite(db) && db >= 0) { await sess.writeDebounce(db); log(`✓ debounce → ${db} ms`); }
+    }
+    const lodEl = $el<HTMLSelectElement>("weLod");
+    const wantLod = parseInt(lodEl.value, 10);
+    if ((wantLod === 1 || wantLod === 2) && wantLod !== sess.lod()) {
+      await sess.writeLod(wantLod);
+      log(`✓ LOD → ${wantLod} mm`);
     }
     banner("ok", t("weApplyOk"));
     await refreshWe();

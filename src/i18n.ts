@@ -128,7 +128,7 @@ const I18N: Record<string, Record<string, string>> = {
     noteRe: "协议已对照官方 v1.02 配置工具二进制逐字节验证：命令表、负载长度、blob 布局、双块写入与重试时序全部一致；0x71/0x72（默认配对/配对数据）为官方工具新增命令，本页已同步实现。",
     /* ---- XM2we（2020 有线·2.4G 代）---- */
     secWeInfo: "设备信息（XM2we / 有线代）", weLink: "鼠标链路", weFamilyNote: "本型号属 2020 年有线/2.4G 协议族（接口页 0xFF02、报告 0x08/0x09、17 字节带校验帧、配置存于 EEPROM），与 4k 无线族完全不兼容。",
-    secWeCpi: "CPI 与回报率", weCheck: "校验", weSlot1Note: "「生效中」标的是鼠标当前在用的档：改它会立刻改变指针速度，改其它档要切过去才生效。",
+    secWeCpi: "CPI 与回报率", weCheck: "校验", weSlot1Note: "「生效中」标的是鼠标当前在用的档：改它会立刻改变指针速度，改其它档要切过去才生效。鼠标底部的按钮切换的是回报率而非 CPI 档位——它的闪烁次数很容易被误读成档位。",
     weDebounce: "点击去抖 (ms)", wePollingNote: "存放为 one-hot 掩码：0x08=125 / 0x04=250 / 0x02=500 / 0x01=1000 Hz",
     secWeBtns: "按键矩阵（EEPROM 0x60）",
     weKeyNote: "本族仅 type 0x01（鼠标键位掩码：0x01 左 / 0x02 右 / 0x04 中 / 0x08 后退 / 0x10 前进）被社区解出；其余类型语义未知，工具原样读取展示，不做改写。",
@@ -290,7 +290,7 @@ const I18N: Record<string, Record<string, string>> = {
     noteRe: "The protocol was byte-verified against the official v1.02 configuration tool binary: command table, payload lengths, blob layout, two-chunk writes and retry timing all match; 0x71/0x72 (pair default / pair data) are new official commands, implemented here as well.",
     /* ---- XM2we (2020 wired / 2.4G generation) ---- */
     secWeInfo: "Device Info (XM2we / wired gen)", weLink: "Mouse link", weFamilyNote: "This model belongs to the 2020 wired/2.4G protocol family (usage page 0xFF02, reports 0x08/0x09, 17-byte checksummed frames, config stored in EEPROM) — completely incompatible with the 4k wireless family.",
-    secWeCpi: "CPI & Polling Rate", weCheck: "Check", weSlot1Note: "The stage marked in use is the one the mouse is running now: editing it changes pointer speed immediately, while other stages only apply once you switch to them.",
+    secWeCpi: "CPI & Polling Rate", weCheck: "Check", weSlot1Note: "The stage marked in use is the one the mouse is running now: editing it changes pointer speed immediately, other stages apply once you switch to them. The button on the underside changes the polling rate, not the CPI stage — its blink count is easy to misread.",
     weDebounce: "Click debounce (ms)", wePollingNote: "Stored as a one-hot mask: 0x08=125 / 0x04=250 / 0x02=500 / 0x01=1000 Hz",
     secWeBtns: "Key Matrix (EEPROM 0x60)",
     weKeyNote: "For this family only type 0x01 is decoded (mouse button bitmask: 0x01 left / 0x02 right / 0x04 middle / 0x08 back / 0x10 forward). Other types are shown verbatim and never rewritten, since their semantics are unknown.",

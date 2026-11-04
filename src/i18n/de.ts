@@ -119,7 +119,7 @@ export default {
   noteV1Stage: "Bei v1 lässt sich die aktive Stufe nur mit der CPI-Taste unter der Maus wechseln – Software-Änderungen ignoriert die Hardware.",
   noteRe: "Das Protokoll wurde Byte für Byte gegen das Binary des offiziellen Konfigurationstools v1.02 geprüft: Befehlstabelle, Nutzdatenlängen, blob-Layout, Zwei-Block-Schreiben und Wiederholungs-Timing stimmen alle überein; 0x71/0x72 (Standardkopplung / Kopplungsdaten) sind neue offizielle Befehle und hier ebenfalls umgesetzt.",
   secWeInfo: "Geräteinfo (XM2we / Kabelgeneration)", weLink: "Maus-Verbindung", weFamilyNote: "Dieses Modell gehört zur Protokollfamilie der 2020er Kabel-/2,4G-Generation (Usage Page 0xFF02, Reports 0x08/0x09, 17-Byte-Rahmen mit Prüfsumme, Konfiguration im EEPROM) – vollständig inkompatibel mit der 4k-Funkfamilie.",
-  secWeCpi: "CPI und Abfragerate", weCheck: "Prüfsumme", weSlot1Note: "Die mit „in Verwendung“ markierte Stufe läuft gerade: Änderungen daran wirken sofort, andere Stufen erst nach dem Umschalten.",
+  secWeCpi: "CPI und Abfragerate", weCheck: "Prüfsumme", weSlot1Note: "Die mit „in Verwendung“ markierte Stufe läuft gerade: Änderungen daran wirken sofort, andere erst nach dem Umschalten. Die Taste an der Unterseite schaltet die Abtastrate, nicht die CPI-Stufe — die Blinkanzahl wird leicht verwechselt.",
   weDebounce: "Klick-Entprellung (ms)", wePollingNote: "Wird als One-Hot-Maske gespeichert: 0x08=125 / 0x04=250 / 0x02=500 / 0x01=1000 Hz",
   secWeBtns: "Tastenmatrix (EEPROM 0x60)",
   weKeyNote: "Für diese Familie ist nur Typ 0x01 entschlüsselt (Maustasten-Bitmaske: 0x01 links / 0x02 rechts / 0x04 Mitte / 0x08 zurück / 0x10 vor). Andere Typen werden unverändert angezeigt und nie überschrieben, da ihre Bedeutung unbekannt ist.",

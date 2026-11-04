@@ -121,7 +121,7 @@
       </tr></thead>
       <tbody id="weCpiRows"></tbody>
     </table>
-    <p class="muted" data-i18n="weSlot1Note">「生效中」标的是鼠标当前在用的档：改它会立刻改变指针速度，改其它档要切过去才生效。<b>回报率</b>而非 CPI 档位——它的闪烁次数很容易被误读成档位。</p>
+    <p class="muted" data-i18n="weSlot1Note">「生效中」标的是鼠标当前在用的档：改它会立刻改变指针速度，改其它档要切过去才生效。鼠标底部的按钮切换的是<b>回报率</b>而非 CPI 档位——它的闪烁次数很容易被误读成档位。</p>
     <div class="settings">
       <div class="grp">
         <label data-i18n="polling">回报率</label>
@@ -131,6 +131,11 @@
       <div class="grp">
         <label data-i18n="weDebounce">点击去抖 (ms)</label>
         <input type="number" id="weDebounce" min="0" max="255" step="1">
+      </div>
+      <div class="grp">
+        <label>LOD</label>
+        <select id="weLod"></select>
+        <span class="note">0x0A · 1 = 1 mm · 2 = 2 mm</span>
       </div>
       <div class="applyRow">
         <button id="btnWeApplyCpi" data-i18n="applySensor">应用传感器设置</button>

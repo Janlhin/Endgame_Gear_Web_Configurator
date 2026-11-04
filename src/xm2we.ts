@@ -335,6 +335,9 @@ export class Xm2weSession {
   cpiTable() { return decodeCpi(this.mem, this.levels()); }
   keyTable() { return decodeKeys(this.mem); }
   polling() { return decodePolling(this.mem); }
+  /** 离地高度：EEPROM 0x0A。真机差分（用官方工具只改 LOD）：02 = 2 mm、01 = 1 mm，
+   *  且首尾 181 字节逐字节一致 —— 官方工具本身只提供这两档。 */
+  lod() { return paired(this.mem, 0x0A); }
   debounce() { return paired(this.mem, 0xA9); }
   /** CPI 指示灯颜色：8 组 [r,g,b,crc] @0x2C */
   ledColors() {
@@ -361,6 +364,10 @@ export class Xm2weSession {
   async writeDebounce(ms: number) {
     const v = Math.max(0, Math.min(255, Math.round(ms)));
     await this.writeRecord(0xA9, [v, ck(v)]);
+  }
+  async writeLod(mm: number) {
+    const v = Math.max(1, Math.min(2, Math.round(mm)));
+    await this.writeRecord(0x0A, [v, ck(v)]);
   }
   async writeKeySlot(slot: number, raw: number[]) {
     await this.writeRecord(0x60 + (slot - 1) * 4, encodeKeyRec({ raw }));
