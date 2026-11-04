@@ -196,6 +196,21 @@ main > * { animation: rise $t-slow $ease-out both; }
   align-items: start;
 }
 
+/* 构建指纹（页脚版本号）：贴在「说明与已知限制」卡片右下角。
+ * 绝不能占布局高度——v2 布局在 1366×768 上恰好填满视口（docH 629 = 视口 629），
+ * 任何在流元素都会多出 1px 纵向滚动，被 re/xm1_align_check.py 判失败。
+ * 早期版本把它做成独立 <footer>，当天就把该检查从 0 失败变成 3 项失败。 */
+.buildStamp {
+  position: absolute;
+  right: 10px;
+  bottom: 4px;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.5;
+  pointer-events: none;
+  user-select: none;
+}
+
 // ---------- 卡片 ----------
 .card {
   position: relative;
