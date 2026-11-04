@@ -110,7 +110,7 @@ npm run check     # tsc --noEmit type check
 
 ### Style development conventions (mandatory)
 
-- **All styles are written in SCSS under `scss/`**, compiled by `build.mjs` via `sass.compile()` and inlined into the HTML.
+- **All styles are written in SCSS under `scss/`**, compiled by `tools/build.mjs` via `sass.compile()` and inlined into the HTML.
 - `index.template.html` keeps only the placeholders `/*__STYLES__*/` (and `/*__BUNDLE__*/` for JS). **Do not write `<style>` directly in the template.**
 - To change theme colors / spacing / radii / font sizes → edit `_tokens.scss` only; component styles live in `main.scss` organized with nesting + `@each`.
 - The build errors out if a placeholder is missing (preventing the template from drifting out of sync with the build).

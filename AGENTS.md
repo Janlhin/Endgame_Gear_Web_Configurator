@@ -62,7 +62,7 @@ ubuntu 跑 `verify:ci`，windows-latest 跑 `check:ui` —— **两条都跑，�
 ## 4. 本项目特有的 AI 约束
 
 1. **构建产物零外部依赖**：不得引入 CDN 字体/脚本/图片；一切打进 `index.html`。
-   `build.mjs` 的 `assertNoDevComments` 与"无绝对路径"检查是硬门禁，改模板时别绕过它。
+   `tools/build.mjs` 的 `assertNoDevComments` 与"无绝对路径"检查是硬门禁，改模板时别绕过它。
 2. **脚本层禁止硬编码绝对路径**（`re/*.py` 曾各写一份 `file:///C:/...`，目录改名后四个检查同时失效）。
    一律用 `os.path.join(os.path.dirname(__file__), "..", ...)` 推导。
 3. **测试文件排在 `re/tests/test_presence.ts` 之前**——它末尾是 `process.exit(0)`，排它后面的测试静默不执行。

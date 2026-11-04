@@ -110,7 +110,7 @@ npm run check     # tsc --noEmit 类型检查
 
 ### 样式开发约定（强制）
 
-- **所有样式写在 `scss/` 下的 SCSS 中**，由 `build.mjs` 经 `sass.compile()` 编译并内联进 HTML。
+- **所有样式写在 `scss/` 下的 SCSS 中**，由 `tools/build.mjs` 经 `sass.compile()` 编译并内联进 HTML。
 - `index.template.html` 只保留占位符 `/*__STYLES__*/`（JS 为 `/*__BUNDLE__*/`）。**不要在模板里直接写 `<style>`。**
 - 改主题色 / 间距 / 圆角 / 字号 → 只改 `_tokens.scss`；组件样式在 `main.scss` 用嵌套 + `@each` 组织。
 - 构建时缺占位符会报错（防止模板与构建漂移）。

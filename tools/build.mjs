@@ -10,7 +10,16 @@ import { build } from "esbuild";
 import * as sass from "sass";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { execSync } from "node:child_process";
-import { mdToHtml } from "./tools/md2html.mjs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { mdToHtml } from "./md2html.mjs";
+
+/* 本脚本位于 tools/，而所有输入输出路径（src/、scss/、dist/、index.html）
+   都是相对仓库根的。与其把十几处字符串全改成 join(ROOT, ...)，不如在入口处
+   直接把工作目录切到仓库根 —— 这个脚本独占自己的进程，改 cwd 没有副作用，
+   而路径全部保持原样，可读性最好。 */
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+process.chdir(ROOT);
 
 /* 构建指纹：commit 短哈希 + UTC 分钟。写进页面页脚与诊断包 meta.build，
  * 让志愿者与维护者能对齐「测的是哪一版」——Pages 有 10 分钟缓存，本地打过
@@ -75,7 +84,7 @@ const cssResult = sass.compile("scss/main.scss", {
 const css = cssResult.css.replace(/\/\*[\s\S]*?\*\//g, "").trim();
 
 // ---------- 3. 注入模板 ----------
-const template = readFileSync("index.template.html", "utf-8");
+const template = readFileSync("tools/index.template.html", "utf-8");
 for (const marker of ["/*__BUNDLE__*/", "/*__STYLES__*/"]) {
   if (!template.includes(marker)) throw new Error(`模板缺少占位符 ${marker}`);
 }

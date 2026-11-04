@@ -24,8 +24,6 @@
 
 | File | Purpose |
 |---|---|
-| `build.mjs` | Build script: esbuild bundles TS + sass compiles SCSS + injects into the template → single-file artifact; includes the size budget gate (`SIZE_BUDGET_KB`) |
-| `index.template.html` | Page skeleton template; only the `/*__BUNDLE__*/`, `/*__STYLES__*/`, `/*__CHECKLIST__*/` placeholders |
 | `index.html` | **The final artifact** (root copy), zero-dependency single file, works by double-clicking; GitHub Pages points at it directly |
 | `package.json` / `package-lock.json` | npm deps and scripts (the whole build/check/verify/lint chain) |
 | `tsconfig.json` / `eslint.config.mjs` / `knip.config.js` | Strict TS check / ESLint (81-warning threshold) / unused-export detection |
@@ -75,6 +73,8 @@ Everything is compiled and inlined into the HTML at build time; the artifact shi
 |---|---|
 | `md2html.mjs` | Minimal Markdown→HTML converter; renders the test checklist into the page at build time |
 | `blob-studio.template.html` / `blob-studio.html` | Offline blob analyzer (template/artifact): paste hex or JSON to get a field table; two packets auto-diff |
+| `build.mjs` | Build script: esbuild bundles TS + sass compiles SCSS + injects into the template → single-file artifact; includes the size budget gate (`SIZE_BUDGET_KB`). It `process.chdir`s to the repo root on entry, so the paths inside stay written root-relative |
+| `index.template.html` | Page skeleton template; only the `/*__BUNDLE__*/`, `/*__STYLES__*/`, `/*__CHECKLIST__*/` placeholders |
 
 ## `docs/` — human-facing documents
 

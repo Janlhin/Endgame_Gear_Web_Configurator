@@ -77,6 +77,8 @@
 |---|---|
 | `md2html.mjs` | 极简 Markdown→HTML 转换器，构建时把测试清单渲染进页面 |
 | `blob-studio.template.html` / `blob-studio.html` | 离线 blob 分析器（模板/产物）：粘贴 hex 或 JSON 解析成字段表，双份自动差分 |
+| `build.mjs` | 构建脚本：esbuild 打包 TS + sass 编译 SCSS + 注入模板 → 单文件产物；含体积门禁（`SIZE_BUDGET_KB`）。**入口处 `process.chdir(仓库根)`**，故内部路径仍按根相对书写 |
+| `index.template.html` | 页面骨架模板，只有 `/*__BUNDLE__*/`、`/*__STYLES__*/`、`/*__CHECKLIST__*/` 占位符 |
 
 ## `docs/` —— 面向人的文档
 

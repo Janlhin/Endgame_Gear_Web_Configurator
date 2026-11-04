@@ -5,9 +5,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build.mjs",
+    "build": "node tools/build.mjs",
     "check": "tsc --noEmit",
-    "dev": "node build.mjs --watch",
+    "dev": "node tools/build.mjs --watch",
     "test": "node re/run_test.mjs",
     "check:i18n": "node re/i18n_audit.mjs",
     "check:ui": "python re/layout_check.py && python re/i18n_check.py && python re/render_check.py && python re/reset_check.py && python re/xm1_align_check.py",

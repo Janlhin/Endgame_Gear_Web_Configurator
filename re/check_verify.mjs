@@ -36,7 +36,7 @@ const REQUIRED = [
   ["test", "node re/run_test.mjs"],
   ["check:i18n", "python re/i18n_check.py"],
   ["check:ui", "python re/render_check.py"],
-  ["build", "node build.mjs"],
+  ["build", "node tools/build.mjs"],
 ];
 
 /**
