@@ -59,7 +59,7 @@ export default {
   jitter: "지터 필터 (v1)", maxFps: "센서 최대 FPS 강제 (v2)", multiclick: "멀티클릭 필터 (v2)",
   powerSaving: "절전 (분)", deepSleep: "딥 슬립 (분)", applyPerf: "성능/전원 적용",
   secButtons: "버튼 할당 및 클릭 필터", button: "버튼", mapping: "할당", clickFilter: "클릭 필터",
-  btnReadonly: "버튼 재할당(0x16 두 블록 쓰기)은 프로토콜 계층에 구현되어 있지만 아직 편집할 수 없습니다. 아래 클릭 필터는 「성능/전원 적용」으로 전송됩니다.",
+  btnReadonly: "버튼 재할당(0x16 두 블록 쓰기)은 아직 구현되지 않았습니다. 처음 5개 버튼의 클릭 필터는 「성능/전원 적용」으로 전송됩니다.",
   secTools: "백업 / 복원 / 도구", exportCfg: "구성 내보내기 (.json)", importCfg: "구성 가져와 쓰기", exportBlob: "원시 1024B blob 내보내기 (.bin)",
   exportDiag: "테스트 데이터 묶음 내보내기 (.json)",
   diagSaved: "테스트 데이터를 내보냈습니다: 모델 / PID / 펌웨어 / 인터페이스 컬렉션 / 전체 blob / 통신 로그. 무엇을 바꿨는지, 실제로 달라졌는지를 함께 보내주세요.",

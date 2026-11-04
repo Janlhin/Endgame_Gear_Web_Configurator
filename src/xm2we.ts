@@ -179,6 +179,8 @@ export class Xm2weSession {
   mem = new Map<number, number>();
   linkUp: boolean | null = null;
   battery: { pct: number; charging: boolean } | null = null;
+  /** 是否经 2.4G 接收器（无线）。只影响读块之间的间隔节奏，见 readConfig。 */
+  wireless = false;
 
   constructor(dev: any) {
     this.dev = dev;
@@ -292,6 +294,11 @@ export class Xm2weSession {
         addr += n;
         done += n;
         onProgress?.(done, total);
+        /* 无线链路在块间插 35 ms 间隔：一次读完 181 字节要 19 个来回，
+           连发会占满 RF 时隙、让指针出现可感知的卡顿（OpenMouse 的 WE 驱动
+           对此写死 WIRELESS_EEPROM_GAP_MS = 35，注释即「避免 RF 堵塞」）。
+           有线无此限制，故只在无线时等待；最后一块之后不必再等。 */
+        if (this.wireless && addr <= hi) await new Promise<void>(r => setTimeout(r, 35));
       }
     }
     this.mem = mem;
@@ -339,6 +346,10 @@ export class Xm2weSession {
    *  且首尾 181 字节逐字节一致 —— 官方工具本身只提供这两档。 */
   lod() { return paired(this.mem, 0x0A); }
   debounce() { return paired(this.mem, 0xA9); }
+  /** 休眠计时（原始值，成对存储）。厂商工具显示 raw × 10，单位未确认，
+   *  故界面只读展示原始值，不写入 —— 写一个单位不明的字段是纯粹的赌博。
+   *  存在性由 nqble 的真机转储证实：0xAD=6、0xAE=0x4F，6 + 0x4F = 0x55 成对成立。 */
+  sleepRaw() { return paired(this.mem, 0xAD); }
   /** CPI 指示灯颜色：8 组 [r,g,b,crc] @0x2C */
   ledColors() {
     const out: any[] = [];

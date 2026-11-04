@@ -59,7 +59,7 @@ export default {
   jitter: "ジッターフィルター (v1)", maxFps: "センサー最大 FPS を強制 (v2)", multiclick: "マルチクリックフィルター (v2)",
   powerSaving: "省電力 (分)", deepSleep: "ディープスリープ (分)", applyPerf: "パフォーマンス/電源を適用",
   secButtons: "ボタン割り当てとクリックフィルター", button: "ボタン", mapping: "割り当て", clickFilter: "クリックフィルター",
-  btnReadonly: "ボタンの再割り当て（0x16 の 2 ブロック書き込み）はプロトコル層で実装済みですが、まだ編集できません。下のクリックフィルターは「パフォーマンス/電源を適用」で送信されます。",
+  btnReadonly: "ボタンの再割り当て（0x16 の 2 ブロック書き込み）は未実装です。先頭 5 ボタンのクリックフィルターは「パフォーマンス/電源を適用」で送信されます。",
   secTools: "バックアップ / 復元 / ツール", exportCfg: "構成をエクスポート (.json)", importCfg: "構成をインポートして書き込み", exportBlob: "生の 1024B blob をエクスポート (.bin)",
   exportDiag: "テストデータ一式を書き出し (.json)",
   diagSaved: "テストデータ一式を書き出しました：機種 / PID / ファームウェア / インターフェース collections / blob 全体 / 通信ログ。何を変更したか、実際に変化を感じたかを添えて送り返してください。",

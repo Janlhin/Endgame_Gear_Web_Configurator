@@ -59,7 +59,7 @@ export default {
   jitter: "Bewegungs-Jitter-Filter (v1)", maxFps: "Maximale Sensor-FPS erzwingen (v2)", multiclick: "Multiclick-Filter (v2)",
   powerSaving: "Energiesparen (min)", deepSleep: "Tiefschlaf (min)", applyPerf: "Leistung/Strom übernehmen",
   secButtons: "Tastenzuordnung und Klickfilter", button: "Taste", mapping: "Zuordnung", clickFilter: "Klickfilter",
-  btnReadonly: "Das Neubelegen von Tasten (0x16, Zwei-Block-Schreiben) ist auf Protokollebene umgesetzt, aber noch nicht editierbar; die Klickfilter unten werden mit „Leistung/Strom übernehmen“ gesendet.",
+  btnReadonly: "Das Neubelegen von Tasten (0x16, Zwei-Block-Schreiben) ist noch nicht implementiert; die Klickfilter der ersten fünf Tasten werden mit „Leistung/Strom übernehmen“ gesendet.",
   secTools: "Sicherung / Wiederherstellung / Werkzeuge", exportCfg: "Konfiguration exportieren (.json)", importCfg: "Konfiguration importieren und schreiben", exportBlob: "Rohen 1024-Byte-blob exportieren (.bin)",
   exportDiag: "Testdatenpaket exportieren (.json)",
   diagSaved: "Testdatenpaket exportiert: Modell, PID, Firmware, Interface-Collections, vollständiger Blob und Kommunikationsprotokoll. Bitte zusammen mit „was geändert wurde“ und „ob es sich wirklich anders anfühlt“ zurücksenden.",

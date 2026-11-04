@@ -58,7 +58,7 @@ export default {
   jitter: "抖動過濾 (v1)", maxFps: "強制最高感測器 FPS (v2)", multiclick: "多擊確認過濾 (v2)",
   powerSaving: "省電逾時 (分鐘)", deepSleep: "深度休眠 (分鐘)", applyPerf: "套用效能/電源",
   secButtons: "按鍵對應與點擊過濾", button: "按鍵", mapping: "對應", clickFilter: "點擊過濾",
-  btnReadonly: "按鍵重新對應（0x16 雙塊寫入）已在協定層實作，暫未開放編輯；點擊過濾可單獨調整後隨「套用效能/電源」送出。",
+  btnReadonly: "按鍵重對應（0x16 雙塊寫）尚未實作，暫不可編輯；前 5 個按鍵的點擊過濾可調整後隨「套用效能/電源」下發。",
   secTools: "設定備份 / 還原 / 工具", exportCfg: "匯出設定 (.json)", importCfg: "匯入設定並寫入", exportBlob: "匯出原始 1024B blob (.bin)",
   exportDiag: "匯出測試資料包 (.json)",
   diagSaved: "已匯出測試資料包：型號 / PID / 韌體 / 介面集合 / 完整 blob / 通訊記錄都在裡面。把它連同「改了什麼、手感是否真的變了」一起回傳。",

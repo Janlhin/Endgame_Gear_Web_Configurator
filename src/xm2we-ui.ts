@@ -103,6 +103,8 @@ export async function openXm2we(d: any) {
   model = wired ? "XM2we (wired)" : "XM2we (2.4G dongle)";
   if (!(await openGuarded(d))) { dev = null; return; }
   sess = new Xm2weSession(d);
+  /* 无线与否决定读块间隔（见 Xm2weSession.readConfig 的 35 ms）。 */
+  sess.wireless = !wired;
   /* 拔线/断电时浏览器在该设备上触发 disconnect —— 走统一的复位路径 */
   watchDisconnect(d, reason => { void onWeLost(reason); });
 
@@ -221,6 +223,11 @@ function renderCpi() {
     lodEl.prepend(o);
   }
   lodEl.value = lod === null ? "" : String(lod);
+
+  /* 休眠：只读。厂商工具显示 raw × 10，但单位未确认，故不提供编辑入口 ——
+     写一个单位不明的字段等于赌博，而这个字段对用户也没有紧迫价值。 */
+  const sl = s.sleepRaw();
+  $el<HTMLInputElement>("weSleep").value = sl === null ? "—" : `0x${sl.toString(16).padStart(2, "0")} (${sl})`;
 }
 
 function renderKeys() {
@@ -297,22 +304,35 @@ async function applyPerf() {
   if (!sess) return banner("err", t("weNoDevice"));
   if (!ensureWeArmed()) return;
   try {
+    /* ★ 只写真正变了的字段。nqble 实测反馈：只想改 LOD，日志里却连着重写了
+       回报率与去抖（值未变，故无害）。每多写一个字节就多一次改坏的机会。
+       旧实现里只有 LOD 有「值相同就跳过」的守卫；回报率无条件写，
+       去抖靠「输入框是否有焦点」判断 —— 那个判据在改同一张卡里别的控件时恒为真，
+       等于没生效。三个字段现在用同一条规则：与刚读到的值相同就不写。 */
+    let wrote = 0;
     const hz = parseInt($el<HTMLSelectElement>("wePolling").value, 10);
-    if (isFinite(hz) && hz > 0) {
+    const curHz = sess.polling();
+    if (isFinite(hz) && hz > 0 && hz !== curHz) {
       await sess.writePolling(hz);
       log(`✓ polling rate → ${hz} Hz (mask 0x${(1000 / hz).toString(16)})`);
+      wrote++;
     }
     const dbEl = $el<HTMLInputElement>("weDebounce");
-    if (document.activeElement !== dbEl) {
-      const db = parseInt(dbEl.value, 10);
-      if (isFinite(db) && db >= 0) { await sess.writeDebounce(db); log(`✓ debounce → ${db} ms`); }
+    const db = parseInt(dbEl.value, 10);
+    const curDb = sess.debounce();
+    if (isFinite(db) && db >= 0 && db !== curDb) {
+      await sess.writeDebounce(db);
+      log(`✓ debounce → ${db} ms`);
+      wrote++;
     }
     const lodEl = $el<HTMLSelectElement>("weLod");
     const wantLod = parseInt(lodEl.value, 10);
     if ((wantLod === 1 || wantLod === 2) && wantLod !== sess.lod()) {
       await sess.writeLod(wantLod);
       log(`✓ LOD → ${wantLod} mm`);
+      wrote++;
     }
+    if (wrote === 0) log("⋯ 没有字段发生变化，未发送任何写入");
     banner("ok", t("weApplyOk"));
     await refreshWe();
   } catch (e) { banner("err", errMsg(e)); log("✗ " + errMsg(e)); }

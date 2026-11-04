@@ -137,6 +137,11 @@
         <select id="weLod"></select>
         <span class="note">0x0A · 1 = 1 mm · 2 = 2 mm</span>
       </div>
+      <div class="grp">
+        <label>Sleep</label>
+        <input type="text" id="weSleep" readonly>
+        <span class="note">0xAD · raw value (OEM tool shows raw × 10) · read-only</span>
+      </div>
       <div class="applyRow">
         <button id="btnWeApplyCpi" data-i18n="applySensor">应用传感器设置</button>
         <button id="btnWeApplyPerf" class="ghost" data-i18n="applyPerf">应用性能/电源</button>
@@ -265,7 +270,7 @@
       <thead><tr><th data-i18n="button">按键</th><th data-i18n="mapping">映射</th><th data-i18n="clickFilter">点击过滤</th></tr></thead>
       <tbody id="btnRows"></tbody>
     </table>
-    <p class="muted" data-i18n="btnReadonly">按键重映射（0x16 双块写）已在协议层实现，暂未开放编辑；点击过滤可单独调整后随“应用性能/电源”下发。</p>
+    <p class="muted" data-i18n="btnReadonly">按键重映射（0x16 双块写）尚未实现，暂不可编辑；前 5 个按键的点击过滤可调整后随“应用性能/电源”下发。</p>
   </section>
 
   <section class="card" id="cardTools" data-off>

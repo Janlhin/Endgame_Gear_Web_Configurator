@@ -59,7 +59,7 @@ export default {
   jitter: "Filtre de gigue (v1)", maxFps: "Forcer les FPS max du capteur (v2)", multiclick: "Filtre multiclic (v2)",
   powerSaving: "Économie d’énergie (min)", deepSleep: "Veille profonde (min)", applyPerf: "Appliquer performance/alimentation",
   secButtons: "Affectation des boutons et filtres de clic", button: "Bouton", mapping: "Affectation", clickFilter: "Filtre de clic",
-  btnReadonly: "La réaffectation des boutons (0x16, écriture en deux blocs) est implémentée au niveau du protocole mais pas encore modifiable ; les filtres de clic ci-dessous sont appliqués avec « Appliquer performance/alimentation ».",
+  btnReadonly: "La réaffectation des boutons (écriture en deux blocs 0x16) n’est pas encore implémentée ; les filtres de clic des cinq premiers boutons sont appliqués avec « Appliquer performance/alimentation ».",
   secTools: "Sauvegarde / Restauration / Outils", exportCfg: "Exporter la configuration (.json)", importCfg: "Importer une configuration et l’écrire", exportBlob: "Exporter le blob brut de 1024 octets (.bin)",
   exportDiag: "Exporter le pack de données de test (.json)",
   diagSaved: "Pack exporté : modèle, PID, firmware, collections d’interface, blob complet et journal des échanges. Renvoyez-le avec « ce que vous avez changé » et « si la sensation est vraiment différente ».",
