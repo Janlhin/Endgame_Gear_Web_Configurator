@@ -2,11 +2,13 @@
 
 [English](README.md) | **简体中文**
 
-一个在浏览器里直接配置 Endgame Gear 无线游戏鼠标的工具 —— **无需驱动、无需安装**：打开页面 → 点连接 → 改设置。
+一个在浏览器里配置 Endgame Gear 鼠标的工具 —— **无需驱动、无需安装、不产生任何网络流量**：打开页面 → 点连接 → 改设置。
 
-基于 Chrome/Edge 的 **WebHID** API，通过 HID feature report 与鼠标或接收器的配置通道通信。协议实现来自对官方 Windows 工具的完整社区逆向（见[致谢](#致谢)），并复刻了官方工具的全部时序怪癖。
+一切通过 **WebHID** 完成：工具经 HID feature report 与鼠标或接收器自带的配置通道通信。协议工作来自社区对官方 Windows 工具的逆向（见[致谢](#致谢)）；实现连重试次数都复刻了官方的时序怪癖，其中数个家族已由持有真机的用户**逐字节验证**。
 
-> **两套协议家族并存**：Endgame Gear 并非单一协议的产品线。4k 无线家族使用 interface `0xFF01` + `0xA0`/`0xA1` 报文 + 1024B 配置 blob；2020 年代的 XM2we/XM1 有线家族使用 interface `0xFF02` + `0x08`/`0x09` 报文 + 17 字节带校验和的帧 + EEPROM 配置。本工具两者都支持，连接时按 PID 自动路由。
+> **Endgame Gear 并非单一协议的产品线。** 线上有五套协议并存：4k 无线家族（interface `0xFF01`、`0xA0`/`0xA1` 报文、1024B 配置 blob）、8k 有线家族（同一套 blob 布局，整块 `0x11` 写）、2020 年代的 XM2we 有线/2.4G 家族（interface `0xFF02`、`0x08`/`0x09` 报文、17 字节带校验和的帧、EEPROM）、XM1 有线家族（1041B blob，写入限于实测确认的字段），以及第四家族（XM1r / OP1 / OP1 RGB）—— 只识别、不通信。工具连接时按 PID 自动路由，界面只显示当前型号真正具备的设置。
+
+**它不做什么**：不装任何东西、不向任何服务器发数据、不碰固件。配置写入一律是「读-改-写」—— 你没动过的字段保持设备刚给的那份字节；未经真机验证的型号默认只读，需你显式解锁，且仅对本次连接有效。
 
 ## 支持的设备
 
@@ -16,7 +18,7 @@
 | OP1w 4k | 4k wireless v1 | `0x1970` | `0x1972` | ✅ 完整支持 |
 | XM2w 4k v2 | 4k wireless v2 | `0x1970` | `0x1982` / `0x1981` | ✅ 完整支持 |
 | OP1w 4k v2 | 4k wireless v2 | `0x1970` | `0x1984` | ✅ 完整支持 |
-| **XM2we / OP1we** | **2020 有线/2.4G** | `0x1961` | `0x1960` / **`0x1962`** | ✅ **XM2we 已真机验证**（读写均通过有线 + 无线两种连接；LOD 映射由差分实测确认：切换时只有 `0x0A`/`0x0B` 变化；恢复后 181 字节与原始备份逐字节一致）。OP1we 仍为代码就绪（PID `0x1962` 来自官方 WE 工具 `Cfg.ini`） |
+| **XM2we / OP1we** | **2020 有线/2.4G** | `0x1961` | `0x1960` / **`0x1962`** | ✅ **XM2we 已真机验证**（2026-11）—— 有线与无线两种连接均可读写；LOD 映射由差分实测确认（只有 `0x0A`/`0x0B` 变化）；恢复后 181 字节逐字节一致。OP1we 仍为代码就绪（PID `0x1962` 来自官方 WE 工具 `Cfg.ini`） |
 | XM2 8k (`0x1966`) / XM2 8k v2 (`0x1980`) | **8k 有线**（与 4k 家族同构） | — | `0x1966` / `0x1980` | ✅ **可读可写** —— blob 偏移与 4k 家族逐字节一致；写入使用 **`0x11` 整块写**（读-改-写），三个来源交叉印证（官方工具二进制 + `egctl` + `qsxcv`），**未真机验证** |
 | OP1 8k / Purple Frost (`0x1964`) / OP1 8k v2 / Raw Input (`0x1978`) | **8k 有线** | — | `0x1964` / `0x1978` | ✅ **可读可写** —— 同上 |
 | OP1 / OP1 RGB | **第四协议家族**（VID `0x3367`） | — | `0x1903` / `0x1905` / `0x1906` / `0x1910` | 🔍 **仅识别，不通信** —— interface page `0xFFA1`，64B 包 + 54 条 `kCom*` 命令 + 32B 口令；见 `re/FAMILY4_NOTES.md` |
@@ -167,6 +169,8 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 | 厂商 DLL | 无（协议在主程序里） | `OemDrv.exe` | `hidapi` 静态链接 |
 | 内部代号 | K25A / K25B | — | W25（4k 无线）/ **K26**（8k 有线） |
 
+上表只涵盖本工具真正会通信的三套家族。第四家族（XM1r / OP1 / OP1 RGB，VID `0x3367`，interface `0xFFA1`）框架完全不同：64 字节报文、54 条 `kCom*` 命令、32 字节口令 —— 连接时能被识别并明确报「不支持」，但绝不通信（见 `re/FAMILY4_NOTES.md`）。
+
 **XM1 与 4k 家族共用同一套协议框架** —— `0xA0` 1041B 大报文、1024B blob @16、下述重试逻辑逐字节一致。差异只在 VID、命令集规模、有无状态字节、CPI 槽数。
 **所以支持 XM1 与 8k 有线家族几乎不需要新的协议代码。**
 
@@ -192,11 +196,11 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 
 这是一个独立的开源工具，与 Endgame Gear / Pro Gamersware GmbH 无任何隶属关系。它只读写你自己的配置；不改固件、不绕过任何保护机制。使用风险自担；你所做任何配置改动的后果由你自己承担（协议文档已验证写入双向可靠，但请对"恢复出厂"以外的底层操作保持审慎）。
 
-**未真机验证的型号（整个 8k 有线家族、XM2we / OP1we 及若干变体 PID）默认只读**：点击写入会弹出确认对话框，确认后仅**对本次连接**放行，并先自动导出备份。逐型号的理由与残余风险：**[docs/release-safety-audit.md](docs/release-safety-audit.md)**。
+**未真机验证的型号（整个 8k 有线家族、OP1we 及若干变体 PID）默认只读**：点击写入会弹出确认对话框，确认后仅**对本次连接**放行，并先自动导出备份。XM2we 已于 2026 年 11 月移出本名单 —— 一位用户分别在有线与无线两种连接下验证了读与写。
 
 ## 参与测试
 
-有我们没有的鼠标吗（整个 8k 有线家族、XM2we / OP1we）？你的真机测试是验证这些型号的唯一路径。请先读这两份文档：
+有我们没有的鼠标吗（整个 8k 有线家族，或 OP1we）？你的真机测试是验证这些型号的唯一路径。请先读这两份文档：
 
 - **[docs/remote-beta-guide.md](docs/remote-beta-guide.md)** —— 参与前必读（备份、风险、如何恢复）
 - **[docs/test-checklist.md](docs/test-checklist.md)** —— 测哪些项、每项怎么填
@@ -215,7 +219,7 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 
 ## 路线图
 
-带依赖与完成状态的任务队列在 **[TASKS.md](TASKS.md)**。
+带依赖与完成状态的任务队列在 **[docs/internal/TASKS.md](docs/internal/TASKS.md)**。
 
 ### 支持状态
 
@@ -223,14 +227,16 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 |---|---|
 | **XM2w 4k / 4k v2，OP1w 4k / 4k v2** | ✅ 完整读写（协议与官方 v1.02 工具逐字节核对） |
 | **XM1 / XM1 RGB** | ✅ 可读可写（写入硬性限制在实测确认的 23 字节内） |
-| **XM2we / OP1we** | 🧩 代码就绪（`src/xm2we.ts`，29 项离线模拟断言通过），**从未连过真机** |
-| **XM2 8k / OP1 8k（含 v2）** | 🔍 PID 从官方工具二进制恢复，**只读** —— gen 编码经真机确认后写入才会开放 |
+| **XM2we** | ✅ **已真机验证**（2026-11）—— 有线（`0x1960`）与无线（`0x1961`）均可读可写；LOD 映射由差分实测确认；恢复后 181 字节逐字节一致 |
+| **OP1we** | 🧩 代码就绪（与 XM2we 共用驱动），**尚未连过真机** |
+| **XM2 8k / OP1 8k（含 v2）** | 🧩 **读写均已实现**（`0x11` 整块写，经三个独立来源交叉印证），**尚未真机验证** —— 写入需显式确认后放行 |
 
 ### 已完成
 
-- [x] 官方仓库与产品线侦察（9 个仓库，16 款鼠标全表 → `docs/official-product-catalog.md`）
+- [x] 官方仓库与产品线侦察（11 个仓库，16 款鼠标全表 → `docs/official-product-catalog.md`）
 - [x] 4k 无线家族 v1 / v2 的全部字段（当前主要支持目标）
-- [x] XM2we 2020 有线/2.4G 家族（29 项离线模拟断言通过）
+- [x] XM2we 2020 有线/2.4G 家族 —— **已真机验证**（2026-11）：两种连接均可读写、LOD 映射、写入可逆（181 字节原样还原）
+- [x] 协议与第二套独立实现（`OpenMouse-Project/mouse-protocol`）交叉核对：4k 的 blob 偏移与 `0x14`/`0x15` 块载荷逐字节一致，8k 写入时序完全相同
 - [x] XM1 2020 有线家族：**可读 + 受限写入**（`re/XM1_NOTES.md` 第 6 章）
 - [x] 样式层迁移到 SCSS（`scss/`；强制约定见"本地运行"一节）
 - [x] 深色主题（`[data-theme]` + CSS 自定义属性，零组件样式改动）
@@ -239,12 +245,14 @@ gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[p
 ### 待办（按优先级）
 
 1. **8k 有线家族真机验证** —— PID 已填入（`0x1966`/`0x1964`/`0x1980`/`0x1978`）；需确认 gen 编码与字段语义后开放写入
-2. **XM2we 真机验证** —— input report 桥接时序、回报率写入
+2. **OP1we 真机验证** —— 与 XM2we 共用驱动，只有 PID（`0x1962`）从未在真机上出现过
 3. **按键重映射 UI** —— 4k 家族协议层已实现，缺编辑器
 4. **XM1 灯光 / 按键映射 / Angle Snap / Smoothing** —— 差分分析定位后即可做
 5. **更多语言** —— 在 `src/i18n/` 下加一个词条文件（仿照 `de.ts` 的 189 个键），导入 `src/i18n.ts` 的 `I18N`，在 `normalizeLang()` 加语言标签映射，再在 `index.template.html` 的语言下拉与 `main.ts` 的 `STAGE_COLORS`/`BTN_NAMES` 各加一条。`npm run check:i18n` 逐站点校验 —— 欢迎 PR
-6. **部署到 GitHub Pages + 向厂商索取协议文档**（邮件草稿在 git 历史里 —— `docs/email-to-endgamegear.md`，2026-10-11 移除）
+6. **向厂商索取协议文档** —— 站点已在 GitHub Pages 上线；邮件草稿在 git 历史里（`docs/email-to-endgamegear.md`，事后已删除）
 
-> ✅ 已完成（2026-10-09）：4k 家族写入后读回校验；**独立 XY CPI 经真机确认**
+> ✅ 已完成（2026-11）：XM2we 真机验证 —— 有线与无线两种连接均可读写、LOD 映射已确认、写入可逆（181 字节原样还原）
+>
+> ✅ 已完成（2026-10-09）：
 
-详细任务、依赖与完成状态：**[TASKS.md](TASKS.md)**。
+详细任务、依赖与完成状态：**[docs/internal/TASKS.md](docs/internal/TASKS.md)**。

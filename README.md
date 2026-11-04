@@ -2,11 +2,13 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-A browser-based tool that configures Endgame Gear wireless gaming mice directly — **no driver, no installation**: open the page → click connect → change settings.
+A browser-based configurator for Endgame Gear mice — **no driver, no installer, no network traffic**: open the page → connect → change settings.
 
-Built on Chrome/Edge's **WebHID** API, talking to the mouse's or receiver's configuration channel through HID feature reports. The protocol implementation comes from a complete community reverse-engineering of the official Windows tools (see [Acknowledgements](#acknowledgements)), and it reproduces all of the official tools' timing quirks.
+Everything happens over **WebHID**: the tool talks to the mouse's or the receiver's own configuration channel through HID feature reports. The protocol work comes from a community reverse-engineering of the official Windows tools (see [Acknowledgements](#acknowledgements)); the implementation reproduces their timing quirks down to the retry counts, and several families have since been **verified byte-for-byte on real hardware** by people who actually own the mice.
 
-> **Two protocol families coexist**: Endgame Gear is not a single-protocol product line. The 4k wireless family uses interface `0xFF01` + `0xA0`/`0xA1` reports + a 1024B config blob; the 2020-era XM2we/XM1 wired family uses interface `0xFF02` + `0x08`/`0x09` reports + 17-byte checksummed frames + EEPROM config. This tool supports both and auto-routes by PID on connect.
+> **Endgame Gear is not a single-protocol product line.** Five protocol families are in play: the 4k wireless family (interface `0xFF01`, `0xA0`/`0xA1` reports, 1024B config blob), the 8k wired family (same blob layout, whole-blob `0x11` writes), the 2020-era XM2we wired/2.4G family (interface `0xFF02`, `0x08`/`0x09` reports, 17-byte checksummed frames, EEPROM), the XM1 wired family (1041B blob, writes limited to the fields confirmed on hardware), and a fourth family (XM1r / OP1 / OP1 RGB) that is recognised but never spoken to. The tool routes by PID on connect and shows only the settings the connected model actually has.
+
+**What it does not do**: it installs nothing, sends nothing to any server, and never touches firmware. Configuration writes are read-modify-write — fields you did not edit keep the bytes the device just handed over — and models that have not been verified on real hardware stay read-only until you explicitly unlock them, for the current session only.
 
 ## Supported devices
 
@@ -16,7 +18,7 @@ Built on Chrome/Edge's **WebHID** API, talking to the mouse's or receiver's conf
 | OP1w 4k | 4k wireless v1 | `0x1970` | `0x1972` | ✅ Full support |
 | XM2w 4k v2 | 4k wireless v2 | `0x1970` | `0x1982` / `0x1981` | ✅ Full support |
 | OP1w 4k v2 | 4k wireless v2 | `0x1970` | `0x1984` | ✅ Full support |
-| **XM2we / OP1we** | **2020 wired/2.4G** | `0x1961` | `0x1960` / **`0x1962`** | ✅ **XM2we verified on hardware** (read and write over both the cable and the receiver; LOD mapping confirmed by a differential dump where only `0x0A`/`0x0B` moved; restoring returned all 181 bytes byte-identical). OP1we remains code-ready (PID `0x1962` from the official WE tool's `Cfg.ini`) |
+| **XM2we / OP1we** | **2020 wired/2.4G** | `0x1961` | `0x1960` / **`0x1962`** | ✅ **XM2we verified on real hardware** (Nov 2026) — read and write over both the cable and the receiver; LOD mapping confirmed by a differential dump where only `0x0A`/`0x0B` moved; restoring returned all 181 bytes byte-identical. OP1we remains code-ready (PID `0x1962` from the official WE tool's `Cfg.ini`) |
 | XM2 8k (`0x1966`) / XM2 8k v2 (`0x1980`) | **8k wired** (isomorphic to the 4k family) | — | `0x1966` / `0x1980` | ✅ **Read + write** — blob offsets are byte-for-byte identical to the 4k family; writes use **`0x11` whole-blob write** (read-modify-write), cross-corroborated by three sources (official tool binary + `egctl` + `qsxcv`), **not verified on real hardware** (未真机验证) |
 | OP1 8k / Purple Frost (`0x1964`) / OP1 8k v2 / Raw Input (`0x1978`) | **8k wired** | — | `0x1964` / `0x1978` | ✅ **Read + write** — same as above |
 | OP1 / OP1 RGB | **Fourth protocol family** (VID `0x3367`) | — | `0x1903` / `0x1905` / `0x1906` / `0x1910` | 🔍 **Recognized only, no communication** — interface page `0xFFA1`, 64B packets + 54 `kCom*` commands + 32B passphrase; see `re/FAMILY4_NOTES.md` |
@@ -167,6 +169,8 @@ Then visit `https://<your-username>.github.io/Endgame_Gear_Web_Configurator/`. G
 | vendor DLL | none (protocol is in the main exe) | `OemDrv.exe` | `hidapi` statically linked |
 | internal codename | K25A / K25B | — | W25 (4k wireless) / **K26** (8k wired) |
 
+The table above covers the three families this tool actually talks to. A fourth family exists — XM1r / OP1 / OP1 RGB (VID `0x3367`, interface `0xFFA1`) — with a completely different framework: 64 B packets, 54 `kCom*` commands and a 32-byte passphrase. It is recognised on connect and reported as unsupported, but never spoken to (see `re/FAMILY4_NOTES.md`).
+
 **XM1 and the 4k family share one protocol framework** — the `0xA0` 1041B bulk report, the 1024B blob @16, and the retry logic below are byte-for-byte identical. The differences are only VID, command-set size, presence of a status byte, and CPI slot count.
 **So supporting XM1 and the 8k wired family requires almost no new protocol code.**
 
@@ -192,11 +196,11 @@ The protocol implementation has been verified byte-for-byte against the official
 
 This is an independent open-source tool with no affiliation to Endgame Gear / Pro Gamersware GmbH. It only reads and writes your own configuration; it does not modify firmware and does not bypass any protection mechanism. Use at your own risk; you bear the consequences of any configuration change you make (the protocol documentation has verified that writing works in both directions, but please use low-level operations other than "factory reset" judiciously).
 
-**Models not verified on real hardware (the entire 8k wired family, XM2we / OP1we, and several variant PIDs) are read-only by default**: clicking write shows a confirmation dialog, and after confirming it is allowed **for that connection only**, with a backup exported automatically first. Per-model rationale and residual risk: **[docs/release-safety-audit.md](docs/release-safety-audit.md)**.
+**Models not verified on real hardware (the entire 8k wired family, OP1we, and several variant PIDs) are read-only by default**: clicking write shows a confirmation dialog, and after confirming it is unlocked for that connection only, with a backup exported first. XM2we left this list in November 2026, after a user verified reads and writes over both the cable and the receiver.
 
 ## Contributing to testing
 
-Do you have a mouse we don't (the entire 8k wired family, XM2we / OP1we)? Your real-hardware testing is the only path to verifying these models. Please read these two documents first:
+Do you have a mouse we don't (the entire 8k wired family, or an OP1we)? Your real-hardware testing is the only path to verifying these models. Please read these two documents first:
 
 - **[docs/remote-beta-guide.md](docs/remote-beta-guide.md)** — must read before participating (backup, risks, how to recover)
 - **[docs/test-checklist.md](docs/test-checklist.md)** — which items to test and how to fill each in
@@ -215,7 +219,7 @@ See **[CHANGELOG.md](CHANGELOG.md)** (since v1.3).
 
 ## Roadmap
 
-The task queue with dependencies and completion status lives in **[TASKS.md](TASKS.md)**.
+The task queue with dependencies and completion status lives in **[docs/internal/TASKS.md](docs/internal/TASKS.md)**.
 
 ### Support status
 
@@ -223,14 +227,16 @@ The task queue with dependencies and completion status lives in **[TASKS.md](TAS
 |---|---|
 | **XM2w 4k / 4k v2, OP1w 4k / 4k v2** | ✅ Full read + write (protocol verified byte-for-byte against the official v1.02 tool) |
 | **XM1 / XM1 RGB** | ✅ Read + write available (writes hard-limited to the 23 bytes confirmed by real-hardware testing) |
-| **XM2we / OP1we** | 🧩 Code ready (`src/xm2we.ts`, 29 offline simulation assertions pass), **never connected to real hardware** |
-| **XM2 8k / OP1 8k (incl. v2)** | 🔍 PIDs recovered from official tool binaries, **read-only** — writes will only open once the gen encoding is confirmed on real hardware |
+| **XM2we** | ✅ **Verified on real hardware** (Nov 2026) — read and write over both the cable (`0x1960`) and the receiver (`0x1961`); LOD mapping confirmed by a differential dump; restoring returned all 181 bytes byte-identical |
+| **OP1we** | 🧩 Code ready (shares the XM2we driver), **not yet connected to real hardware** |
+| **XM2 8k / OP1 8k (incl. v2)** | 🧩 **Read + write implemented** (`0x11` whole-blob write, cross-checked against three independent sources), **not yet verified on real hardware** — writes open only after an explicit confirmation |
 
 ### Done
 
-- [x] Official repo and product-line reconnaissance (9 repos, full table of 16 mice → `docs/official-product-catalog.md`)
+- [x] Official repo and product-line reconnaissance (11 repos, full table of 16 mice → `docs/official-product-catalog.md`)
 - [x] All fields for the 4k wireless family v1 / v2 (the current primary support target)
-- [x] XM2we 2020 wired/2.4G family (29 offline simulation assertions pass)
+- [x] XM2we 2020 wired/2.4G family — **verified on real hardware** (Nov 2026): read + write on both transports, LOD mapping, reversible writes (181 bytes restored byte-for-byte)
+- [x] Protocol cross-checked against a second independent implementation (`OpenMouse-Project/mouse-protocol`): 4k blob offsets and the `0x14`/`0x15` block payloads match byte-for-byte, 8k write timings match exactly
 - [x] XM1 2020 wired family: **read + restricted write** (chapter 6 of `re/XM1_NOTES.md`)
 - [x] Style layer migrated to SCSS (`scss/`; mandatory conventions in the "Running locally" section)
 - [x] Dark theme (`[data-theme]` + CSS custom properties, zero component-style changes)
@@ -239,12 +245,14 @@ The task queue with dependencies and completion status lives in **[TASKS.md](TAS
 ### Todo (by priority)
 
 1. **Real-hardware verification of the 8k wired family** — PIDs filled in (`0x1966`/`0x1964`/`0x1980`/`0x1978`); needs gen encoding and field semantics confirmed before writes open
-2. **XM2we real-hardware verification** — input report bridge timing, polling-rate writes
+2. **OP1we real-hardware verification** — shares the XM2we driver; only the PID (`0x1962`) has never been seen on a machine
 3. **Button remapping UI** — the 4k family's protocol layer is implemented, the editor is missing
 4. **XM1 lighting / key mapping / Angle Snap / Smoothing** — doable once located by differential analysis
 5. **More languages** — add an entry file under `src/i18n/` (following the 189 keys in `de.ts`), import it into `I18N` in `src/i18n.ts`, add the language tag mapping in `normalizeLang()`, then add one entry each to the language dropdown in `index.template.html` and to `STAGE_COLORS`/`BTN_NAMES` in `main.ts`. `npm run check:i18n` validates each site individually — PRs welcome
-6. **Deploy to GitHub Pages + request protocol documentation from the vendor** (draft email in git history — `docs/email-to-endgamegear.md`, removed 2026-10-11)
+6. **Request protocol documentation from the vendor** — the site is already live on GitHub Pages; the email draft is in git history (`docs/email-to-endgamegear.md`, removed afterwards)
 
-> ✅ Done (2026-10-09): post-write read-back verification for the 4k family; **independent XY CPI confirmed on real hardware**
+> ✅ Done (2026-11): XM2we verified on real hardware — read + write over the cable and the receiver, LOD mapping confirmed, writes reversible (181 bytes restored byte-for-byte)
+>
+> ✅ Done (2026-10-09):
 
-Detailed tasks, dependencies and completion status: **[TASKS.md](TASKS.md)**.
+Detailed tasks, dependencies and completion status: **[docs/internal/TASKS.md](docs/internal/TASKS.md)**.
