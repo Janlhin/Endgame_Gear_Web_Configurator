@@ -6,7 +6,7 @@
  * 而「导出但无人 import」正是重构残留最典型的信号。
  *
  * ★ **裸跑 `npx knip` 的结果大量是误报**，因为本项目的入口不止 `src/main.ts`：
- *   · `re/test_*.ts` 由 re/run_test.mjs 用数组动态 import，knip 静态分析看不见；
+ *   · `re/tests/test_*.ts` 由 re/run_test.mjs 用数组动态 import，knip 静态分析看不见；
  *   · `scss/*.scss` 由 build.mjs 里的 sass.compile 加载，不是 TS import；
  *   · `tools/blob-studio.template.html` 由 build.mjs 读字符串占位符注入。
  * 下面逐项声明这些入口 / 排除项，否则报告会把「测试文件」「样式文件」全列为未使用，
@@ -28,7 +28,7 @@ module.exports = {
   // re/ 下是回归测试与逆向探查脚本。它们大量构造畸形输入来验证边界处理，
   // 任何「未使用」判断都无意义（本项目判例三：逆向脚本不参与清理）。
   ignore: [
-    "re/test_*.ts",
+    "re/tests/test_*.ts",
     "re/_domstub.ts",
     "re/_rename.mjs",
     "scss/**",            // 样式由 sass 编译，knip 不该管

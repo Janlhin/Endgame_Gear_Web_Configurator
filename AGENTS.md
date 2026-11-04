@@ -15,7 +15,7 @@
 2. **未在真机验证过的型号一律只读。** 需要放开时走"默认只读 → 点击弹确认（写明风险）
    → 确认后自动导出备份 → 仅当次连接放行"，四件套缺一不可。
    涉及的两个开关：`S.betaArmed`（8k，`src/state.ts`）与 `WE_WRITES_ENABLED`（WE，`src/xm2we.ts`）。
-3. **改动写入路径必须同步改 `re/test_write_gates.ts`**，否则视为未完成。
+3. **改动写入路径必须同步改 `re/tests/test_write_gates.ts`**，否则视为未完成。
 4. **禁止 `--no-verify`**，禁止注释掉断言、放宽容错阈值来"通过"校验。
 
 ## 2. 协议事实的来源等级
@@ -65,7 +65,7 @@ ubuntu 跑 `verify:ci`，windows-latest 跑 `check:ui` —— **两条都跑，�
    `build.mjs` 的 `assertNoDevComments` 与"无绝对路径"检查是硬门禁，改模板时别绕过它。
 2. **脚本层禁止硬编码绝对路径**（`re/*.py` 曾各写一份 `file:///C:/...`，目录改名后四个检查同时失效）。
    一律用 `os.path.join(os.path.dirname(__file__), "..", ...)` 推导。
-3. **测试文件排在 `re/test_presence.ts` 之前**——它末尾是 `process.exit(0)`，排它后面的测试静默不执行。
+3. **测试文件排在 `re/tests/test_presence.ts` 之前**——它末尾是 `process.exit(0)`，排它后面的测试静默不执行。
 4. **i18n 改键要同步 8 个词典**，且 `re/i18n_check.py` 里的 `T{lang}` 是各语言标题的
    **互相不包含判别片段**，改产品名不同步会让语言检测整片 FAIL。
 5. **SCSS 变量是 `$acc`**，不是 `$accent`；颜色/间距一律走 `scss/_tokens.scss` 的 token，
@@ -163,7 +163,7 @@ git config core.hooksPath .husky/_
 
 **两处已升级为 error 的原因**（改动前请读）：
 
-- `no-unused-vars`：49 处存量已逐个核实并清除（判据见 TASKS.md 的
+- `no-unused-vars`：49 处存量已逐个核实并清除（判据见 docs/internal/TASKS.md 的
   「死代码判定的三种手段」）。往后留下未使用的导入，提交会被直接拒绝。
   仍放行两类：`^_` 前缀（约定）与 catch 参数（语言强制无法省略）。
 - 协议边界的 `no-explicit-any`：那里是 HID 数据进入代码的唯一入口，
@@ -175,4 +175,4 @@ git config core.hooksPath .husky/_
 
 **最大的遗留**：`util.ts` 里 `const $ = (id: string): any => document.getElementById(id)`
 是 121 处 DOM 调用的类型源头，`S` 本身也是 `any`。这两处构成剩余 85 处 `any`
-的主要来源（TASKS.md 的 T-112）。在它收敛之前，`$("x").anything` 不会报错。
+的主要来源（docs/internal/TASKS.md 的 T-112）。在它收敛之前，`$("x").anything` 不会报错。
