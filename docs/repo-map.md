@@ -47,10 +47,13 @@
 | `render.ts` | 状态 → DOM 渲染 |
 | `presence.ts` | 连接健壮性：disconnect 事件 + 周期枚举双信号，设备消失自动回初始屏 |
 | `session.ts` | 连接会话编排 |
+| `main.ts` | 入口：DOM 事件绑定与按钮 handler（写入、导入/恢复、导出、诊断、XM1 工具） |
 | `connect.ts` | "连接设备"按钮逻辑与接口选择 |
+| `cockpit.ts` | 驾驶舱导航：左栏常驻 + 右侧单分区切换 |
 | `layout.ts` | **UI 自适应的唯一决策点**：按连接型号决定显示/隐藏哪些卡片 |
 | `diag.ts` | 诊断：导出测试数据包 (.json) |
 | `err.ts` / `util.ts` | 错误类型 / 通用工具函数 |
+| `version.ts` | 构建指纹：`build.mjs` 注入 commit 短哈希 + UTC 时间，供页脚与诊断包 `meta.build` 使用（用于「你测的是哪一版」） |
 | `i18n.ts` | i18n 核心：8 语言词条表、浏览器语言检测、`applyI18n()`（含清单卡片双语切换） |
 | `i18n/de·es·fr·ja·ko·zh-TW.ts` | 6 种非默认语言的词条文件（zh-CN 与 en 内置于 i18n.ts） |
 | `types/webhid.d.ts` | WebHID 的 TS 类型声明 |
@@ -91,7 +94,7 @@
 | 分组 | 作用 |
 |---|---|
 | `PROTOCOL_NOTES.md` / `XM1_NOTES.md` / `FAMILY4_NOTES.md` | 三大协议族的完整逆向笔记（证据链正文） |
-| `test_*.ts`（10 个） | 离线回归测试：8k 写入、CPI 步进、写入门、XM1 写入、XM2we 模拟、repo 卫生等（`run_test.mjs` 统一驱动） |
+| `test_*.ts`（14 个） | 离线回归测试：8k 写入、CPI 步进、写入门、XM1 写入、XM2we 模拟与诊断、WE 帧布局、4k 命令帧布局（`chunk` 槽位）、repo 卫生等（`run_test.mjs` 统一驱动） |
 | `check_verify.mjs` / `i18n_audit.mjs` | verify 流程结构自检 / i18n 完整性审计 |
 | `i18n_check.py` / `layout_check.py` / `render_check.py` / `reset_check.py` | 四个专项静态检查脚本 |
 | `_domstub.ts` | 测试用 DOM 桩 |
