@@ -145,8 +145,19 @@ const kbOf = (s) => Buffer.byteLength(s, "utf8") / 1024;
  *     · 型号说明从表内 <tr> 移到右栏折叠卡（setSensorNote）
  *     · 左栏信息位补齐：不可知的值写明原因而非裸「—」（11 个新词条 × 8 语言）
  *     · LED 色点样式 + 4 个设备语义色令牌
- *   产物 336.4 KB，余量 ~1.6 KB —— 仍是紧约束。 */
-const SIZE_BUDGET_KB = 338;
+ *   产物 336.4 KB，余量 ~1.6 KB —— 仍是紧约束。
+ *   2026-11-04  338 → 400：WE 族（XM2we/OP1we）真机验证后的一批改动，
+ *   余量已从 ~1.6 KB 压到 ~0.3 KB，任何后续字段都会被预算卡住：
+ *     · 0x0A LOD 读写 + 下拉控件
+ *     · 0x04 DEFLEVEL「生效中」标注（原先硬编码在槽 1，是错的）
+ *     · 诊断导出（志愿者的补丁）+ 构建指纹（页脚与诊断 meta）
+ *     · 验证状态文案：XM2we 由「未验证」改为「已真机验证」（8 语种）
+ *   增量仍全部为自有代码，无外部依赖；上调主要为给「订阅 input report 0x03
+ *   事件通道」留出空间（该功能需要事件分发与增量重绘）。
+ *   ⚠️ 这次一步上调 62 KB，等于放宽了「有人塞库会立刻报红」这道闸门
+ *   （一个 ~55 KB 的库现在塞得进去还不报警）。后续应逐步回收到实测值
+ *   +5~10 KB，而不是长期停在 400。 */
+const SIZE_BUDGET_KB = 400;
 const actualKb = kbOf(html);
 console.log(`dist/index.html + index.html written, ${kb(html)} KB  (js ${kb(js)} KB, css ${kb(css)} KB)`);
 if (actualKb > SIZE_BUDGET_KB) {
