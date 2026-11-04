@@ -17,6 +17,9 @@
 | `MANIFEST.md` | Third-party material compliance list (license conclusions for everything under `re/upstream/`) |
 | `LICENSE` | GPL-3.0-or-later full text |
 
+> The case-law file and the task queue moved to `docs/internal/` (maintainer-only):
+> `docs/internal/DECISIONS.md`, `docs/internal/TASKS.md`. Document index: `docs/README.md`.
+
 ## Root — build & engineering config
 
 | File | Purpose |
@@ -77,6 +80,7 @@ Everything is compiled and inlined into the HTML at build time; the artifact shi
 
 | File | Purpose |
 |---|---|
+| `README.md` | **Document index**: the 17 documents grouped into four buckets, with a reading order |
 | `remote-beta-guide.md` / `.en.md` | Remote-volunteer process (risks, backups, recovery); bilingual, cross-linked |
 | `test-checklist.md` / `.en.md` | Test checklist (single source of truth, rendered into the page at build time); bilingual |
 | `xm1-diff-kit.md` | The XM1 differential experiment kit |
@@ -90,7 +94,7 @@ Everything is compiled and inlined into the HTML at build time; the artifact shi
 | Group | Purpose |
 |---|---|
 | `PROTOCOL_NOTES.md` / `XM1_NOTES.md` / `FAMILY4_NOTES.md` | The full reverse-engineering notes for the three protocol families (the evidence-chain proper) |
-| `test_*.ts` (10 files) | Offline regression tests: 8k writes, CPI steps, write gates, XM1 writes, XM2we simulation, repo hygiene… (driven by `run_test.mjs`) |
+| `tests/test_*.ts` (14 files) | Offline regression tests: 8k writes, CPI steps, write gates, XM1 writes, XM2we simulation, repo hygiene… (driven by `run_test.mjs`) |
 | `check_verify.mjs` / `i18n_audit.mjs` | verify pipeline structure self-check / i18n completeness audit |
 | `i18n_check.py` / `layout_check.py` / `render_check.py` / `reset_check.py` | Four focused static-check scripts |
 | `_domstub.ts` | DOM stub for tests |

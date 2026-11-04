@@ -52,7 +52,7 @@ export default tseslint.config(
       // 因此分两步走（对应主规范清理原则的增量层与阈值层）：
       //   当前：warn —— 存量 97 处全部可见、可统计，但不阻断提交。
       //         新增的 any 会让 warning 计数上升，被下面的 --max-warnings 卡住。
-      //   终态：error —— 存量清零后（见 TASKS.md 的 T-109 与 T-111），
+      //   终态：error —— 存量清零后（见 docs/internal/TASKS.md 的 T-109 与 T-111），
       //         把这一行改成 "error" 并同步下调 --max-warnings。
       //
       // --max-warnings 的数值**不是随手填的**：它等于当前存量，

@@ -12,10 +12,12 @@
 | `README.md` / `README.zh-CN.md` | 项目门面，英文版 + 简体中文完整版，顶部互链 |
 | `AGENTS.md` | 给 AI 协作者的工程规范说明（含规范版本引用） |
 | `CHANGELOG.md` | 版本变更记录（语义化，自 v1.3 起维护） |
-| `DECISIONS.md` | 判例集（append-only）：每条架构/清理决策的背景与理由 |
-| `TASKS.md` | 唯一任务队列：T-xxx 编号、依赖、完成状态 |
 | `MANIFEST.md` | 第三方素材合规清单（`re/upstream/` 收录物的许可证结论） |
 | `LICENSE` | GPL-3.0-or-later 全文 |
+
+> 判例集与任务队列已移入 `docs/internal/`（维护者才需要，不占根目录）：
+> `docs/internal/DECISIONS.md`、`docs/internal/TASKS.md`。
+> 文档索引见 `docs/README.md`。
 
 ## 根目录 —— 构建与工程配置
 
@@ -78,23 +80,28 @@
 
 ## `docs/` —— 面向人的文档
 
+> **先读 [`docs/README.md`](README.md)** —— 它按「对外 / 内部研究 / 历史快照 / 维护者」四档
+> 给全部文档编了索引，说明每份什么时候该读。
+
 | 文件 | 作用 |
 |---|---|
+| `README.md` | **文档索引**：17 份文档的分档与阅读顺序 |
 | `remote-beta-guide.md` / `.en.md` | 远程志愿者流程（风险、备份、恢复），双语互链 |
 | `test-checklist.md` / `.en.md` | 测试清单（唯一真相源，构建时进页面），双语 |
 | `xm1-diff-kit.md` | XM1 差分实验包说明 |
 | `official-product-catalog.md` | 16 款鼠标的固件/工具版本与官方下载目录 |
-| `ecosystem-survey.md` | 社区同类工具生态调研 |
-| `audit-2026-10-20.md` | 全量代码/架构审计报告（原子性、严谨性、潜在缺陷与结论） |
-| `release-safety-audit.md` | 发布安全审计：逐型号写权限的理由与残余风险 |
-| `cpi-step-check.md` / `field-parity.md` / `user-facing-settings.md` / `web-driver-extra-features.md` | 专项分析：CPI 步进一致性 / 各族字段对齐表 / 用户可见设置清单 / 官方工具额外功能盘点 |
+| `ecosystem-survey.md` | 社区同类工具生态调研（2026-11-04 按 GitHub API 重写） |
+| `field-parity.md` / `user-facing-settings.md` / `web-driver-extra-features.md` / `cpi-step-check.md` | 专项分析：各族字段对齐 / 用户可见设置 / 官方工具额外功能 / CPI 步进一致性 |
+| `audit-2026-10-20.md` / `release-safety-audit.md` / `unofficial-features-audit.md` | **历史快照**（各带前言说明其时效）：全量代码审计 / 发布安全审计 / 非官方功能审计 |
+| `internal/TASKS.md` | 唯一任务队列：T-xxx 编号、依赖、完成状态（维护者） |
+| `internal/DECISIONS.md` | 判例集（append-only）：每条架构/清理决策与被否决的方案（维护者） |
 
 ## `re/` —— 逆向工程证据链与测试（不参与构建）
 
 | 分组 | 作用 |
 |---|---|
 | `PROTOCOL_NOTES.md` / `XM1_NOTES.md` / `FAMILY4_NOTES.md` | 三大协议族的完整逆向笔记（证据链正文） |
-| `test_*.ts`（14 个） | 离线回归测试：8k 写入、CPI 步进、写入门、XM1 写入、XM2we 模拟与诊断、WE 帧布局、4k 命令帧布局（`chunk` 槽位）、repo 卫生等（`run_test.mjs` 统一驱动） |
+| `tests/test_*.ts`（14 个） | 离线回归测试：8k 写入、CPI 步进、写入门、XM1 写入、XM2we 模拟与诊断、WE 帧布局、4k 命令帧布局（`chunk` 槽位）、repo 卫生等（`run_test.mjs` 统一驱动，编译产物 `tests/.test_*.mjs` 不入库） |
 | `check_verify.mjs` / `i18n_audit.mjs` | verify 流程结构自检 / i18n 完整性审计 |
 | `i18n_check.py` / `layout_check.py` / `render_check.py` / `reset_check.py` | 四个专项静态检查脚本 |
 | `_domstub.ts` | 测试用 DOM 桩 |
