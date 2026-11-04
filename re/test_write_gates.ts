@@ -23,7 +23,10 @@ const ok = (cond: boolean, name: string, extra = "") => {
   if (cond) { pass++; console.log("  ✓ " + name); }
   else { fail++; console.log("  ✗ " + name + (extra ? "  → " + extra : "")); }
 };
-const GATE = /never verified on real hardware/i;
+/* 闸门文案在 XM2we 真机验证后改成「本次连接未开启」——原句
+   "never verified on real hardware" 已经不成立，断言跟着改，
+   但「未开闸必须抛错且不碰设备」这个性质不变。 */
+const GATE = /writes are disabled for this connection/i;
 
 console.log("[1] WE 族（XM2we / OP1we）：默认写入必须关闭");
 {

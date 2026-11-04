@@ -166,6 +166,7 @@ function renderCpi() {
   const tb = $el("weCpiRows"); tb.innerHTML = "";
   const table = s.cpiTable();
   const leds = s.ledColors();
+  const act = s.activeLevel();          // 生效档（0 基）；null = 读不到
   if (!table.length) {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td colspan="5" class="muted">${t("weNoDevice")}</td>`;
@@ -178,7 +179,7 @@ function renderCpi() {
       ? `<span style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;border:1px solid #ccc;background:rgb(${led.rgb.join(",")})"></span>`
       : `<span class="muted">—</span>`;
     tr.innerHTML =
-      `<td>${t("weSlot")} ${r.slot}${r.slot === 1 ? `<b>${t("weSlot1Tag")}</b>` : ""}</td>` +
+      `<td>${t("weSlot")} ${r.slot}${r.slot === (act === null ? 1 : act + 1) ? `<b>${t("weSlot1Tag")}</b>` : ""}</td>` +
       `<td><input type="number" id="weCx${r.slot}" min="50" max="19000" step="50" value="${r.x}" style="width:84px"></td>` +
       `<td><input type="number" id="weCy${r.slot}" min="50" max="19000" step="50" value="${r.y}" style="width:84px"></td>` +
       `<td>${swatch}</td>` +

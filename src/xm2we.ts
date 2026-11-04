@@ -33,7 +33,9 @@ const EE_MAX = 10;             // 单次读上限。[6..15] 共 10 字节，其�
                                // （官方工具反汇编结论：10 bytes per frame is the ceiling）
 const EE_LIMIT = 0xB4;         // 配置区上界（之上读出来是 0xff）
 
-const OP_LINK = 0x03, OP_BATTERY = 0x04, OP_EE_WRITE = 0x07, OP_EE_READ = 0x08, OP_PROFILE = 0x0F;
+const OP_LINK = 0x03, OP_BATTERY = 0x04, OP_EE_WRITE = 0x07, OP_EE_READ = 0x08;
+/* 0x0F = 「当前配置档」（协议笔记记为返回值恒 1，语义未确认）。本项目从未发送该命令，
+   故不留常量以免被误认为在用；需要时按 re/upstream/xm2we_PROTOCOL.md 加回。 */
 
 /** ★ WE 族写入总闸 —— **false = 只读**，与 8k 族同一档防护。
  *
@@ -303,7 +305,7 @@ export class Xm2weSession {
        证明不了字段语义 —— CPI 编码（(hw+1)×(mul?100:50)，高位打包进 M 字节）
        一旦理解错，写入的就是另一个数量级的值，而回读依然"一致"。
        按本项目红线「未核实即不发」默认关闭；真机验证通过后改成 true 即可。 */
-    if (!WE_WRITES_ENABLED) throw new Error("XM2we/OP1we writes are disabled: never verified on real hardware");
+    if (!WE_WRITES_ENABLED) throw new Error("XM2we/OP1we writes are disabled for this connection");
     if (addr < 0 || addr + bytes.length - 1 > EE_LIMIT) throw new Error("地址超出配置区 0x00–0xB4");
     await this.eeWrite(addr, bytes);
     const back = await this.eeRead(addr, bytes.length, 1500);
@@ -321,6 +323,14 @@ export class Xm2weSession {
   levels() {
     const n = paired(this.mem, 0x02);
     return n === null ? 8 : Math.min(8, Math.max(1, n));
+  }
+  /** 当前生效的 CPI 档：EEPROM 0x04（厂商工具里的 "DEFLEVEL"，**0 基**）。
+   *  真机实证（issue #1）：0x04=0x01 时用户实际在用第 2 档。此前界面把「生效中」
+   *  硬标在槽 1 上，于是改槽 1 却毫无手感变化，被误判成「写入无效」——
+   *  这不是用户看错，是界面在撒谎。 */
+  activeLevel() {
+    const n = paired(this.mem, 0x04);
+    return n === null ? null : Math.min(7, Math.max(0, n));
   }
   cpiTable() { return decodeCpi(this.mem, this.levels()); }
   keyTable() { return decodeKeys(this.mem); }
@@ -413,6 +423,6 @@ function isXm2weFamily(pid: number, collections?: HIDCollection[], vendorId?: nu
     c.outputReports?.some(r => r.reportId === RPT_OUT)));
 }
 
-export { WE_VID, WE_MOUSE_PID, WE_MOUSE_PID2, WE_DONGLE_PID, RPT_OUT, RPT_IN, FRAME_LEN, EE_LIMIT, OP_PROFILE,
+export { WE_VID, WE_MOUSE_PID, WE_MOUSE_PID2, WE_DONGLE_PID, RPT_OUT, RPT_IN, FRAME_LEN, EE_LIMIT,
          POLLING_BY_MASK, MASK_BY_POLLING, BTN_BITS, ck, buildFrame, frameValid,
          decodeCpi, encodeCpiRec, decodeKeys, decodePolling, encodeCpiValue, paired, isXm2weFamily };
