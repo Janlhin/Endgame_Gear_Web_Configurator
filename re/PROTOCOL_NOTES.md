@@ -145,9 +145,17 @@ a0 a1 01 00×17 03 01 04 61 00 01 0a 00 00 01 00 01 …
 - **修正误判**：VID `0x22D4` = 初代 OP1w 4k（makalu_67_dll，PID 1502/1503），非升级器专用。
 - **已采纳的代码修正**：rawReceive 零占位加固；0x14 p[0] 透传 blob[7]；settle 时间
   按有线/无线取 500/880ms；连接过滤器严格优先（FF01:02）；describeMap 补 class 0x18。
-- **新型号分叉待验证**：角度调校 blob 位置——XM2w v1.02 = blob[0x01]（解析+滑条双证），
+- ~~**新型号分叉待验证**：角度调校 blob 位置——XM2w v1.02 = blob[0x01]（解析+滑条双证），
   OP1w 文档 = blob[0x70]；按型号分叉可能，待 XM2w 真机回读定论。maxFps@0x71、
-  mcMaster@0x72（OP1w 记载）同理。
+  mcMaster@0x72（OP1w 记载）同理。~~
+  **2026-11-04 结案（不是「两说」，是「两族各一」）**：
+  - **4k 族**：角度调校走 `0x14` 传感器块的 **payload[5]**，值取自 `blob[0x01]`；
+    强制最高 FPS 是 `filterFlags` 的 **bit6（0x40）**，不是独立字节。
+  - **8k 族**：整块写，角度调校 = `blob[0x70]`、maxFps = `blob[0x71]`。
+  依据：OpenMouse `mouse-protocol` 的 `eggBlockWrites()`（4k 路径）与 `EGG_OFFSET`
+  （8k 路径）两套常量分工明确，且其 `EGG_4K_OFFSET.angleTuning = 17`（= blob 0x01）、
+  `forceMaxFpsFlag = 0x40` 与本项目实现逐项吻合；wheelguard（独立反汇编 v1.02）结论相同。
+  → 本项目「`p[5]` 原样透传」的策略保持不变且已被证明是正确落点。
 
 ## 有线唤醒陷阱（真机回归 + OP1-WebAPP device.ts 互证，2026-10-08 深夜）
 

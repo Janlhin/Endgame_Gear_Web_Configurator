@@ -15,7 +15,7 @@ Built on Chrome/Edge's **WebHID** API, talking to the mouse's or receiver's conf
 | XM2w 4k | 4k wireless v1 | `0x1970` | `0x1968` / `0x1969` | ✅ Full support |
 | OP1w 4k | 4k wireless v1 | `0x1970` | `0x1972` | ✅ Full support |
 | XM2w 4k v2 | 4k wireless v2 | `0x1970` | `0x1982` / `0x1981` | ✅ Full support |
-| OP1w 4k v2 | 4k wireless v2 | `0x1984` | `0x1984` | ✅ Full support |
+| OP1w 4k v2 | 4k wireless v2 | `0x1970` | `0x1984` | ✅ Full support |
 | **XM2we / OP1we** | **2020 wired/2.4G** | `0x1961` | `0x1960` / **`0x1962`** | ✅ **XM2we verified on hardware** (read: cable + receiver; write: receiver — four consecutive changes applied immediately). OP1we remains code-ready (PID `0x1962` from the official WE tool's `Cfg.ini`) |
 | XM2 8k (`0x1966`) / XM2 8k v2 (`0x1980`) | **8k wired** (isomorphic to the 4k family) | — | `0x1966` / `0x1980` | ✅ **Read + write** — blob offsets are byte-for-byte identical to the 4k family; writes use **`0x11` whole-blob write** (read-modify-write), cross-corroborated by three sources (official tool binary + `egctl` + `qsxcv`), **not verified on real hardware** (未真机验证) |
 | OP1 8k / Purple Frost (`0x1964`) / OP1 8k v2 / Raw Input (`0x1978`) | **8k wired** | — | `0x1964` / `0x1978` | ✅ **Read + write** — same as above |
