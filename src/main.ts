@@ -21,6 +21,7 @@ import { guarded } from "./transport.js";
 import { snapSensor, verifySensor, snapPerf, verifyPerf, snapButtons, verifyButtons, reportVerify } from "./verify.js";
 import { parseBlob, buildSensorPayload, buildPowerPayload, xm1Parse } from "./blob.js";
 import { writeBlobXm1 } from "./device-xm1.js";
+import { store8k } from "./device-8k.js";
 import { readBlob } from "./device-4k.js";
 import { render, renderHelp } from "./render.js";
 import { refreshAll, applySensor, applyPerf, resetSettle, writeSettle } from "./session.js";
@@ -437,6 +438,9 @@ $el("btnSave").onclick = () => {
   }
   const out = { app: "Endgame_Gear_Web_Configurator", savedAt: new Date().toISOString(),
                 device: S.mouseName, gen: S.gen, lang: LANG,
+                /* pid 用于「只接受本机备份」的校验（见 restore8k）：
+                   8k 的写入是整块覆盖，导入别的型号的 blob 等于改写未知偏移。 */
+                pid: S.dev ? S.dev.productId : null,
                 blobB64: btoa(String.fromCharCode(...S.blob)),
                 blobHex: hexLines.join("\n") };
   download(JSON.stringify(out, null, 2), `egg-mouse-config-${Date.now()}.json`, "application/json");
@@ -473,6 +477,49 @@ $el("btnDiag").onclick = () => {
   } catch (e) { banner("err", t("cfgNoRead") + errMsg(e)); }
 };
 $el("btnLoad").onclick = () => $el("fileLoad").click();
+
+/** 配置备份文件的结构（由 btnSave 导出）。pid 供 8k 的「只接受本机备份」校验使用。 */
+type CfgFile = {
+  app?: string; savedAt?: string; device?: string;
+  gen?: number; lang?: string; pid?: number | null;
+  blobB64?: string; blobHex?: string;
+};
+
+/** 8k 的「拿备份救回来」：只接受**同一台设备**导出的文件（PID 必须一致）。
+ *
+ *  为什么不干脆照旧全禁：8k 的写是整块覆盖，导入别的型号的 blob 等于改写未知偏移
+ *  ——那正是 2026-10-09 XM1 事故的形态。但一份**本机导出**的 blob 就是设备自己刚给出的
+ *  内容，逐字节写回不引入任何未知值；而它恰恰是写坏之后唯一有效的恢复手段。
+ *  所以把「禁止导入」收窄成「禁止跨型号导入」：
+ *    · pid 字段缺失（旧版导出）或与当前设备不同 → 拒绝；
+ *    · 长度不是 1024 → 拒绝；
+ *    · 写之前必须已读到过一帧（store8k 依赖 lastFrame 作为报文模板）。
+ *  写完照例回读比对，不一致就明确报出来 —— 不假装成功。 */
+async function restore8k(j: CfgFile) {
+  const pid = S.dev ? (S.dev as unknown as { productId: number }).productId : null;
+  if (!j || typeof j.blobB64 !== "string" || typeof j.pid !== "number" || j.pid !== pid) {
+    banner("err", t("b8kImportForeign")); return;
+  }
+  let b: Uint8Array;
+  try { b = Uint8Array.from(atob(j.blobB64), c => c.charCodeAt(0)); }
+  catch (err) { banner("err", t("bImportFail") + errMsg(err)); return; }
+  if (b.length !== 1024) { banner("err", t("bImportFail") + " (blob length != 1024)"); return; }
+  if (!S.frameAligned) { banner("err", t("b8kNoFrame")); return; }
+  const prev = S.blob;
+  S.writing = true;
+  try {
+    log(`⋯ 8k 整块写回：${b.length} 字节（本机备份，PID 0x${(pid as number).toString(16)}）`);
+    const acked = await store8k(b);
+    log(acked ? "✓ 8k STORE 已确认（ACK）" : "⋯ 8k STORE 未收到 ACK，继续回读校验");
+    await refreshAll();
+    const same = !!S.blob && S.blob.length === b.length && S.blob.every((v, i) => v === b[i]);
+    if (same) { banner("ok", t("bImportOk")); log("✓ 回读与备份逐字节一致"); }
+    else { banner("warn", t("bImportFail")); log("✗ 回读与备份不一致 —— 设备可能拒绝了这次整块写"); }
+  } catch (err) {
+    banner("err", t("bImportFail") + errMsg(err));
+    if (prev) { S.blob = prev; parseBlob(); }
+  } finally { S.writing = false; }
+}
 $el("fileLoad").onchange = async (e: Event) => {
   const f = (e.target as HTMLInputElement).files?.[0]; if (!f) return;
   /* ★ 导入配置同样是写入（0x14 + 0x15 + 0x16×2），必须过同一道闸门。
@@ -482,20 +529,25 @@ $el("fileLoad").onchange = async (e: Event) => {
   /* 写入互斥：导入是一串 0x14 + 0x15 + 0x16×2，不能与「应用」并发，
      否则两次写入交错会让设备停在半应用状态（2026-10-20 审计）。 */
   if (S.writing) { banner("warn", t("bBusy")); (e.target as HTMLInputElement).value = ""; return; }
-  /* 8k 的写是整块写：导入一个来自别的型号的 blob 等于把未知偏移整体覆盖 ——
-     这正是 XM1 事故的形态。故 8k 暂不支持导入（导出不受影响）。 */
-  if (S.eightK) { banner("err", t("b8kNoImport")); (e.target as HTMLInputElement).value = ""; return; }
+  /* 先解析一次，两个分支共用（8k 走 restore8k，其余走逐块写）。 */
+  let j: CfgFile;
+  try { j = JSON.parse(await f.text()); }
+  catch (err) { banner("err", t("bImportFail") + errMsg(err)); (e.target as HTMLInputElement).value = ""; return; }
+  /* 8k 的写是整块写：导入一份来自**别的型号**的 blob 等于把未知偏移整体覆盖 ——
+     这正是 XM1 事故的形态。所以只放行「本机导出的备份」，见 restore8k。 */
+  if (S.eightK) { await restore8k(j); (e.target as HTMLInputElement).value = ""; return; }
   const prevBlob = S.blob;                 // 写失败时回滚界面状态，别让 S.blob 指向没写进设备的数据
   S.writing = true;
   try {
-    const j = JSON.parse(await f.text());
     /* ★ 跨代拦截：不同 gen 的字段编码不同（LOD：gen1 整毫米 / gen2 round(mm×10)−7；
        按键区、LED 区布局也不同）。把 v2 的配置导入 v1 设备，写入的字节会错位 ——
        与 2026-10-09 XM1 事故同一形态。文件里没有 gen 字段（旧版本导出）时不拦，
        只按长度校验，保持向后兼容。 */
     if (typeof j.gen === "number" && typeof S.gen === "number" && j.gen !== S.gen)
       throw new Error(t("importGenMismatch", String(j.gen), String(S.gen)));
-    const b = Uint8Array.from(atob(j.blobB64), c => c.charCodeAt(0));
+    const b64 = j.blobB64;
+    if (typeof b64 !== "string") throw new Error("config file has no blobB64");
+    const b = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
     if (b.length !== 1024) throw new Error("blob length != 1024");
     S.blob = b; parseBlob();
     S.stage.slamclick = !!(S.stage.flags & 1);
