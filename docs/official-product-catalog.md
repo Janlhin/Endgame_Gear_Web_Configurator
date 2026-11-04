@@ -140,7 +140,8 @@
 
 ## 五、官方 GitHub org 与产品线的对应
 
-`github.com/EndgameGear` 实为 **9 个仓库**（站内搜索补回了 org 主页漏抓的两个）：
+`github.com/EndgameGear` 实为 **11 个仓库**（2026-11-04 用 `/orgs/EndgameGear/repos` 复核；
+站内搜索此前只补到 9 个，漏了两个键盘仓库）：
 
 | 仓库 | 对应产品 | 备注 |
 |---|---|---|
@@ -152,6 +153,8 @@
 | `OP1w-4k` | OP1w 4k | |
 | `OP1w-4k-v2` | OP1w 4k v2 | |
 | `OP1-8k-Purple-Frost-LE` | 限定版 | |
+| `KB65HE` | Hall Effect 键盘 | 非鼠标产品 |
+| `KB65HE-8k` | Hall Effect 键盘 8k | 非鼠标产品 |
 | `achievements` | 成就系统 | 非产品仓库 |
 
 ⚠️ **无 XM1 / XM1r / XM2we / OP1we / XM1 RGB 仓库** —— 2020 代产品没有官方开源仓库，

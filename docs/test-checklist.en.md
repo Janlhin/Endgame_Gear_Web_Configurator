@@ -62,21 +62,30 @@
 
 ---
 
-## 2. The WE family (XM2we / OP1we) — connecting at all is item one
+## 2. The WE family (XM2we) — ✅ closed on 2026-11-04, only OP1we remains
 
-> This family's code has never touched real hardware. More importantly: **the wired PIDs 0x1960 / 0x1962 have no real-hardware backing at all**;
-> the other community implementation only recognizes the receiver `0x1961`. So the first item is literally "how did you connect".
+> One XM2we owner took this family all the way on real hardware (issue #1): reads over both the
+> cable (`0x1960`) and the receiver (`0x1961`), writes over both, the LOD mapping, and CPI /
+> polling / debounce — all matching the official tool item by item.
+> What follows keeps **the confirmed results** and **what is still open**, for whoever has an OP1we.
 
-- [ ] Did you connect **by cable** or **through the receiver**? Try both — which one connects?
-- [ ] What are the `usage pages` in the log after connecting? (We expect `pg0xff02` command channel,
-      possibly also `pg0xff01` notification channel — record both)
-- [ ] Can the EEPROM be read? How many bytes? (The config area is `0x00–0xB4`)
-- [ ] Do the parsed **eight CPI slots** match the official tool? Compare one by one
-- [ ] Is the parsed **polling rate** (125/250/500/1000 Hz) right?
-- [ ] Is the parsed **debounce** (ms) right?
-- [ ] Change **one CPI slot** → does read-back match? Does the feel really change?
-- [ ] Change **polling rate** → read-back matches?
-- [ ] What happens when the mouse **falls asleep**? (Reads time out after a few idle seconds — does reading recover after moving the mouse?)
+### Confirmed — no need to repeat
+
+- Read: 181 bytes (`0x00–0xB4`), at most 10 bytes per frame, ~19 round trips; **cable and receiver produce byte-identical dumps**
+- Write: a single CPI stage change takes effect **immediately**, no mouse restart; restoring returned all 181 bytes **byte-identical** to the backup
+- Field map: `0x02` enabled stage count / `0x04` current active stage (**zero-based**) / `0x0A` LOD (1 = 1 mm, 2 = 2 mm) / `0xA9` debounce
+- Unchanged fields are **no longer rewritten** (the log says "no fields changed")
+- The "in use" marker now follows `0x04` instead of being hardcoded to slot 1
+
+### Still to test (whoever has an OP1we)
+
+- [ ] Does OP1we connect at all? (cable `0x1962` / receiver `0x1961`)
+- [ ] Can it read 181 bytes? Do the field offsets match XM2we?
+- [ ] Single-stage CPI write → read-back matches? Does the official tool agree?
+
+### Still unconfirmed (doesn't block use; a known unknown)
+
+- The unit of the `0xAD` sleep value (the vendor tool shows raw × 10) — so the UI **displays it read-only and never writes it**
 
 ---
 
