@@ -93,7 +93,13 @@
   按键 8×7B@55..104、多击过滤=记录第 7 字节（0xF0 GX Safe/0xF1 GX Speed/否则毫秒，默认 8，上限 25）、
   **blob[15..34] = 4 档 LED 颜色 [R][G][B][enabled][id]**（本项目 NOTES 里的"20B 未名块"谜底！）、
   玻璃模式@111=0x6F、角度调校@112=0x70、maxFps@113=0x71、mcMaster@114=0x72（OP1w 记载，
-  XM2w v1.02 的角度调校在 blob[0x01]——**型号间布局差异**，两说并存待 XM2w 真机验证）。
+  XM2w v1.02 的角度调校在 blob[0x01]）。
+  **2026-11-04 结案：不是「两说并存」，是「两族各一」**——
+  4k 族的角度调校走 `0x14` 传感器块的 payload[5]（值取自 `blob[0x01]`）、
+  强制最高 FPS 是 `filterFlags` 的 bit6（`0x40`）；8k 族才是 `blob[0x70]` / `blob[0x71]`。
+  依据：OpenMouse `eggBlockWrites()` 的 `EGG_4K_OFFSET.angleTuning = 17`（= blob 0x01）与
+  `forceMaxFpsFlag = 0x40`，加上 wheelguard 独立反汇编 v1.02 的相同结论；
+  本项目「p[5] 原样透传」的实现因此被证明落在正确字节上。
   有效区仅 blob[0..110]，其余恒零。
 - **修正本项目一处误判**：VID `0x22D4` = 初代 OP1w 4k（makalu_67_dll 时代，PID 1502/1503），
   非"固件升级器专用"；现役硬件才是 3367。
