@@ -73,7 +73,7 @@ export default {
   secChecklist: "Participar en las pruebas: lista punto por punto (desplegar)",
   minutes: "min", charging: "Cargando (≈ {0} %)", wiredMode: "Cable (USB-C)", wirelessMode: "Inalámbrico (receptor 4k)",
   noDongleWired: "— (sin receptor por cable)", current: " (actual)",
-  bRead: "Fallo de lectura: ", bWritten: "Escrito y guardado.", bSensor: "Ajustes del sensor escritos y guardados.", bPerf: "Ajustes de rendimiento/energía escritos y guardados.",
+  bRead: "Fallo de lectura: ", bWritten: "Escrito y guardado.", bNoChange: "No ha cambiado ningún campo; no se escribió nada.", bSensor: "Ajustes del sensor escritos y guardados.", bPerf: "Ajustes de rendimiento/energía escritos y guardados.",
   bSleep: "El ratón está dormido o apagado: muévelo y pulsa «Volver a leer».", bReadOk: "Configuración cargada.", bPairSent: "Comando de emparejamiento enviado, esperando al ratón…",
   bResetOk: "Restablecimiento de fábrica realizado.", bImportFail: "Fallo de importación: ", bConnectFail: "Fallo de conexión: ", bNoWebhid: "WebHID no es compatible: usa Chrome / Edge 89+.",
   importGenMismatch: "Esta configuración es de otra generación (archivo gen={0}, actual gen={1}); las codificaciones de campo difieren (LOD, área de botones), escribirla desplazaría valores. Importación cancelada.",

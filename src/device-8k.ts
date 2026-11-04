@@ -15,14 +15,26 @@ import { dev, rawReceive } from "./transport.js";
   import { RPT_CMD, RPT_BULK, build8kStoreData } from "./protocol.js";
 import { looksLikeBlob8k } from "./blob.js";
 
+/* ★ 8k 的读写时序常量 —— 与 OpenMouse 的 egg-op1-hid（readConfigRaw / writeConfigRaw）
+   逐项一致，属两侧各自对官方工具与真机观测后收敛到同一组数字，不要"优化"掉：
+     重试 4 次 × 间隔 50 ms、写后 300 ms 再轮询 ACK、ACK 最多 8 次、
+     LOAD 之后等 80 ms、轮询退避 60 ms 起、上限 400 ms。 */
+const STORE_RETRIES = 4;
+const STORE_RETRY_GAP_MS = 50;
+const STORE_SETTLE_MS = 300;
+const ACK_POLLS = 8;
+const LOAD_SETTLE_MS = 80;
+const POLL_BACKOFF_MS = 60;
+const POLL_BACKOFF_MAX_MS = 400;
+
 export async function readBlob8k() {
   const cmd = new Uint8Array(63); cmd[0] = 0x12;      // LOAD，无负载
   let last = "";
   for (let round = 1; round <= 3; round++) {
     try { await dev().sendFeatureReport(RPT_CMD, cmd); }
     catch (e) { log(`✗ 8k LOAD 发送失败: ${errMsg(e)}`); await sleep(200); continue; }
-    await sleep(80);
-    let delay = 60;
+    await sleep(LOAD_SETTLE_MS);
+    let delay = POLL_BACKOFF_MS;
     for (let poll = 0; poll < 6; poll++) {
       for (const rid of [RPT_CMD, RPT_BULK]) {
         let u8;
@@ -39,7 +51,7 @@ export async function readBlob8k() {
         }
         last = `status=0x${u8[1].toString(16)} levels=${u8[16 + 0x0E]} polling=${u8[16 + 0x05]}`;
       }
-      await sleep(delay); delay = Math.min(delay * 2, 400);
+      await sleep(delay); delay = Math.min(delay * 2, POLL_BACKOFF_MAX_MS);
     }
     log(`⋯ 8k 读取第 ${round} 轮未取得有效帧（${last}）`);
   }
@@ -62,13 +74,13 @@ export async function store8k(newBlob: Uint8Array): Promise<boolean> {
   // 记录最后一次失败的原因，供 4 次重试后判断。类型从any 收窄为 unknown——
   // 只需要 log(errMsg(e)) 能处理任意值，不需要具体类型。
   let lastErr: unknown = null;
-  for (let a = 0; a < 4; a++) {
+  for (let a = 0; a < STORE_RETRIES; a++) {
     try { await dev().sendFeatureReport(RPT_BULK, data); lastErr = null; break; }
-    catch (e) { lastErr = e; await sleep(50); }
+    catch (e) { lastErr = e; await sleep(STORE_RETRY_GAP_MS); }
   }
   if (lastErr) throw lastErr;
-  await sleep(300);                                   // 官方/社区均等待后才轮询 ACK
-  return pollAck8k(8);
+  await sleep(STORE_SETTLE_MS);                       // 官方/社区均等待后才轮询 ACK
+  return pollAck8k(ACK_POLLS);
 }
 
 /** 回读校验：把「写之前想要的值」（want）与「写之后读回的值」逐项对比。

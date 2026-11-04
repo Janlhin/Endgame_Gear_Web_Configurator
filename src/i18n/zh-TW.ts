@@ -72,7 +72,7 @@ export default {
   secChecklist: "參與測試：逐條清單（點開）",
   minutes: "分鐘", charging: "充電中（約 {0}%）", wiredMode: "有線 (USB-C)", wirelessMode: "無線 (4k 接收器)",
   noDongleWired: "—（有線連線無接收器）", current: "（目前）",
-  bRead: "讀取失敗：", bWritten: "已寫入並永久保存。", bSensor: "感測器設定已寫入並永久保存。", bPerf: "效能/電源設定已寫入並永久保存。",
+  bRead: "讀取失敗：", bWritten: "已寫入並永久保存。", bNoChange: "沒有欄位發生變化，未傳送任何寫入。", bSensor: "感測器設定已寫入並永久保存。", bPerf: "效能/電源設定已寫入並永久保存。",
   bSleep: "滑鼠處於休眠或未上電：動一下滑鼠，再按「重新讀取」。", bReadOk: "已讀取目前設定。", bPairSent: "配對命令已送出，等待滑鼠重新連線…",
   bResetOk: "已回復原廠設定。", bImportFail: "匯入失敗：", bConnectFail: "連線失敗：", bNoWebhid: "此瀏覽器不支援 WebHID，請使用 Chrome / Edge 89+。",
   importGenMismatch: "這份設定來自另一代機型（檔案 gen={0}，目前 gen={1}）—— 不同代際的欄位編碼不同（LOD、按鍵區等），寫入會錯位。已取消匯入。",

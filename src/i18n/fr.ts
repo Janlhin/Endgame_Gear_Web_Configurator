@@ -73,7 +73,7 @@ export default {
   secChecklist: "Participer aux tests : liste point par point (déplier)",
   minutes: "min", charging: "En charge (≈ {0} %)", wiredMode: "Filaire (USB-C)", wirelessMode: "Sans fil (récepteur 4k)",
   noDongleWired: "— (pas de récepteur en filaire)", current: " (actuel)",
-  bRead: "Échec de la lecture : ", bWritten: "Écrit et enregistré.", bSensor: "Réglages du capteur écrits et enregistrés.", bPerf: "Réglages performance/alimentation écrits et enregistrés.",
+  bRead: "Échec de la lecture : ", bWritten: "Écrit et enregistré.", bNoChange: "Aucun champ n’a changé ; rien n’a été écrit.", bSensor: "Réglages du capteur écrits et enregistrés.", bPerf: "Réglages performance/alimentation écrits et enregistrés.",
   bSleep: "La souris est en veille ou éteinte : bougez-la puis cliquez sur « Relire ».", bReadOk: "Configuration chargée.", bPairSent: "Commande d’appairage envoyée, en attente de la souris…",
   bResetOk: "Réinitialisation d’usine effectuée.", bImportFail: "Échec de l’import : ", bConnectFail: "Échec de la connexion : ", bNoWebhid: "WebHID non pris en charge — utilisez Chrome / Edge 89+.",
   importGenMismatch: "Cette configuration vient d’une autre génération (fichier gen={0}, actuel gen={1}) ; les encodages de champs diffèrent (LOD, zone des boutons), l’écriture déplacerait les valeurs. Import annulé.",

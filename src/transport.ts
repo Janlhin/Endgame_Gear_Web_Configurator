@@ -64,6 +64,26 @@ export async function rawReceive(reportId: number, size?: number) {
   const out = new Uint8Array(u8.length + 1); out[0] = reportId; out.set(u8, 1); return out;
 }
 
+/** 组装 4k 族的 63 字节命令报文（不含 reportId，WebHID 的 sendFeatureReport 自行携带）。
+ *
+ *  布局：[0]=命令 [1]=目标(0x00/0x0F) [2]=声明长度 [3..4]=0 [5]=块号 [15..]=载荷
+ *
+ *  ★ 块号在 [5]（去掉 reportId 后的报告内偏移）。依据两处独立来源：
+ *    ① 官方 XM2w-4k 工具的 0x16 分块写把块号 1/2 写在**报告偏移 6**，
+ *       而本项目一贯把「报告偏移」算上 reportId 那个字节（见本文件上方
+ *       「报告内偏移 16 = 去掉 ID 后的 15」），故去掉 reportId 后是 5；
+ *    ② OpenMouse 的 egg-op1-hid 发块写时头部是
+ *       `[0x0f, declaredLength, 0, 0, chunk]` 从索引 1 起填，块号落点同样是 5。
+ *  此前这里写的是 buf[6]（多空一格），是 2026-11-04 交叉验证时发现的偏差。 */
+export function buildCmdFrame(cmd: number, target = 0x00, payload: number[] | Uint8Array | null = null, opt: { lenByte?: number; chunk?: number } = {}) {
+  const buf = new Uint8Array(63);                  // sendFeatureReport 的 data 不含 reportId
+  buf[0] = cmd; buf[1] = target;
+  buf[2] = opt.lenByte !== undefined ? opt.lenByte : (payload ? payload.length : 0);
+  if (opt.chunk) buf[5] = opt.chunk;
+  if (payload) buf.set(payload, 15);               // 报告内偏移 16 = 去掉 ID 后的 15
+  return buf;
+}
+
 /** 4k 族的 64B 命令通道：发送 → 读状态 → 重试。所有命令经 S.queue 串行化。 */
 export async function transact(cmd: number, target = 0x00, payload: number[] | null = null, opt: any = {}) {
   /* XM1 不走 4k 族的命令通道：它的命令表只有 4 条，报文形态也完全不同
@@ -73,11 +93,7 @@ export async function transact(cmd: number, target = 0x00, payload: number[] | n
      全零 blob（写形态）把用户鼠标的 DPI/CPI 清零。 */
   if (S.xm1) xm1WriteDisabled();
   const run = async () => {
-    const buf = new Uint8Array(63);                  // sendFeatureReport 的 data 不含 reportId
-    buf[0] = cmd; buf[1] = target;
-    buf[2] = opt.lenByte !== undefined ? opt.lenByte : (payload ? payload.length : 0);
-    if (opt.chunk) buf[6] = opt.chunk;
-    if (payload) buf.set(payload, 15);               // 报告内偏移 16 = 去掉 ID 后的 15
+    const buf = buildCmdFrame(cmd, target, payload, opt);
     for (let attempt = 0; attempt < 4; attempt++) {
       try { await dev().sendFeatureReport(RPT_CMD, buf); }
       catch (e) { log(`✗ SET fail (cmd 0x${cmd.toString(16)}): ${errMsg(e)}`); if (attempt === 3) throw e; await sleep(60); continue; }

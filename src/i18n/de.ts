@@ -73,7 +73,7 @@ export default {
   secChecklist: "Mitmachen: Checkliste zum Abhaken (aufklappen)",
   minutes: "min", charging: "Lädt (≈ {0} %)", wiredMode: "Kabel (USB-C)", wirelessMode: "Funk (4k-Empfänger)",
   noDongleWired: "– (am Kabel kein Empfänger)", current: " (aktuell)",
-  bRead: "Lesen fehlgeschlagen: ", bWritten: "Geschrieben und gespeichert.", bSensor: "Sensoreinstellungen geschrieben und gespeichert.", bPerf: "Leistungs-/Stromeinstellungen geschrieben und gespeichert.",
+  bRead: "Lesen fehlgeschlagen: ", bWritten: "Geschrieben und gespeichert.", bNoChange: "Keine Felder geändert; es wurde nichts geschrieben.", bSensor: "Sensoreinstellungen geschrieben und gespeichert.", bPerf: "Leistungs-/Stromeinstellungen geschrieben und gespeichert.",
   bSleep: "Die Maus schläft oder ist ausgeschaltet: bewege sie und klicke dann „Neu einlesen“.", bReadOk: "Konfiguration geladen.", bPairSent: "Kopplungsbefehl gesendet, warte auf die Maus …",
   bResetOk: "Werksreset durchgeführt.", bImportFail: "Import fehlgeschlagen: ", bConnectFail: "Verbindung fehlgeschlagen: ", bNoWebhid: "WebHID wird nicht unterstützt – bitte Chrome / Edge 89+ verwenden.",
   importGenMismatch: "Diese Konfiguration stammt von einer anderen Generation (Datei gen={0}, aktuell gen={1}); die Feldkodierungen unterscheiden sich (LOD, Tastenbereich), ein Schreiben würde Werte verschieben. Import abgebrochen.",

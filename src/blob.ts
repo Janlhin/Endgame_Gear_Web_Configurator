@@ -91,6 +91,33 @@ export function parseBlob() {
   s.glass = (S.gen === 2 && b[0x6F]) ? 1 : 0;
   s.lodMM = lodByteToMm(s.lod, s.glass === 1);
   S.stage = s;
+  /* 记下「设备当前那份载荷」作为基线：写入前用它判断哪些块真的变了。
+     没变的块不必再写一遍 —— OpenMouse 的 writeConfigBlocks 同样是先 diff 再发。
+     每多写一个字节就多一次改坏的机会，这是纯收益的减法。 */
+  baseSensor = buildSensorPayload();
+  basePower = buildPowerPayload();
+}
+
+/* ★ 载荷基线（由 parseBlob 在解析完读回的 blob 后刷新）。
+   用途见 session.ts 的 applySensor / applyPerf：只发真正变化的块。
+   基线为 null 时一律视为「变了」，保证首次写入不会被误跳过。 */
+let baseSensor: Uint8Array | null = null;
+let basePower: Uint8Array | null = null;
+
+function sameBytes(a: Uint8Array, b: Uint8Array) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+/** 传感器块（0x14）与读回的基线相比是否变了 */
+export function sensorPayloadChanged(): boolean {
+  return baseSensor === null || !sameBytes(baseSensor, buildSensorPayload());
+}
+
+/** 电源块（0x15）与读回的基线相比是否变了 */
+export function powerPayloadChanged(): boolean {
+  return basePower === null || !sameBytes(basePower, buildPowerPayload());
 }
 
 export function buildSensorPayload() {
@@ -144,7 +171,11 @@ export function buildPowerPayload() {
   for (let i = 0; i < 5; i++) p[4 + i] = S.stage.buttons[i]?.filter ?? 8;
   p[9] = S.stage.deepSleep === "off" ? 0x80 : S.stage.deepSleep;
   p[10] = S.gen === 2 ? S.stage.glass : 0;
-  return p;
+  /* v1 的官方工具**只发 10 字节**（声明长度 10，不带第 11 字节的玻璃模式），
+     v2 才追加到 11 字节。我们此前 v1 也凑满 11 字节、第 11 位填 0 —— 声明长度本来就是
+     10，设备大概率忽略多余字节，但口径应与官方一致：v1 直接截断到 10。
+     依据：OpenMouse eggBlockWrites 的 hasGlassMode 分支 + 本项目对 v1.02 工具的反汇编。 */
+  return S.gen === 2 ? p : p.slice(0, 10);
 }
 
 export function xm1Parse(b: Uint8Array): Xm1Edit {

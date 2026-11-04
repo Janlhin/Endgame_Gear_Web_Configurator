@@ -73,7 +73,7 @@ export default {
   secChecklist: "테스트 참여: 항목별 체크리스트 (펼치기)",
   minutes: "분", charging: "충전 중 (약 {0}%)", wiredMode: "유선 (USB-C)", wirelessMode: "무선 (4k 리시버)",
   noDongleWired: "—(유선 연결에는 리시버 없음)", current: "(현재)",
-  bRead: "읽기 실패:", bWritten: "쓰기와 영구 저장이 완료되었습니다.", bSensor: "센서 설정을 쓰고 영구 저장했습니다.", bPerf: "성능/전원 설정을 쓰고 영구 저장했습니다.",
+  bRead: "읽기 실패:", bWritten: "쓰기와 영구 저장이 완료되었습니다.", bNoChange: "변경된 항목이 없어 아무것도 쓰지 않았습니다.", bSensor: "센서 설정을 쓰고 영구 저장했습니다.", bPerf: "성능/전원 설정을 쓰고 영구 저장했습니다.",
   bSleep: "마우스가 절전 또는 전원 꺼짐 상태입니다: 마우스를 움직인 뒤 「다시 읽기」를 누르세요.", bReadOk: "구성을 읽었습니다.", bPairSent: "페어링 명령을 보냈습니다. 마우스 재연결을 기다립니다…",
   bResetOk: "공장 초기화를 완료했습니다.", bImportFail: "가져오기 실패:", bConnectFail: "연결 실패:", bNoWebhid: "이 브라우저는 WebHID를 지원하지 않습니다. Chrome / Edge 89 이상을 사용하세요.",
   importGenMismatch: "이 설정은 다른 세대의 것입니다(파일 gen={0}, 현재 gen={1}). 세대별로 필드 인코딩이 다르므로(LOD, 버튼 영역) 쓰면 값이 어긋납니다. 가져오기를 취소했습니다.",

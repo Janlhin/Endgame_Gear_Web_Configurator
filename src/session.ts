@@ -7,15 +7,15 @@ import { errMsg, errCode } from "./err.js";
 import { log, banner } from "./util.js";
 import { t } from "./i18n.js";
 import { S, blob } from "./state.js";
-import { buildSensorPayload, buildPowerPayload, parseBlob, xm1Parse } from "./blob.js";
+import { buildSensorPayload, buildPowerPayload, parseBlob, xm1Parse, sensorPayloadChanged, powerPayloadChanged } from "./blob.js";
 import { snapSensor, verifySensor, snapPerf, verifyPerf, snapButtons, verifyButtons, reportVerify } from "./verify.js";
 import { readBlob } from "./device-4k.js";
 import { readBlob8k, store8k, verifySensor8k, verifyPerf8k } from "./device-8k.js";
 import { xm1QueryByte, xm1Snapshot } from "./device-xm1.js";
 import { render, renderXm1, renderInfoOnly } from "./render.js";
 import { layoutFor, applyLayout } from "./layout.js";
-import { dev, guarded, probe } from "./transport.js";
-import { buildBlob8k, PID_FAMILY4, PID_8K, VID_22D4, MOUSE_PIDS, modelOf } from "./protocol.js";
+import { dev, guarded, probe, StatusError } from "./transport.js";
+import { buildBlob8k, PID_FAMILY4, PID_8K, VID, VID_22D4, MOUSE_PIDS, modelOf } from "./protocol.js";
 
 /** 固件版本 → "major.minor"（次版本号十进制补零两位）。
  *
@@ -103,6 +103,16 @@ export async function refreshAll() {
     let mouseOk = false;
     try {
       const r = await guarded(0x0E, 0x00, null, { pace: 150 });
+      /* ★ 陈旧回包判据（B1）：状态 0x01 不等于「这次的回答」。
+         接收器在鼠标还没被转发过来时，会把**上一条命令的残留**当作 OK 回给我们，
+         此时 r[18..19] 里的 PID 是旧值 —— 按它认型号会把鼠标认错（进而是错误的 gen、
+         错误的偏移、错误的可写字段）。判据是回包里的 VID 必须是 0x3367：
+         「An OK without our VID is the previous command's held reply」
+         （OpenMouse 的 identifyPairedMouse 注释，与本项目 0x0E 布局一致：
+          VID @16..17、PID @18..19、固件 @22..23）。
+         抛 0x08 交给外层——它已把 0x08 当作「鼠标睡着/未转发」处理，只提示不动配置。 */
+      const vid = r[16] | (r[17] << 8);
+      if (vid !== VID) throw new StatusError(0x08, "dongle has not relayed the mouse yet");
       const pid = r[18] | (r[19] << 8);
       if (MOUSE_PIDS[pid]) {
         S.mouseName = MOUSE_PIDS[pid][0]; S.gen = MOUSE_PIDS[pid][1];
@@ -146,15 +156,27 @@ export async function applySensor() {
     const want = snapSensor();                     // 期望值（写入前）
     const wantPerf = snapPerf();                   // 联动写 0x15 时玻璃模式也在里面
     const glassChanged = S.gen === 2 && (blob()[0x6F] ? 1 : 0) !== S.stage.glass;
-    await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
-    log("✓ cmd 0x14 written");
-    if (glassChanged) {
+    /* ★ 只发真正变化的块（B5）。两个 payload 与"刚从设备读回的那份"逐字节比对，
+       相同就不发 —— 官方工具与 OpenMouse 的做法都是先 diff 再写。
+       每多写一个字节就多一次改坏的机会，而没变的字节写回去只有风险没有收益。 */
+    const sensorChanged = sensorPayloadChanged();
+    const powerChanged = glassChanged || powerPayloadChanged();
+    if (!sensorChanged && !powerChanged) {
+      log("⋯ 传感器与性能/电源字段均未变化，未发送写入");
+      banner("warn", t("bNoChange"));
+      return;
+    }
+    if (sensorChanged) {
+      await guarded(0x14, 0x0F, buildSensorPayload(), { pace: writeSettle() });
+      log("✓ cmd 0x14 written");
+    }
+    if (powerChanged) {
       await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
-      log("✓ glass-mode linked cmd 0x15 written");
+      log(glassChanged ? "✓ glass-mode linked cmd 0x15 written" : "✓ cmd 0x15 written（联动：玻璃模式随之变化）");
     }
     await refreshAll();                            // 内部 readBlob + parseBlob
     const bad = verifySensor(want);
-    if (glassChanged) bad.push(...verifyPerf(wantPerf));   // 联动写过的字段一并核对
+    if (powerChanged) bad.push(...verifyPerf(wantPerf));   // 联动写过的字段一并核对
     reportVerify("bSensor", bad);
   } finally { S.writing = false; }
 }
@@ -168,6 +190,15 @@ export async function applyPerf() {
     const wantSensor = snapSensor();               // 联动写 0x14 时传感器字段也在里面
     const wantButtons = snapButtons();              // 点击过滤随 0x15 一起下发，一并快照
     const glassChanged = S.gen === 2 && (blob()[0x6F] ? 1 : 0) !== S.stage.glass;
+    /* ★ 只发真正变化的块（B5）：与刚读回的基线逐字节比对。
+       0x15 同时承载回报率/去抖/flags/5 个按键 filter/休眠/玻璃模式，
+       任何一项都没变就不发 —— 没变的字节写回去只有风险没有收益。 */
+    const powerChanged = glassChanged || powerPayloadChanged();
+    if (!powerChanged) {
+      log("⋯ 性能/电源字段均未变化，未发送写入");
+      banner("warn", t("bNoChange"));
+      return;
+    }
     await guarded(0x15, 0x0F, buildPowerPayload(), { lenByte: 0x0A, pace: writeSettle() });
     log("✓ cmd 0x15 written");
     if (glassChanged) {
