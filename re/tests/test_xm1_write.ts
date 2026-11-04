@@ -7,10 +7,10 @@
 //   ① 报文的几何关系（长度 / 头部 / 载荷落位 / 尾巴）
 //   ② 「自己构造的报文必须能过自己的校验」（这条就是当初能抓到 bug 的断言）
 //   ③ 一切变形都必须被拦截
-import { XM1_EDITABLE_OFFSETS as _OFF0 } from "../src/protocol.js";
+import { XM1_EDITABLE_OFFSETS as _OFF0 } from "../../src/protocol.js";
 import { buildXm1BlobReport, buildXm1ByteReport,
          xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte, XM1_EDITABLE_OFFSETS,
-         RPT_CMD, RPT_BULK, XM1_BLOB_DATA_LEN, XM1_PAYLOAD_OFF_IN_DATA } from "../src/protocol.js";
+         RPT_CMD, RPT_BULK, XM1_BLOB_DATA_LEN, XM1_PAYLOAD_OFF_IN_DATA } from "../../src/protocol.js";
 
 const XM1_EDITABLE_SET_has0 = (() => {
   const s = new Set<number>(_OFF0); return s.has(0);

@@ -9,10 +9,10 @@
 // 修法：表头统一为 5 列（layout.ts 的 SENSOR_COLS），差异只体现在
 // **单元格内容**上：4k 的「启用」是受约束勾选（levels 只能是前缀）、
 // Y 可编辑；XM1 的「启用」是真值 checkbox、Y 不支持（固件只读 X）。
-import "./_domstub.js";
-import { el } from "./_domstub.js";
-import { render, renderXm1 } from "../src/render.js";
-import { S } from "../src/state.js";
+import "../_domstub.js";
+import { el } from "../_domstub.js";
+import { render, renderXm1 } from "../../src/render.js";
+import { S } from "../../src/state.js";
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {

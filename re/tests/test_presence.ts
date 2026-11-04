@@ -8,10 +8,10 @@
 //   ① resetToInitial() 是否真的清了状态与界面（包括 guard4k 依赖的 S.blob）
 //   ② 清点的判定阈值：一次落空不判定、连续两次才判定、opened===false 一次即判定
 //   ③ 两条「不该误判」的反例：从没在位过（#layout= 预览）、getDevices 拿不到列表、后台标签页
-import { el, fire, setDevices } from "./_domstub.js";
-import { resetToInitial, watchPresence, watchDisconnect } from "../src/presence.js";
-import { S } from "../src/state.js";
-import { t } from "../src/i18n.js";
+import { el, fire, setDevices } from "../_domstub.js";
+import { resetToInitial, watchPresence, watchDisconnect } from "../../src/presence.js";
+import { S } from "../../src/state.js";
+import { t } from "../../src/i18n.js";
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {

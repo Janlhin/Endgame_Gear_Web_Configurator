@@ -1,6 +1,6 @@
 // XM2we 协议编解码离线仿真：用 PROTOCOL.md 记载的真机事实验证往返一致性
 import { buildFrame, frameValid, decodeCpi, encodeCpiRec, encodeCpiValue, decodeKeys,
-         decodePolling, paired, ck, POLLING_BY_MASK } from "../src/xm2we.js";
+         decodePolling, paired, ck, POLLING_BY_MASK } from "../../src/xm2we.js";
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {

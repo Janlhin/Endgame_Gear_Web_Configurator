@@ -1,7 +1,7 @@
-import "./_domstub.js";
-import { el } from "./_domstub.js";
-import { Xm2weSession } from "../src/xm2we.js";
-import { bindXm2weUI, openXm2we, closeXm2we } from "../src/xm2we-ui.js";
+import "../_domstub.js";
+import { el } from "../_domstub.js";
+import { Xm2weSession } from "../../src/xm2we.js";
+import { bindXm2weUI, openXm2we, closeXm2we } from "../../src/xm2we-ui.js";
 import assert from "node:assert/strict";
 
 // Reproduce a receiver that answers status queries but cannot read EEPROM.

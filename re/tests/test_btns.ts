@@ -10,10 +10,10 @@
 //
 // 修法：合并成一张表 8 行 3 列，删除 filters[] 这份假状态，
 // 点击过滤列直接编辑 buttons[i].filter（唯一事实源）。
-import "./_domstub.js";
-import { el } from "./_domstub.js";
-import { render } from "../src/render.js";
-import { S } from "../src/state.js";
+import "../_domstub.js";
+import { el } from "../_domstub.js";
+import { render } from "../../src/render.js";
+import { S } from "../../src/state.js";
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {

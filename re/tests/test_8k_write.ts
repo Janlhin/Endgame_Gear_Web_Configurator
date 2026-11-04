@@ -7,7 +7,7 @@
 //      必须恰好落在我们声明会改的偏移集合内（这条性质比"值对不对"更重要）；
 //   ② 报文几何：A0 报告 / 1040 字节 data / 命令 0x11 / 载荷落位 / 报告 2..15 与尾字节透传。
 import { buildBlob8k, build8kStoreData, OFF8K, MOUSE_PIDS, PID_8K, is8k,
-         PID_FAMILY4, isFamily4, RPT_BULK } from "../src/protocol.js";
+         PID_FAMILY4, isFamily4, RPT_BULK } from "../../src/protocol.js";
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {

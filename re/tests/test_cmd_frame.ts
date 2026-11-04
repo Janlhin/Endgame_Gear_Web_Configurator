@@ -1,6 +1,6 @@
-import "./_domstub.js";                 // transport 会间接拉入 util（import 期就碰 window）
+import "../_domstub.js";                 // transport 会间接拉入 util（import 期就碰 window）
 import assert from "node:assert/strict";
-import { buildCmdFrame } from "../src/transport.js";
+import { buildCmdFrame } from "../../src/transport.js";
 
 /* 4k 族的命令报文布局（63 字节，不含 reportId）：
  *   [0]=命令  [1]=目标  [2]=声明长度  [3..4]=0  [5]=块号  [15..]=载荷

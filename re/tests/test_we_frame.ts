@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildFrame, ck, FRAME_LEN, RPT_OUT } from "../src/xm2we.js";
+import { buildFrame, ck, FRAME_LEN, RPT_OUT } from "../../src/xm2we.js";
 
 // 帧布局（官方配置工具反汇编结论，见 re/upstream/xm2we_PROTOCOL.md）：
 //   [0]=report id 0x08  [1]=opcode  [2]=保留  [3..4]=地址 BE16

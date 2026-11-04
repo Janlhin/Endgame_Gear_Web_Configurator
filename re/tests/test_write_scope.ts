@@ -11,9 +11,9 @@
 //
 // 因此这里不测"值对不对"（那需要真机），只测**字节不变式**：改任何别的项，
 // 这两个字节都必须与读到的原始值一致。
-import "./_domstub.js";
-import { buildSensorPayload, parseBlob } from "../src/blob.js";
-import { S } from "../src/state.js";
+import "../_domstub.js";
+import { buildSensorPayload, parseBlob } from "../../src/blob.js";
+import { S } from "../../src/state.js";
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {

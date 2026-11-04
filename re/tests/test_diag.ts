@@ -3,9 +3,9 @@
 // 为什么要测：远程志愿者手里正是我们没有的型号，来回问一轮就要等一天。
 // 数据包漏了 PID、接口集合或通讯日志，这份回报就白发了。
 // 这里钉住的是"必填字段一定在"以及"任何字段缺失都不会让导出炸掉"。
-import "./_domstub.js";
-import { buildDiag, buildWeDiag } from "../src/diag.js";
-import { S } from "../src/state.js";
+import "../_domstub.js";
+import { buildDiag, buildWeDiag } from "../../src/diag.js";
+import { S } from "../../src/state.js";
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {

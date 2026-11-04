@@ -22,7 +22,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");   // 本测试位于 re/tests/
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {
   if (cond) { pass++; console.log("  ✓ " + name); }

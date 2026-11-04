@@ -8,11 +8,11 @@
 // 另外 Purple Frost（0x1976）的 gen 曾被填成 2，官方 PF 工具证明它是 gen1 规则。
 //
 // 这些断言不接硬件即可验证，且是"按官方设置来"这条底线的一部分。
-import "./_domstub.js";
-import { cpiClamp, cpiInputBounds, buildPowerPayload } from "../src/blob.js";
-import { MOUSE_PIDS } from "../src/protocol.js";
-import { fwStr } from "../src/session.js";
-import { S } from "../src/state.js";
+import "../_domstub.js";
+import { cpiClamp, cpiInputBounds, buildPowerPayload } from "../../src/blob.js";
+import { MOUSE_PIDS } from "../../src/protocol.js";
+import { fwStr } from "../../src/session.js";
+import { S } from "../../src/state.js";
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {

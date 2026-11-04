@@ -9,14 +9,14 @@
 // 设计口径（本文件钉死的就是它）：
 //   **默认只读**；点写入按钮会弹确认框，确认后**仅本次连接**放行，并强制先导出备份。
 //   所以这里断言的是"没有确认 ⇒ 一定写不出去"，以及"许可不跨连接"。
-import "./_domstub.js";
-import { Xm2weSession, WE_WRITES_ENABLED, setWeWrites } from "../src/xm2we.js";
-import { guard4k } from "../src/connect.js";
-import { xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte } from "../src/protocol.js";
-import { xm1WriteDisabled } from "../src/transport.js";
-import { MOUSE_PIDS } from "../src/protocol.js";
-import { resetToInitial } from "../src/presence.js";
-import { S } from "../src/state.js";
+import "../_domstub.js";
+import { Xm2weSession, WE_WRITES_ENABLED, setWeWrites } from "../../src/xm2we.js";
+import { guard4k } from "../../src/connect.js";
+import { xm1GuardQuery, xm1GuardWrite, xm1GuardEchoByte } from "../../src/protocol.js";
+import { xm1WriteDisabled } from "../../src/transport.js";
+import { MOUSE_PIDS } from "../../src/protocol.js";
+import { resetToInitial } from "../../src/presence.js";
+import { S } from "../../src/state.js";
 
 let pass = 0, fail = 0;
 const ok = (cond: boolean, name: string, extra = "") => {
