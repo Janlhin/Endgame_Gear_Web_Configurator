@@ -1,7 +1,7 @@
 # 部署到 GitHub Pages：把单文件产物 index.html 发布为在线工具。
 #
 # 为什么单独一个 workflow：verify.yml 是**权威判定通道**（verify + ui 两个 job，互不豁免），
-# 它只回答"行不行"；本workflow 回答"发布"。两者不合并，避免一次发布把校验也跳过。
+# 它只回答"行不行"；本 workflow 回答"发布"。两者不合并，避免一次发布把校验也跳过。
 #
 # 触发方式：push 到 main 时自动发布（Pages 本身需要这个产物存在）；
 # 也支持手动触发（workflow_dispatch）用于重新发布。
@@ -12,6 +12,9 @@
 #   ② 用 actions/upload-pages-artifact + deploy-pages，不依赖第三方 action。
 #   ③ 产物若缺 checklist 卡（md2html 静默失效的信号），这里也会失败 ——
 #      与 verify.yml 的 canary 同一口径，两处都设。
+#
+# 2026-11-07：run 步骤统一为 pwsh（规范 §脚本执行基线）。原先的 bash 版本用
+# test / grep / mkdir / cp，已用 Test-Path / Select-String / New-Item / Copy-Item 等价重写。
 name: deploy pages
 
 on:
@@ -23,6 +26,10 @@ permissions:
   contents: read
   pages: write
   id-token: write
+
+defaults:
+  run:
+    shell: pwsh
 
 # 同一分支只留一次进行中的部署，避免并发发布互相覆盖
 concurrency:
@@ -39,32 +46,44 @@ jobs:
       # md2html 若静默失效，index.html 仍能构建成功，没有别的检查会发现。
       - name: 产物自检（无外部依赖 + 清单卡已渲染）
         run: |
-          set -euo pipefail
-          test -f index.html || { echo "找不到 index.html"; exit 1; }
+          $ErrorActionPreference = "Stop"
+          if (-not (Test-Path -LiteralPath 'index.html')) {
+            Write-Host "找不到 index.html"
+            exit 1
+          }
           # 外部 <script src> / <link href> 会让离线双击与 Pages 行为不一致，必须为 0
-          ext=$(grep -cE '<(script|link)[^>]+(src|href)="https?://' index.html || true)
-          echo "外部脚本/样式引用数：$ext"
-          test "$ext" -eq 0 || { echo "产物引用了外部资源"; exit 1; }
-          grep -q 'id="cardChecklist"' index.html || { echo "清单卡未渲染进产物"; exit 1; }
-          echo "清单卡已渲染 ✓"
+          $matches = Select-String -Path index.html -Pattern '<(script|link)[^>]+(src|href)="https?://' -AllMatches
+          $ext = 0
+          if ($matches) { $ext = ($matches | ForEach-Object { $_.Matches.Count } | Measure-Object -Sum).Sum }
+          Write-Host "外部脚本/样式引用数：$ext"
+          if ($ext -ne 0) {
+            Write-Host "产物引用了外部资源"
+            exit 1
+          }
+          if (-not (Select-String -Path index.html -Pattern 'id="cardChecklist"' -SimpleMatch)) {
+            Write-Host "清单卡未渲染进产物"
+            exit 1
+          }
+          Write-Host "清单卡已渲染 ✓"
 
       # ★ enablement: true —— 首次 CI 实测失败于此：
       #   configure-pages 默认 enablement:false，会去查一个尚未创建的 Pages 站点，
       #   报 "Get Pages site failed ... Not Found"。
-      #   改成 true 后由本action 自行启用 Pages（来源设为 GitHub Actions），
+      #   改成 true 后由本 action 自行启用 Pages（来源设为 GitHub Actions），
       #   不再依赖「先手动去 Settings → Pages 点一次」这个前置步骤。
-      #   token 需具备 pages:write + id-token:write（本workflow 顶部已声明）。
+      #   token 需具备 pages:write + id-token:write（本 workflow 顶部已声明）。
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+
       # ★ upload-pages-artifact 的 path 必须是【目录】——第二次 CI 实测失败于此：
       #   直接写 path: index.html 会把单文件当目录，tar 报
       #   "index.html: Cannot open: Not a directory"（exit 2）。
       #   组一个只含 index.html 的发布目录，维持「只发布这一个文件」的口径不变。
       - name: 组装发布目录（action 要求目录）
         run: |
-          mkdir -p site
-          cp index.html site/
+          New-Item -ItemType Directory -Force -Path 'site' | Out-Null
+          Copy-Item -LiteralPath 'index.html' -Destination 'site/'
 
       - uses: actions/upload-pages-artifact@v3
         with:

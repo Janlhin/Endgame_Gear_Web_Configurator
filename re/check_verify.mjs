@@ -51,15 +51,34 @@ const REQUIRED = [
  */
 const CI_SKIP = new Set(["check:ui"]);
 
+/**
+ * 取出某个入口的「实际链条文本」。
+ *
+ * 2026-11-07 起 verify / verify:ci 只做 `pwsh -File scripts/verify.ps1` 转发
+ * （规范 §脚本执行基线：npm scripts 不得内联 `&&`）。链条本体因此搬进了 .ps1，
+ * 本脚本改为读那个文件——否则转发之后的 verify 对这里就是黑箱，
+ * 自检会退化成「只校验一行 pwsh 命令」。
+ *
+ * 两种形态都支持：仍是 `&&` 内联时直接返回那一行，便于回滚。
+ */
+function readChain(script) {
+  const line = pkg.scripts?.[script] ?? "";
+  const forward = /pwsh[^\n]*?-File\s+([^\s"']+\.ps1)/.exec(line);
+  if (forward) {
+    return readFileSync(join(root, forward[1]), "utf8");
+  }
+  return line;
+}
+
 let bad = 0;
 
 for (const script of ["verify", "verify:ci"]) {
-  const line = pkg.scripts?.[script];
-  if (!line) {
+  if (!pkg.scripts?.[script]) {
     console.error(`✗ package.json 缺少 scripts.${script}`);
     bad++;
     continue;
   }
+  const line = readChain(script);
   const skip = script === "verify:ci" ? CI_SKIP : new Set();
   for (const [name, must] of REQUIRED) {
     if (skip.has(name)) continue;
@@ -78,12 +97,13 @@ for (const script of ["verify", "verify:ci"]) {
 }
 
 // 反向：verify 里不该出现「空壳段」（例如只剩 echo 之类）
+// 链条可能在 package.json（`&&` 内联）或 scripts/verify.ps1（转发）里，两种都数 `npm run`。
 for (const script of ["verify", "verify:ci"]) {
-  const line = pkg.scripts?.[script] || "";
-  const parts = line.split("&&").map((s) => s.trim());
-  if (parts.length < REQUIRED.length - CI_SKIP.size) {
+  const chain = readChain(script);
+  const parts = chain.split("npm run ").length - 1;
+  if (parts < REQUIRED.length - CI_SKIP.size) {
     console.error(
-      `✗ ${script} 只有 ${parts.length} 段，少于应有的 ${REQUIRED.length - CI_SKIP.size} 段`,
+      `✗ ${script} 只有 ${parts} 段，少于应有的 ${REQUIRED.length - CI_SKIP.size} 段`,
     );
     bad++;
   }

@@ -1,26 +1,32 @@
 # 权威判定通道。
 #
 # 为什么要 CI：本地门禁可以被绕过、可以被环境污染，只有干净环境下的结论才算数
-# （见 AGENTS.md 与「强制工程校验方案」§四层防御模型）。本项目目前的校验通道：
+# （见 AGENTS.md 与规范 §四层防御模型）。本项目目前的校验通道：
 #
 #   L1 静态    编辑器 / tsc（strict 全开）
 #   L2 本地    npm run verify（提交前，人工执行）
 #   L3 流水线  本文件 —— 权威判定
 #   L4 运行期  浏览器控制台（无头 Edge 冒烟）+ 写入后的回读校验
 #
-# 文档校验：markdownlint-cli2 已接入 verify:ci（2026-10-09），
-# 配置见 .markdownlint-cli2.jsonc与 docs/.markdownlint.jsonc。
-# 外部链接可达性**未**接入——markdown-link-check 在本机网络下会把
-# 真实存在的仓库判为死链（504/403），详见 MANIFEST.md 的复核记录。
+# 2026-11-07：全部 run 步骤改为 pwsh（规范 §脚本执行基线）。原先依赖默认 bash 的
+# 两段（grep 查产物、grep 查提交信息）已用 Select-String 重写，语义不变。
 #
-# 拆成两个 job 的原因：`npm run check:ui` 依赖 **Windows 上预装的 msedge.exe** 与
-# python（re/*.py 里是无头浏览器演练），在 ubuntu runner 上跑不了。
-# 因此跨平台部分放 ubuntu，需要浏览器的部分放 windows —— 两者都跑，互不豁免。
+# 文档校验：markdownlint-cli2 已接入 verify:ci，配置见 .markdownlint-cli2.jsonc
+# 与 docs/.markdownlint.jsonc。外部链接可达性**未**接入——markdown-link-check 在本机
+# 网络下会把真实存在的仓库判为死链（504/403），详见 MANIFEST.md 的复核记录。
+#
+# 拆成两个 job 的原因：check:ui 依赖 **Windows 上预装的 msedge.exe** 与 python
+# （re/*.py 里是无头浏览器演练），在 ubuntu runner 上跑不了。跨平台部分放 ubuntu，
+# 需要浏览器的部分放 windows —— 两者都跑，互不豁免。
 name: verify
 
 on:
   push:
   pull_request:
+
+defaults:
+  run:
+    shell: pwsh
 
 jobs:
   # ---------- 跨平台：类型 / 断言 / i18n / 构建产物 ----------
@@ -41,19 +47,27 @@ jobs:
         run: |
           # build.mjs 内部已断言"无绝对路径"；这里再从外部独立验证一次（冗余校验的思路：
           # 同一类缺陷要有两条不共享实现的拦截路径）
-          if grep -nE '[A-Za-z]:\\\\|/Users/|/home/' index.html; then
-            echo "✗ 产物里出现绝对路径"; exit 1
-          fi
-          if grep -c 'cardChecklist' index.html | grep -q '^0$'; then
-            echo "✗ 清单卡没渲染进产物（md2html 失效）"; exit 1
-          fi
-          echo "✓ 产物检查通过"
+          $abs = Select-String -Path index.html -Pattern '[A-Za-z]:\\\\|/Users/|/home/'
+          if ($abs) {
+            Write-Host "✗ 产物里出现绝对路径"
+            $abs | ForEach-Object { Write-Host $_ }
+            exit 1
+          }
+          $checklist = Select-String -Path index.html -Pattern 'cardChecklist' -SimpleMatch
+          if (-not $checklist) {
+            Write-Host "✗ 清单卡没渲染进产物（md2html 失效）"
+            exit 1
+          }
+          Write-Host "✓ 产物检查通过"
       - name: 提交信息符合 Conventional Commits
         run: |
           # 只校验最近一次提交；历史不追溯，避免阻塞旧提交
-          git log -1 --pretty=%s | grep -qE '^(feat|fix|docs|refactor|chore|perf|test|build|ci)(\(.+\))?: .+' \
-            || { echo "✗ 提交信息不符合 Conventional Commits：$(git log -1 --pretty=%s)"; exit 1; }
-          echo "✓ commit message ok"
+          $subject = (git log -1 --pretty=%s)
+          if ($subject -notmatch '^(feat|fix|docs|refactor|chore|perf|test|build|ci)(\(.+\))?: .+') {
+            Write-Host "✗ 提交信息不符合 Conventional Commits：$subject"
+            exit 1
+          }
+          Write-Host "✓ commit message ok"
 
   # ---------- Windows：需要真实浏览器的 UI 演练 ----------
   ui:
@@ -68,10 +82,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: npm ci
-      # ★ Windows runner 默认控制台编码是 GBK(charmap)，而四个脚本会打印
-      # 中 / 日 / 韩文断言结果（zh-TW「網頁版配置器」、ja「コンフィギュレーター」…），
-      # 首次 CI 运行实测报 UnicodeEncodeError: 'charmap' codec can't encode characters。
-      # 本地 Windows 之所以没暴露：控制台代码页与 runner 不同。
+      # ★ Windows runner 默认控制台编码是 GBK(charmap)，而脚本会打印中 / 日 / 韩文断言结果
+      # （zh-TW「網頁版配置器」、ja「コンフィギュレーター」…），首次 CI 运行实测报
+      # UnicodeEncodeError。本机之所以没暴露：控制台代码页与 runner 不同。
       # 修法是强制 Python 用 UTF-8 输出——只改 runner 环境，不动脚本逻辑。
       - name: UI 演练（无头 Edge，UTF-8 输出）
         run: |
