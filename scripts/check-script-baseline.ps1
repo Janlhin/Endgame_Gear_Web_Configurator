@@ -109,9 +109,12 @@ function Test-Exempt {
 }
 
 # ------------------------------------------------------------ 1. .cmd / .bat
+# 以**工作区实际存在**为准：git 索引里可能还留着刚删掉、尚未提交的文件，
+# 那条记录对应的文件已经不在仓库里了，不该继续算作违规。
 $offenders = @(
     $tracked |
         Where-Object { $_ -match '\.(cmd|bat)$' } |
+        Where-Object { Test-Path -LiteralPath (Join-Path $RepoRoot $_) } |
         Where-Object { -not (Test-Exempt $_) }
 )
 if ($offenders.Count -gt 0) {
