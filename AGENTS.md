@@ -1,7 +1,12 @@
 # AGENTS.md — 本项目的 AI 协作约束
 
-> 通用规范见 `用AI做项目-强制工程校验方案`（Janlhin, v1.5.0）。本文只写**本项目专属**的条款，
-> 以及通用规范中需要在此处具体化的地方。冲突时以本文为准（本文更严）。
+> 通用规范见《用 AI 做项目：强制工程校验规范》**v1.20.0**（Janlhin）。
+> 本文件是**目录**，只写本项目专属条款、命令入口与规范锚点；规范正文不在此复制。
+> 与规范冲突时以本文为准（本文更严）；本文未覆盖处按规范锚点回查原文。
+>
+> 2026-11-07：按 v1.20.0 调整三处——① `verify` 与 `check:ui` 由 `&&` 链改为 `scripts/*.ps1`
+> 转发；② CI 全部改为 `shell: pwsh`；③ 两节可变现状（husky 排障、ESLint 预算）迁到
+> `docs/husky-setup.md` 与 `docs/eslint-budget.md`，本条文件从 178 行降至 140 行以内。
 
 ## 0. 项目一句话
 
@@ -106,33 +111,16 @@ ubuntu 跑 `verify:ci`，windows-latest 跑 `check:ui` —— **两条都跑，�
 
 ### 环境注意事项：husky 的 `_` 目录
 
-husky 9 的自动初始化需要 Node能`spawn git`。若 `npm run prepare` 报
-`git command not found`，钩子不会生效——**`git commit` 将静默跳过门禁**，
-看起来一切正常，实际没有任何拦截。
+钩子初始化失败时 `git commit` 会**静默跳过门禁**（看起来正常，实际没有拦截）。
+自查与手动补齐步骤见 `docs/husky-setup.md`。
 
-自查方法：`git config core.hooksPath` 应输出 `.husky/_`（不是 `.husky`）。
-若输出为空或为 `.husky`，说明初始化没成功，需手动补齐：
+## 6. 歧义与检索（条款在规范，这里只留锚点）
 
-```bash
-mkdir -p .husky/_ && printf '*' > .husky/_/.gitignore
-cp node_modules/husky/husky .husky/_/h
-for h in pre-commit commit-msg prepare-commit-msg pre-push post-checkout \
-         post-merge post-rewrite pre-rebase post-commit applypatch-msg \
-         pre-applypatch post-applypatch pre-merge-commit pre-auto-gc; do
-  printf '#!/usr/bin/env sh\n. "$(dirname "$0")/h"' > ".husky/_/$h"
-done
-printf 'echo "husky - DEPRECATED"\n' > .husky/_/husky.sh
-git config core.hooksPath .husky/_
-```
-
-## 6. 歧义与检索（通用规范在此项目落地）
-
-- **查得到的不许问**（代码里能读到、官方文档/包注册表能查到）；**要什么的必须问**，
-  一次不超过 4 个问题、每题 2–4 个具体选项、推荐项排第一、问完等答复。
-- 检索顺序：标准库 → 既有依赖 → 包注册表 → 代码托管平台 → 现成工具 → 借鉴重写 → 自研。
-  **拿不出检索证据不许自研**。本项目已知的渠道现状：
-  `grep.app` 长期 429、`searchcode.com` API 404、Codeberg API 被 Anubis 拦 403、
-  GitHub 匿名检索 60 次/小时 → 改用 `codeload` 直取 zip、`raw.githubusercontent.com` 直取文件。
+- 判定标准：**查得到的不许问，要什么必须问**。提问格式与 8 种必须询问的情形见规范 §`ambiguity`。
+- 检索顺序按规范 §`search-first` 的 0–6 级执行，**不得跳级**；拿不出检索证据不许自研。
+- 本项目实测的渠道现状（避免把「搜不到」当「不存在」）：`grep.app` 长期 429、
+  `searchcode.com` API 404、Codeberg API 被 Anubis 拦 403、GitHub 匿名检索 60 次/小时
+  → 改用 `codeload` 直取 zip、`raw.githubusercontent.com` 直取文件。
 
 ## 7. 删除授权分级
 
@@ -150,29 +138,7 @@ git config core.hooksPath .husky/_
 过期文档章节（含引用它的地方一并处理）、投机性抽象、空转包装层、重复实现。
 没有固定节点的清理等于不会发生。
 
-### 类型通道的现状与遗留（2026-10-09）
+### 类型通道的现状与遗留
 
-`npm run lint` 现在的规则分级：
-
-| 规则 | 级别 | 覆盖 |
-|---|---|---|
-| `@typescript-eslint/no-unused-vars` | **error** | 全项目，已清零 |
-| `@typescript-eslint/no-explicit-any` | **error** | 协议边界四文件（connect / device-8k / device-xm1 / blob） |
-| `@typescript-eslint/no-explicit-any` | warn + 阈值 | 其余 14 个文件 |
-| `no-useless-assignment` / `prefer-const` / `eqeqeq` / `no-var` | error | 全项目 |
-
-**两处已升级为 error 的原因**（改动前请读）：
-
-- `no-unused-vars`：49 处存量已逐个核实并清除（判据见 docs/internal/TASKS.md 的
-  「死代码判定的三种手段」）。往后留下未使用的导入，提交会被直接拒绝。
-  仍放行两类：`^_` 前缀（约定）与 catch 参数（语言强制无法省略）。
-- 协议边界的 `no-explicit-any`：那里是 HID 数据进入代码的唯一入口，
-  也是 XM1 配置清零事故的所在层。这层不允许再有 `any`。
-
-**阈值的含义**：`--max-warnings 88` 等于当前存量，**不是随手填的**。
-多写一处 `any` 会让 `npm run verify` 立刻失败——这是设计意图。
-改动前先跑 `npx eslint src`看真实计数，清理一批就要同步下调。
-
-**最大的遗留**：`util.ts` 里 `const $ = (id: string): any => document.getElementById(id)`
-是 121 处 DOM 调用的类型源头，`S` 本身也是 `any`。这两处构成剩余 85 处 `any`
-的主要来源（docs/internal/TASKS.md 的 T-112）。在它收敛之前，`$("x").anything` 不会报错。
+规则分级、`--max-warnings` 预算的含义、剩余 `any` 的主要来源，见
+`docs/eslint-budget.md`。**下调阈值是机械性变更，上调阈值必须走 `DECISIONS.md` 并带到期时间。**
