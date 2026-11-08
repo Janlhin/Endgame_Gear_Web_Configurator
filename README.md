@@ -6,6 +6,7 @@
 
 [English](README.en.md) | **简体中文**
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-janlhin.github.io-2EA44F.svg)](https://janlhin.github.io/Endgame_Gear_Web_Configurator/)
 [![License](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6.svg)](https://www.typescriptlang.org/)
 [![WebHID](https://img.shields.io/badge/API-WebHID-4B8BBE.svg)](https://wicg.github.io/webhid/)
@@ -25,7 +26,7 @@
 **它不做什么**：不装任何东西、不向任何服务器发数据、不碰固件。配置写入一律是「读-改-写」—— 你没动过的字段保持设备刚给的那份字节；未经真机验证的型号默认只读，需你显式解锁，且仅对本次连接有效。
 
 > [!TIP]
-> **30 秒上手**：双击仓库根目录的 `index.html`（或访问 GitHub Pages 站点）→ 点「连接设备」→ 在浏览器弹窗里选择你的鼠标 → 改设置。不装驱动、不装软件、不向任何服务器发送数据。
+> **30 秒上手**：[打开在线版](https://janlhin.github.io/Endgame_Gear_Web_Configurator/) → 点「连接设备」→ 在浏览器弹窗里选择你的鼠标 → 改设置。不装驱动、不装软件、不向任何服务器发送数据；打不开在线版时再双击本地的 `index.html`。
 
 ## 目录
 
