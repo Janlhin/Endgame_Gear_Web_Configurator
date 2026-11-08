@@ -25,11 +25,10 @@
 **它不做什么**：不装任何东西、不向任何服务器发数据、不碰固件。配置写入一律是「读-改-写」—— 你没动过的字段保持设备刚给的那份字节；未经真机验证的型号默认只读，需你显式解锁，且仅对本次连接有效。
 
 > [!TIP]
-> **30 秒上手**：下载 `index.html` → 双击打开 → 点「连接设备」→ 在浏览器弹窗里选择你的鼠标 → 改设置。不装驱动、不装软件、不向任何服务器发送数据。下载地址见[下载即用](#下载即用)。
+> **30 秒上手**：双击仓库根目录的 `index.html`（或访问 GitHub Pages 站点）→ 点「连接设备」→ 在浏览器弹窗里选择你的鼠标 → 改设置。不装驱动、不装软件、不向任何服务器发送数据。
 
 ## 目录
 
-- [下载即用](#下载即用)
 - [支持的设备](#支持的设备)
 - [界面随连接的型号自适应](#界面随连接的型号自适应)
 - [功能](#功能)
@@ -45,22 +44,6 @@
 - [许可证](#许可证)
 - [更新日志](#更新日志)
 - [路线图](#路线图)
-
-## 下载即用
-
-产物是**零依赖单文件**（`index.html`，约 350 KB）：下载 → 双击打开 → 点「连接设备」。不装驱动、不装软件、不需要服务器，也不需要网络。
-
-| 方式 | 地址 | 说明 |
-|---|---|---|
-| **在线使用** | [janlhin.github.io/Endgame_Gear_Web_Configurator](https://janlhin.github.io/Endgame_Gear_Web_Configurator/) | 打开即用；HTTPS 属安全上下文，WebHID 可用。国内访问 `github.io` 可能不稳 |
-| **jsDelivr 下载**（国内推荐） | [`index.html`](https://cdn.jsdelivr.net/gh/Janlhin/Endgame_Gear_Web_Configurator@main/index.html) | 与仓库提交逐字节一致；走 CDN 缓存，更新可能滞后数小时 |
-| GitHub Raw 下载 | [`index.html`](https://raw.githubusercontent.com/Janlhin/Endgame_Gear_Web_Configurator/main/index.html) | 需要能访问 GitHub |
-| 本地仓库 | [`index.html`](index.html) | 已克隆本仓库时直接打开 |
-
-> [!IMPORTANT]
-> 两个下载链接都以 `text/plain` 返回 `.html`（CDN 与 Raw 的防滥用策略，避免被当成任意页面托管）——**直接点开只会看到源码**。用「另存为」保存成 `index.html`，再双击打开。
->
-> **不要**把文件放在 `http://` 地址下访问：明文 HTTP 不是安全上下文，浏览器会直接禁用 WebHID，页面提示「当前页面不是安全上下文」。本地 `file://` 与 HTTPS 两种情况都满足要求。
 
 ## 支持的设备
 
