@@ -207,6 +207,17 @@ Do you have a mouse we don't (the entire 8k wired family, or an OP1we)? Your rea
 
 Clicking "Export test data packet (.json)" in the tool gives you all of it in one go: model / VID / PID / interface set / firmware / full blob (EEPROM dump for the WE family) / communication log, plus a report template.
 
+## Sponsor
+
+This tool is free, ad-free, and collects no data. If it saved you from installing yet another driver, you can buy me a coffee — any amount is fine.
+
+| Alipay | WeChat |
+|:---:|:---:|
+| <img src="docs/assets/sponsor-alipay.jpg" width="240" alt="Alipay QR code"> | <img src="docs/assets/sponsor-wechat.jpg" width="240" alt="WeChat QR code"> |
+
+> [!NOTE]
+> Sponsorship carries no obligation: it buys no feature commitments and does not change issue triage priority. Machine test data is worth more than money — see [Contributing to testing](#contributing-to-testing).
+
 ## License
 
 This project is released under **GPL-3.0-or-later** (see `LICENSE`). You are free to use, modify and redistribute it, and any derivative distribution based on this code must also be open-sourced under GPL-3.
