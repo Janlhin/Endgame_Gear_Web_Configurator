@@ -1,258 +1,312 @@
-# Endgame Gear Web Configurator
+<h1 align="center">Endgame Gear 网页配置器</h1>
 
-**English** | [简体中文](README.zh-CN.md)
+<div align="center">
 
-A browser-based configurator for Endgame Gear mice — **no driver, no installer, no network traffic**: open the page → connect → change settings.
+**Web Configurator** —— 浏览器内的 Endgame Gear 鼠标配置工具：无需驱动、无需安装、不产生任何网络流量
 
-Everything happens over **WebHID**: the tool talks to the mouse's or the receiver's own configuration channel through HID feature reports. The protocol work comes from a community reverse-engineering of the official Windows tools (see [Acknowledgements](#acknowledgements)); the implementation reproduces their timing quirks down to the retry counts, and several families have since been **verified byte-for-byte on real hardware** by people who actually own the mice.
+[English](README.en.md) | **简体中文**
 
-> **Endgame Gear is not a single-protocol product line.** Five protocol families are in play: the 4k wireless family (interface `0xFF01`, `0xA0`/`0xA1` reports, 1024B config blob), the 8k wired family (same blob layout, whole-blob `0x11` writes), the 2020-era XM2we wired/2.4G family (interface `0xFF02`, `0x08`/`0x09` reports, 17-byte checksummed frames, EEPROM), the XM1 wired family (1041B blob, writes limited to the fields confirmed on hardware), and a fourth family (XM1r / OP1 / OP1 RGB) that is recognised but never spoken to. The tool routes by PID on connect and shows only the settings the connected model actually has.
+[![License](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6.svg)](https://www.typescriptlang.org/)
+[![WebHID](https://img.shields.io/badge/API-WebHID-4B8BBE.svg)](https://wicg.github.io/webhid/)
+[![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-success.svg)](#本地运行与部署)
 
-**What it does not do**: it installs nothing, sends nothing to any server, and never touches firmware. Configuration writes are read-modify-write — fields you did not edit keep the bytes the device just handed over — and models that have not been verified on real hardware stay read-only until you explicitly unlock them, for the current session only.
+</div>
 
-## Supported devices
+---
 
-| Model | Protocol family | Wireless (dongle PID) | Wired (mouse PID) | Status |
+一个在浏览器里配置 Endgame Gear 鼠标的工具 —— **无需驱动、无需安装、不产生任何网络流量**：打开页面 → 点连接 → 改设置。
+
+一切通过 **WebHID** 完成：工具经 HID feature report 与鼠标或接收器自带的配置通道通信。协议工作来自社区对官方 Windows 工具的逆向（见 [致谢](#致谢)）；实现连重试次数都复刻了官方的时序怪癖，其中数个家族已由持有真机的用户**逐字节验证**。
+
+> [!IMPORTANT]
+> **Endgame Gear 并非单一协议的产品线。** 线上有五套协议并存：4k 无线家族（interface `0xFF01`、`0xA0`/`0xA1` 报文、1024B 配置 blob）、8k 有线家族（同一套 blob 布局，整块 `0x11` 写）、2020 年代的 XM2we 有线/2.4G 家族（interface `0xFF02`、`0x08`/`0x09` 报文、17 字节带校验和的帧、EEPROM）、XM1 有线家族（1041B blob，写入限于实测确认的字段），以及第四家族（XM1r / OP1 / OP1 RGB）—— 只识别、不通信。工具连接时按 PID 自动路由，界面只显示当前型号真正具备的设置。
+
+**它不做什么**：不装任何东西、不向任何服务器发数据、不碰固件。配置写入一律是「读-改-写」—— 你没动过的字段保持设备刚给的那份字节；未经真机验证的型号默认只读，需你显式解锁，且仅对本次连接有效。
+
+> [!TIP]
+> **30 秒上手**：双击仓库根目录的 `index.html`（或访问 GitHub Pages 站点）→ 点「连接设备」→ 在浏览器弹窗里选择你的鼠标 → 改设置。不装驱动、不装软件、不向任何服务器发送数据。
+
+## 目录
+
+- [支持的设备](#支持的设备)
+- [界面随连接的型号自适应](#界面随连接的型号自适应)
+- [功能](#功能)
+- [本地运行与部署](#本地运行与部署)
+- [故障排查](#故障排查)
+- [协议速查](#协议速查)
+- [协议家族对比](#协议家族对比)
+- [逆向验证](#逆向验证)
+- [致谢](#致谢)
+- [免责声明](#免责声明)
+- [参与测试](#参与测试)
+- [许可证](#许可证)
+- [更新日志](#更新日志)
+- [路线图](#路线图)
+
+## 支持的设备
+
+| 型号 | 协议家族 | 无线（接收器 PID） | 有线（鼠标 PID） | 状态 |
 |---|---|---|---|---|
-| XM2w 4k | 4k wireless v1 | `0x1970` | `0x1968` / `0x1969` | ✅ Full support |
-| OP1w 4k | 4k wireless v1 | `0x1970` | `0x1972` | ✅ Full support |
-| XM2w 4k v2 | 4k wireless v2 | `0x1970` | `0x1982` / `0x1981` | ✅ Full support |
-| OP1w 4k v2 | 4k wireless v2 | `0x1970` | `0x1984` | ✅ Full support |
-| **XM2we / OP1we** | **2020 wired/2.4G** | `0x1961` | `0x1960` / **`0x1962`** | ✅ **XM2we verified on real hardware** (Nov 2026) — read and write over both the cable and the receiver; LOD mapping confirmed by a differential dump where only `0x0A`/`0x0B` moved; restoring returned all 181 bytes byte-identical. OP1we remains code-ready (PID `0x1962` from the official WE tool's `Cfg.ini`) |
-| XM2 8k (`0x1966`) / XM2 8k v2 (`0x1980`) | **8k wired** (isomorphic to the 4k family) | — | `0x1966` / `0x1980` | ✅ **Read + write** — blob offsets are byte-for-byte identical to the 4k family; writes use **`0x11` whole-blob write** (read-modify-write), cross-corroborated by three sources (official tool binary + `egctl` + `qsxcv`), **not verified on real hardware** (未真机验证) |
-| OP1 8k / Purple Frost (`0x1964`) / OP1 8k v2 / Raw Input (`0x1978`) | **8k wired** | — | `0x1964` / `0x1978` | ✅ **Read + write** — same as above |
-| OP1 / OP1 RGB | **Fourth protocol family** (VID `0x3367`) | — | `0x1903` / `0x1905` / `0x1906` / `0x1910` | 🔍 **Recognized only, no communication** — interface page `0xFFA1`, 64B packets + 54 `kCom*` commands + 32B passphrase; see `re/FAMILY4_NOTES.md` |
-| XM1 / XM1 RGB | 2020 wired (VID `0x22D4` / PID `0x1803`) | — | — | ✅ **Read + write** (CPI 4 slots / LOD / Ripple; writes limited to fields confirmed by real-hardware testing — 实测确认. CPI is single-value — firmware reads X only, independent XY not supported) |
-| XM1r | **Fourth protocol family** (VID `0x3367`) | — | `0x1903` | 🔍 **Recognized only, no communication** — same platform as OP1 (shares PID `0x1903`) |
+| XM2w 4k | 4k wireless v1 | `0x1970` | `0x1968` / `0x1969` | ✅ 完整支持 |
+| OP1w 4k | 4k wireless v1 | `0x1970` | `0x1972` | ✅ 完整支持 |
+| XM2w 4k v2 | 4k wireless v2 | `0x1970` | `0x1982` / `0x1981` | ✅ 完整支持 |
+| OP1w 4k v2 | 4k wireless v2 | `0x1970` | `0x1984` | ✅ 完整支持 |
+| **XM2we / OP1we** | **2020 有线/2.4G** | `0x1961` | `0x1960` / **`0x1962`** | ✅ **XM2we 已真机验证**（2026-11）—— 有线与无线两种连接均可读写；LOD 映射由差分实测确认（只有 `0x0A`/`0x0B` 变化）；恢复后 181 字节逐字节一致。OP1we 仍为代码就绪（PID `0x1962` 来自官方 WE 工具 `Cfg.ini`） |
+| XM2 8k (`0x1966`) / XM2 8k v2 (`0x1980`) | **8k 有线**（与 4k 家族同构） | — | `0x1966` / `0x1980` | ✅ **可读可写** —— blob 偏移与 4k 家族逐字节一致；写入使用 **`0x11` 整块写**（读-改-写），三个来源交叉印证（官方工具二进制 + `egctl` + `qsxcv`），**未真机验证** |
+| OP1 8k / Purple Frost (`0x1964`) / OP1 8k v2 / Raw Input (`0x1978`) | **8k 有线** | — | `0x1964` / `0x1978` | ✅ **可读可写** —— 同上 |
+| OP1 / OP1 RGB | **第四协议家族**（VID `0x3367`） | — | `0x1903` / `0x1905` / `0x1906` / `0x1910` | 🔍 **仅识别，不通信** —— interface page `0xFFA1`，64B 包 + 54 条 `kCom*` 命令 + 32B 口令；见 `re/FAMILY4_NOTES.md` |
+| XM1 / XM1 RGB | 2020 有线（VID `0x22D4` / PID `0x1803`） | — | — | ✅ **可读可写**（CPI 4 槽 / LOD / Ripple；写入仅限实测确认的字段。CPI 为单值 —— 固件只读 X，不支持独立 XY） |
+| XM1r | **第四协议家族**（VID `0x3367`） | — | `0x1903` | 🔍 **仅识别，不通信** —— 与 OP1 同平台（共用 PID `0x1903`） |
 
-> ### ⚠️ XM1 support — read + restricted write (2026-10-09)
->
-> **XM1 supports reading, plus a restricted subset of writes** (see "Writing is now available" at the end of this section).
->
-> **Reading**: only a 64-byte **payload-free** request is sent (`A1 07` + all zeros) to trigger it, then 1041 bytes are read back via GetFeature (status byte at `[1]`, 1024B blob at offset 16). Verified on real hardware (真机验证); the CPI / LOD / Ripple values read match the official software item by item. **The message carries no config data and will not modify the mouse.**
->
-> **Incident record (historical, now fixed)**: early versions of this web tool mistook the official **write path** for the read path, sending XM1 a 1041-byte `0xA0` bulk report whose 1024-byte payload was **all zeros**. The device interpreted this as "write an empty config", which **zeroed the user's DPI / CPI**. The root cause is a layer of unverified reordering between the vendor's internal layout and the wire layout (official function `0x40FD60`, 298 move operations) — sending any payload-bearing message before semantics are confirmed is gambling.
->
-> Code-level protection (since upgraded from a blanket ban to a **precise boundary** as write verification progressed): the send-layer whitelist admits only three message classes — ① payload-free read queries `{0x03, 0x07}`; ② blob writes (outside the **23 offsets confirmed by real-hardware testing** — 实测确认 — the other 1001 bytes must be byte-for-byte identical to what was just read back); ③ single-byte writes (the value must equal `blob[0]`). Anything out of bounds is blocked and disarmed.
->
-> **Polling rate caveat**: XM1's polling rate is a **3-position hardware toggle switch on the underside of the mouse** (`250Hz` / `500Hz` / `1000Hz`, with an LED beside it indicating the current position), read via GPIO and **not written to config storage** — so in practice toggling it leaves the 1041B blob **completely unchanged**, and software cannot set it. This tool therefore offers **no** polling-rate control for XM1. XM1 does not support 125Hz. (Separately, the firmware has a single-byte command channel `cmd 0x03` for read / `cmd 0x04` for write; its semantics are unconfirmed, so it is currently read-only.)
->
-> **Real-hardware model**: M/N `EGG-XM1-WHT` (XM1 White), firmware 2.29.
->
-> **To modify an XM1, use the official `XM1 Configuration Software v1.09`** (firmware must be 2.29). The full field table and differential evidence are in sections 6.5–6.14 of `re/XM1_NOTES.md`.
->
-> **Writing is now available (verified on real hardware 2026-10-09)**: echo write-back round-trips succeeded with byte-for-byte identical read-back, proving reads and writes share one layout. XM1 now allows editing **CPI 4 slots (independent X/Y) / Lift Cut-Off / Ripple**, but writes are hard-limited to the **23 bytes confirmed by real-hardware testing** — the other 1001 bytes must match the read-back values exactly, enforced by the send layer (covered by regression test `re/test_xm1_write.ts`). A snapshot is taken automatically before each read/write for one-click rollback; a diff preview runs before applying, and a read-back verification runs after writing. **Polling rate remains a bottom-side hardware switch that software cannot change.** Fields that have not been located (Angle/Smoothing/lighting/key mapping) are not writable.
+### XM1 支持细则
 
-## The UI adapts to the connected model (only that model's settings are shown)
+**状态（2026-10-09）—— ⚠️ 可读 + 受限写入。** XM1 支持读取，外加一个受限的写入子集（见本节末尾「写入现已可用」）。
 
-**No "show everything and disable the rest"** — disabled items are both noise and a way of hiding the fact that "this model simply doesn't have that feature". The UI is decided in one place, `src/layout.ts`, and re-arranges itself once a connected device is identified:
+**读取**：只发送一个 64 字节**无载荷**请求（`A1 07` + 全零）触发，然后经 GetFeature 读回 1041 字节（状态字节在 `[1]`，1024B blob 在偏移 16）。已真机验证；读出的 CPI / LOD / Ripple 与官方软件逐项一致。**该消息不携带任何配置数据，不会改动鼠标。**
 
-| Connected device | Cards shown | Items hidden within those cards |
+> [!CAUTION]
+> **事故记录（历史，已修复）**：本工具早期版本把官方**写入路径**误当读取路径，给 XM1 发了一个 1041 字节、1024 字节载荷**全零**的 `0xA0` 大报文。设备将其理解为「写入空配置」，导致**用户的 DPI / CPI 被清零**。根因是厂商内部布局到线上布局之间存在一层未经验证的重排（官方函数 `0x40FD60`，298 次搬移操作）—— 在语义确认前发送任何带载荷的消息都是赌博。
+
+**代码层防护**（随着写入验证推进，已从一刀切禁令升级为**精确边界**）：发送层白名单只放行三类消息 —— ① 无载荷读取查询 `{0x03, 0x07}`；② blob 写入（在**实测确认的 23 个偏移**之外，其余 1001 字节必须与刚读回的内容逐字节一致）；③ 单字节写入（值必须等于 `blob[0]`）。越界一律拦截并解除武装。
+
+**回报率注意**：XM1 的回报率是**鼠标底面的 3 档硬件拨动开关**（`250Hz` / `500Hz` / `1000Hz`，旁边有 LED 指示当前档位），经 GPIO 读取，**不写入配置存储** —— 所以实际拨动它，1041B blob **完全不变**，软件无法设置。因此本工具**不提供** XM1 的回报率控制。XM1 不支持 125Hz。（另外固件有一条单字节命令通道 `cmd 0x03` 读 / `cmd 0x04` 写；语义未确认，目前只读。）
+
+**真机样本**：M/N `EGG-XM1-WHT`（XM1 白色），固件 2.29。
+
+**修改 XM1 请使用官方 `XM1 Configuration Software v1.09`**（固件须为 2.29）。完整字段表与差分证据在 `re/XM1_NOTES.md` 第 6.5–6.14 节。
+
+**写入现已可用（2026-10-09 真机验证）**：echo 回写往返成功且读回逐字节一致，证明读与写共用一套布局。XM1 现允许编辑 **CPI 4 槽（独立 X/Y）/ 抬离截断 / Ripple**，但写入被硬性限制在**实测确认的 23 个字节** —— 其余 1001 字节必须与读回值完全一致，由发送层强制执行（回归测试 `re/test_xm1_write.ts` 覆盖）。每次读/写前自动拍照存档，支持一键回滚；写入前有 diff 预览，写入后有读回校验。**回报率仍是底部硬件开关，软件无法更改。** 未定位的字段（Angle / Smoothing / 灯光 / 按键映射）不可写。
+
+## 界面随连接的型号自适应
+
+**只显示该型号的设置。** **不做「全部显示、剩下的禁用」** —— 禁用的项既是噪音，也是在掩盖「这个型号根本没这功能」这一事实。UI 只由一处决定，即 `src/layout.ts`，设备识别成功后自动重排：
+
+| 连接的设备 | 显示的卡片 | 卡片内隐藏的项 |
 |---|---|---|
-| **XM1** | Device info · Sensor/CPI · Backup tools | Glass mode, angle snap, lift-off LED, angle tuning (**offsets not located** — 偏移未定位); the entire "Performance/Power" card (polling rate is a **bottom-side hardware switch**); the "Key mapping" card (key table unverified); receiver firmware and battery rows. The CPI header is **single-value** (firmware reads X only) |
-| **4k wireless v1** (XM2w 4k / OP1w 4k) | All five cards | Glass mode, angle tuning, forced max FPS, multi-click filter (all v2 additions) |
-| **4k wireless v2** (XM2w 4k v2 / OP1w 4k v2) | All five cards | Jitter filter (v1 only) |
-| **8k wired family** | Device info · Sensor/CPI · Performance/Power · Backup tools | LOD (family-specific list, encoding unverified), glass mode / lift-off LED / angle tuning / max FPS (capability bits or offsets differ on 8k), power saving and deep sleep, key card |
-| **Fourth family** (XM1r / OP1 / OP1 RGB) | Device info only | Everything else (protocol unimplemented, model recognition only) |
-| **XM2we / OP1we** | Four dedicated cards (info / CPI & polling / key matrix / EEPROM backup) | All 4k-family cards |
-| **Not connected** | Acknowledgements and notes only | All device cards |
+| **XM1** | 设备信息 · 传感器/CPI · 备份工具 | Glass 模式、角度吸附、抬离 LED、角度微调（**偏移未定位**）；整个「性能/电源」卡片（回报率是**底部硬件开关**）；「按键映射」卡片（按键表未验证）；接收器固件与电池行。CPI 标题为**单值**（固件只读 X） |
+| **4k wireless v1**（XM2w 4k / OP1w 4k） | 全部五张卡片 | Glass 模式、角度微调、强制最高 FPS、多击过滤（均为 v2 新增） |
+| **4k wireless v2**（XM2w 4k v2 / OP1w 4k v2） | 全部五张卡片 | 抖动过滤（仅 v1 有） |
+| **8k 有线家族** | 设备信息 · 传感器/CPI · 性能/电源 · 备份工具 | LOD（家族专属列表，编码未验证）、glass 模式 / 抬离 LED / 角度微调 / 最高 FPS（8k 上能力位或偏移不同）、省电与深度睡眠、按键卡片 |
+| **第四家族**（XM1r / OP1 / OP1 RGB） | 仅设备信息 | 其余全部（协议未实现，仅识别型号） |
+| **XM2we / OP1we** | 四张专属卡片（信息 / CPI 与回报率 / 键位矩阵 / EEPROM 备份） | 全部 4k 家族卡片 |
+| **未连接** | 仅致谢与说明 | 全部设备卡片 |
 
-**Design principle**: **only show fields confirmed by real-hardware testing** (实测确认). Fields whose offsets have not been located do not appear, rather than shipping a control that "does nothing" when changed — that is exactly how XM1's independent XY went wrong (the control was built first, then real-hardware testing revealed the firmware reads X only).
+**设计原则**：**只显示实测确认的字段**。偏移未定位的字段不出现，而不是上线一个改了「什么也不发生」的控件 —— XM1 的独立 XY 正是这样出错的（控件先做出来，真机测试才发现固件只读 X）。
 
-**Preview any model's UI** (no need to own the device): add a hash to the URL, e.g. `index.html#layout=xm1`, `#layout=v1`, `#layout=v2`, `#layout=8k`, `#layout=ro`, `#layout=we`, `#layout=unsupported`. Preview **only changes what is displayed and grants no read or write capability** — the write gate only cares whether a device is actually connected.
+**预览任意型号的 UI**（无需拥有设备）：在 URL 加 hash，例如 `index.html#layout=xm1`、`#layout=v1`、`#layout=v2`、`#layout=8k`、`#layout=ro`、`#layout=we`、`#layout=unsupported`。预览**只改变显示内容，不授予任何读写能力** —— 写入门只关心是否真的连着设备。
 
-Adding `&simulate=lost` lets you rehearse the **"device lost → reset to the initial screen"** path, e.g. `index.html#layout=v2&simulate=lost` (touches no device either; intended for preview and regression testing when no hardware is available).
+加 `&simulate=lost` 可演练**「设备丢失 → 回到初始屏」**路径，例如 `index.html#layout=v2&simulate=lost`（同样不碰设备；供无硬件时的预览与回归测试）。
 
-> **The full product catalog with version cross-references** is in **[`docs/official-product-catalog.md`](docs/official-product-catalog.md)** (compiled 2026-10-08 from the official download index and product pages: firmware/tool versions for 16 mice, official CDN download URLs, and the mapping to official GitHub repositories). The 2020-generation products (XM1/XM1r/XM2we/OP1we) have **no official GitHub repository**.
->
-> **The 8k wired family is proven isomorphic to the 4k family**: static analysis of the XM2 8k tool v1.12 downloaded from the official CDN shows the same report ID `0xA1` in the first byte, the same 7 `HidD_*` APIs, and the PDB token `K26_046_config_v1.12_8k_motion_jjitter`. Supporting them therefore requires **no new protocol code** — just adding the VID/PID to the `MOUSE_PIDS` table.
->
-> The four 4k wireless models share dongle PID `0x1970`, so they cannot be distinguished at the USB level; this tool uses the mouse's own PID returned by cmd `0x0E` to discriminate, and handles the v1/v2-incompatible field encodings (LOD, polling-rate enum, flag bits) separately. Variant PIDs `0x1969`/`0x1981` come from the device table in the official v1.02 tool binary (see `re/PROTOCOL_NOTES.md`). The XM2we family is identified **by PID first** (`0x1960`/`0x1962` mice, `0x1961` dongle); only unknown PIDs fall back to interface page `0xFF02`, and only if that collection declares report `0x08` — 4k mice such as `0x1982` also expose FF02 collections, so a page-only rule would misroute them into the WE protocol and trigger `Failed to write the feature report.` (fixed 2026-10-20).
+> [!NOTE]
+> **完整产品目录与版本交叉对照**在 **[`docs/official-product-catalog.md`](docs/official-product-catalog.md)**（2026-10-08 编译自官方下载索引与产品页：16 款鼠标的固件/工具版本、官方 CDN 下载地址，以及到官方 GitHub 仓库的映射）。2020 代产品（XM1 / XM1r / XM2we / OP1we）**没有官方 GitHub 仓库**。
 
-## Features
+**8k 有线家族已被证明与 4k 家族同构**：对从官方 CDN 下载的 XM2 8k 工具 v1.12 的静态分析显示，首字节同为报文 ID `0xA1`、同样的 7 个 `HidD_*` API、PDB 记号 `K26_046_config_v1.12_8k_motion_jjitter`。因此支持它们**不需要任何新协议代码** —— 只需把 VID/PID 加进 `MOUSE_PIDS` 表。
 
-- **Sensor**: CPI 4 slots (**independent XY — verified on real hardware**, 10–30000), slot count, current slot (v2), LOD (including glass-mode encoding conversion), angle snap, angle tuning (v2), ripple control, lift-off LED
-- **Performance**: polling 4000/2000/1000/125 Hz, Motion Sync, Slamclick filter, jitter filter (v1), multi-click filter / forced max FPS (v2)
-- **Power**: power-save timeout, deep sleep (1–120 minutes or off)
-- **Buttons**: mapping table and click-filter display; filter values are editable and writable; GX Safe/Speed modes (left/right buttons)
-- **Tools**: config export/import (JSON + raw 1024B blob), re-pairing, restore default pairing (0x71), read pairing data (0x72), factory reset (double confirmation), hex-level communication log
-- **Connection robustness — the UI returns to the initial screen by itself once the device is gone**: two independent signals — ① the browser's `disconnect` event on the device (unplug/power loss, immediate); ② periodic enumeration via `navigator.hid.getDevices()` (two consecutive misses before declaring it gone, tolerating permission jitter; if the interface has already been closed by the browser, one miss suffices). On a hit, all residual state is cleared and the UI resets to the disconnected state, avoiding the illusion of "the UI says connected but writes are bound to fail".
-  **Deliberately not using "send a probe command" to detect presence**: `0x0F` is a wireless wake command, and sending it on a timer prevents the mouse from ever deep-sleeping (wasted power); whereas `0x0E`/`0x07` return unreachable while the mouse sleeps, which would mistake "asleep" for "unplugged". "Wireless link down" (`inputreport 0xB1`) means the receiver is still there and the mouse is merely sleeping, and does **not** trigger a reset
-- **XM2we family**: CPI 8 slots (slot 1 takes effect immediately), polling rate (125/250/500/1000 Hz one-hot mask), click debounce, key matrix (type 0x01 decoded + the rest shown as-is), EEPROM export (.txt / .json); every write is verified by read-back
-- **i18n**: 8 languages — 简体中文 / 繁體中文 / English / Deutsch / Français / Español / 日本語 / 한국어. **The browser's language is auto-detected on first open** (`navigator.languages` matched in order; Traditional Chinese is detected first via `zh-TW`/`zh-HK`/`zh-Hant` so it is not swallowed into Simplified; falls back to Simplified Chinese), after which a manual pick from the top-right takes priority and is stored in localStorage; Japanese/Korean/Traditional automatically switch the CJK font stack (`html:lang()`) so Han characters don't pick up Simplified glyph forms. Entries live per-language under `src/i18n/`, and key-name consistency is validated by `npm run check:i18n`
+四款 4k 无线型号共用接收器 PID `0x1970`，USB 层无法区分；本工具用 cmd `0x0E` 返回的鼠标自身 PID 判别，并分别处理 v1/v2 不兼容的字段编码（LOD、回报率枚举、标志位）。变体 PID `0x1969`/`0x1981` 来自官方 v1.02 工具二进制里的设备表（见 `re/PROTOCOL_NOTES.md`）。XM2we 家族**先按 PID** 识别（`0x1960`/`0x1962` 鼠标、`0x1961` 接收器）；只有未知 PID 才退回 interface page `0xFF02` 兜底，且要求该集合声明 report `0x08` —— 4k 鼠标（如 `0x1982`）同样带 FF02 集合，只按页面判族会把它误送进 WE 协议并触发 `Failed to write the feature report.`（2026-10-20 修复）。
 
-## Running locally / deploying to GitHub Pages
+## 功能
 
-The source is in two parts; the build script bundles both into a single file written to `dist/index.html` and to `index.html` at the repo root — both are zero-dependency single files that **work by double-clicking, no server required**.
+- **传感器**：CPI 4 槽（**独立 XY —— 已真机验证**，10–30000）、槽数、当前槽（v2）、LOD（含 glass 模式编码换算）、角度吸附、角度微调（v2）、ripple 控制、抬离 LED
+- **性能**：回报率 4000/2000/1000/125 Hz、Motion Sync、Slamclick 过滤、抖动过滤（v1）、多击过滤 / 强制最高 FPS（v2）
+- **电源**：省电超时、深度睡眠（1–120 分钟或关闭）
+- **按键**：映射表与点击过滤显示；过滤值可编辑可写入；GX Safe/Speed 模式（左/右键）
+- **工具**：配置导出/导入（JSON + 原始 1024B blob）、重新配对、恢复默认配对（`0x71`）、读取配对数据（`0x72`）、恢复出厂（双重确认）、hex 级通信日志
+- **连接健壮性 —— 设备一消失，界面自行回到初始屏**
+  两个独立信号：① 浏览器对设备的 `disconnect` 事件（拔出/断电，立即）；② 经 `navigator.hid.getDevices()` 周期枚举（连续两次未命中才宣告消失，容忍权限抖动；若接口已被浏览器关闭，一次未命中即足够）。命中后清除全部残留状态，UI 重置为未连接状态，避免「界面显示已连接但写入注定失败」的错觉。
+  - **刻意不用「发探测命令」来判存在**：`0x0F` 是无线唤醒命令，定时发送会让鼠标永远无法深度睡眠（白耗电）；而 `0x0E`/`0x07` 在鼠标睡眠时返回不可达，会把「在睡觉」误判成「被拔了」。「无线链路断开」（`inputreport 0xB1`）意味着接收器还在、鼠标只是在睡觉，**不会**触发重置。
+- **XM2we 家族**：CPI 8 槽（槽 1 立即生效）、回报率（125/250/500/1000 Hz one-hot 掩码）、点击消抖、键位矩阵（`0x01` 类型解码 + 其余原样展示）、EEPROM 导出（.txt / .json）；每次写入都经读回校验
+- **i18n**：8 种语言 —— 简体中文 / 繁體中文 / English / Deutsch / Français / Español / 日本語 / 한국어。**首次打开自动检测浏览器语言**（按顺序匹配 `navigator.languages`；繁体先经 `zh-TW`/`zh-HK`/`zh-Hant` 检出以免被并入简体；兜底为简体中文），之后右上角手动选择优先并存储到 localStorage；日/韩/繁自动切换 CJK 字体栈（`html:lang()`），避免汉字取到简体字形。词条按语言放在 `src/i18n/` 下，键名一致性由 `npm run check:i18n` 校验
 
-| Directory | Contents |
+## 本地运行与部署
+
+源码分两部分；构建脚本把两者打包进单个文件，写到 `dist/index.html` 和仓库根目录的 `index.html` —— 两者都是零依赖单文件，**双击即用，无需服务器**。
+
+| 目录 | 内容 |
 |---|---|
-| `src/` | TypeScript. Strictly layered (bottom → top): `state` / `transport` / `protocol` → `blob` / `verify` → `device-4k` / `device-8k` / `device-xm1` → `render` / `presence` → `session` → `connect` → `main` (the entry point only does assembly and event binding); `xm2we.ts` + `xm2we-ui.ts` are a fully independent second protocol family; `i18n.ts` + `i18n/*.ts` hold the 8 languages' entries |
-| `scss/` | **The single source of styles** (`_tokens.scss` design tokens / `_mixins.scss` mixins / `main.scss` components) |
+| `src/` | TypeScript。严格分层（自底向上）：`state` / `transport` / `protocol` → `blob` / `verify` → `device-4k` / `device-8k` / `device-xm1` → `render` / `presence` → `session` → `connect` → `main`（入口只做组装与事件绑定）；`xm2we.ts` + `xm2we-ui.ts` 是完全独立的第二协议家族；`i18n.ts` + `i18n/*.ts` 存放 8 种语言的词条 |
+| `scss/` | **样式的唯一来源**（`_tokens.scss` 设计令牌 / `_mixins.scss` 混入 / `main.scss` 组件） |
 
-**A per-file map of the entire repository** (what every file is for) lives in **[`docs/repo-map.md`](docs/repo-map.md)** (Chinese, [English](docs/repo-map.en.md)).
+**整仓库逐文件地图**（每个文件的作用）在 **[`docs/repo-map.md`](docs/repo-map.md)**（[English](docs/repo-map.en.md)）。
 
-Tech stack: **TypeScript 7** (the Go-native compiler, `tsc --noEmit` for type checking) + **esbuild** for bundling + **sass** for SCSS compilation. Type checking and bundling are separated — `tsc` only checks types; the artifact is produced by esbuild.
+技术栈：**TypeScript 7**（Go 原生编译器，`tsc --noEmit` 做类型检查）+ **esbuild** 打包 + **sass** 编译 SCSS。类型检查与打包分离 —— `tsc` 只查类型；产物由 esbuild 生成。
 
-**Locally**: open `index.html` by double-clicking (`file://` is a secure context, so WebHID works). If browser policy blocks it, any static server will do:
+### 直接双击使用
+
+**本地**：双击打开 `index.html`（`file://` 属安全上下文，WebHID 可用）。若浏览器策略拦截，任意静态服务器皆可：
 
 ```bash
 python -m http.server 8080
-# then visit http://localhost:8080
+# 然后访问 http://localhost:8080
 ```
 
-**Building from source** (run after changing `src/` or `scss/`; the artifact is synced to `index.html` at the root):
+### 从源码构建
+
+改动 `src/` 或 `scss/` 后运行；产物同步到根目录 `index.html`：
 
 ```bash
 npm install
-npm run build     # esbuild bundles TS + sass compiles SCSS -> dist/index.html + index.html
-npm run build -- --minify   # minified
-npm run check     # tsc --noEmit type check
+npm run build     # esbuild 打包 TS + sass 编译 SCSS -> dist/index.html + index.html
+npm run build -- --minify   # 压缩版
+npm run check     # tsc --noEmit 类型检查
 ```
 
-### Style development conventions (mandatory)
+### 样式开发约定
 
-- **All styles are written in SCSS under `scss/`**, compiled by `tools/build.mjs` via `sass.compile()` and inlined into the HTML.
-- `index.template.html` keeps only the placeholders `/*__STYLES__*/` (and `/*__BUNDLE__*/` for JS). **Do not write `<style>` directly in the template.**
-- To change theme colors / spacing / radii / font sizes → edit `_tokens.scss` only; component styles live in `main.scss` organized with nesting + `@each`.
-- The build errors out if a placeholder is missing (preventing the template from drifting out of sync with the build).
-- The distributed artifact remains **a single HTML file** with zero runtime dependencies; SCSS is only the source format during development.
+> [!IMPORTANT]
+> 以下约定为**强制**，用于防止模板与构建漂移。
 
-**GitHub Pages**:
+- **所有样式写在 `scss/` 下的 SCSS 中**，由 `tools/build.mjs` 经 `sass.compile()` 编译并内联进 HTML。
+- `index.template.html` 只保留占位符 `/*__STYLES__*/`（JS 为 `/*__BUNDLE__*/`）。**不要在模板里直接写 `<style>`。**
+- 改主题色 / 间距 / 圆角 / 字号 → 只改 `_tokens.scss`；组件样式在 `main.scss` 用嵌套 + `@each` 组织。
+- 构建时缺占位符会报错（防止模板与构建漂移）。
+- 分发产物仍是**单个 HTML 文件**，零运行时依赖；SCSS 只是开发期的源格式。
+
+### 部署到 GitHub Pages
 
 ```bash
 git init && git add . && git commit -m "feat: Endgame Gear web configurator"
 gh repo create Endgame_Gear_Web_Configurator --public --source=. --push
-gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[path]=/"   # or pick main / in Settings → Pages
+gh api repos/{owner}/{owner}/pages -X POST -f "source[branch]=main" -f "source[path]=/"   # 或在 Settings → Pages 里选 main
 ```
 
-Then visit `https://<your-username>.github.io/Endgame_Gear_Web_Configurator/`. GitHub Pages is HTTPS by default, which satisfies WebHID's secure-context requirement.
+然后访问 `https://<你的用户名>.github.io/Endgame_Gear_Web_Configurator/`。GitHub Pages 默认 HTTPS，满足 WebHID 的安全上下文要求。
 
-> **Deployment notes** (each item verified for this project; the original feasibility analysis lives in git history — `docs/ui-port-feasibility.md`, removed 2026-10-11):
+> [!TIP]
+> **部署要点**（每一项都针对本项目验证过；最初的可行性分析在 git 历史里 —— `docs/ui-port-feasibility.md`，2026-10-11 移除）：
 >
-> - The artifact contains **no absolute paths** (and no `<base>`), so placing it under a project-page subpath `…/Endgame_Gear_Web_Configurator/` does not break. For comparison: a similar site, `op1w.vercel.app`, uses `/assets/…` absolute paths, so the same build moved to a project-page subpath would 404.
-> - The repo root already has **`.nojekyll`**: branch publishing runs Jekyll by default, and Jekyll excludes files starting with `_` (such as `scss/_tokens.scss`) — worse, **if the Jekyll build fails, the whole site 404s**. This project only needs two built HTML files hosted.
-> - Pages serves static assets with `Cache-Control: max-age=600` — after a push the old version may linger for 10 minutes; use a hard refresh when verifying.
-> - Publishing from the repo root hosts **the entire repository** in public. It is confirmed that no vendor binaries are committed (`.gitignore` covers `*.exe` and real-hardware blobs); if you only want the artifact public, create a separate `gh-pages` branch holding just `index.html` and `tools/blob-studio.html`.
+> - 产物**不含绝对路径**（也没有 `<base>`），放在项目页子路径 `…/Endgame_Gear_Web_Configurator/` 下不会坏。对比：同类站点 `op1w.vercel.app` 用了 `/assets/…` 绝对路径，同样的构建搬到项目页子路径就会 404。
+> - 仓库根目录已有 **`.nojekyll`**：分支发布默认跑 Jekyll，而 Jekyll 排除下划线开头的文件（如 `scss/_tokens.scss`）—— 更糟的是 **Jekyll 构建失败会让整站 404**。本项目只需要托管两个构建好的 HTML 文件。
+> - Pages 以 `Cache-Control: max-age=600` 提供静态资源 —— 推送后旧版本可能滞留 10 分钟；验证时请强制刷新。
+> - 从仓库根目录发布等于**把整个仓库公开**。已确认没有厂商二进制被提交（`.gitignore` 覆盖 `*.exe` 与真机 blob）；若只想公开产物，可另建一个 `gh-pages` 分支只放 `index.html` 和 `tools/blob-studio.html`。
 
-## Troubleshooting
+## 故障排查
 
-| Symptom | Cause and handling |
+| 症状 | 原因与处理 |
 |---|---|
-| `blob read failed` / `0xA0 not ready (status=0x…)` | Bulk reports are slow, so a stale cache was read. Since v1.1 the 0x12 read is automatically resent and retried 4 times; if it still fails, open the communication log and send the hex to the developer |
-| Read fails after the mouse sleeps | Hardware behaviour. Move the mouse and click "Re-read"; the software automatically sends a 0x0F probe to restore the channel |
-| Receiver firmware shows `—` when wired | Normal; a wired connection has no dongle, and cmd 0x0D returns "not applicable" (0x07) |
-| v1 current slot can't be changed | v1 hardware ignores software switching; use the CPI button on the mouse underside |
-| Wired polling rate shows 1000 Hz | USB full-speed frame limit, a hardware ceiling; the stored value written is unaffected and recovers automatically on returning to wireless |
-| Returns to the initial screen by itself with "device disconnected" | The device is not present (unplugged / powered off / receiver removed). The reset is **deliberate**: residual stale data after a disconnect makes writes look successful. Click "Connect device" again; the basis is the `disconnect` event plus device enumeration and does not depend on any write |
-| Switching to another tab and back shows disconnected | Switching to the background **releases the WebHID interface** per security policy (so the interface isn't monopolized long-term); since the interface is released, the UI resets in sync rather than keeping unusable stale data. Just reconnect (released only once per page) |
+| `blob read failed` / `0xA0 not ready (status=0x…)` | 大报文较慢，读到的是过期缓存。v1.1 起 `0x12` 读取会自动重发重试 4 次；仍失败请打开通信日志，把 hex 发给开发者 |
+| 鼠标睡眠后读取失败 | 硬件行为。动一下鼠标再点「重新读取」；软件会自动发 `0x0F` 探测恢复通道 |
+| 有线时接收器固件显示 `—` | 正常；有线连接没有接收器，cmd `0x0D` 返回「不适用」（`0x07`） |
+| v1 当前槽无法切换 | v1 硬件不理会软件切换；用鼠标底面的 CPI 按键 |
+| 有线回报率显示 1000 Hz | USB 全速帧率上限，硬件天花板；写入的存储值不受影响，回到无线后自动恢复 |
+| 自行回到初始屏并提示「设备已断开」 | 设备不在（拔出 / 断电 / 接收器被拔）。重置是**刻意的**：断开后残留的过期数据会让写入看起来成功。重新点「连接设备」即可；判据是 `disconnect` 事件加设备枚举，不依赖任何写入 |
+| 切到别的标签页再回来显示已断开 | 切到后台会按安全策略**释放 WebHID 接口**（避免长期独占接口）；接口既然被释放，UI 同步重置而不是留着不可用的过期数据。重连即可（每次页面只释放一次） |
 
-## Protocol quick reference (see the vole repository's re/PROTOCOL.md and this project's re/PROTOCOL_NOTES.md)
+## 协议速查
 
-- Channels: feature report `0xA1` (64B command/response, payload starts at offset 16), `0xA0` (1041B, carries the 1024B config blob)
-- Commands: `0x0F` probe · `0x0D`/`0x0E` firmware info · `0xB4` battery · `0x12` read blob · `0x13` factory default · `0x14` sensor block · `0x15` performance block (declares 10 bytes, actually sends 11) · `0x16` key block ×2 · `0x70` pairing · `0x71` default pairing · `0x72` pairing data
-- A write is persistent; status codes `0x01` OK / `0x03` busy (retry) / `0x07` not applicable to this connection / `0x08`,`0x11` mouse asleep
-- After a failure you must resend the `0x0F` probe, otherwise the device stays "wedged" until the next probe succeeds
+另见 vole 仓库的 `re/PROTOCOL.md` 与本项目的 `re/PROTOCOL_NOTES.md`。
 
-## Protocol family comparison (Endgame Gear is not one protocol)
+- 通道：feature report `0xA1`（64B 命令/响应，载荷从偏移 16 开始）、`0xA0`（1041B，携带 1024B 配置 blob）
+- 命令：`0x0F` 探测 · `0x0D`/`0x0E` 固件信息 · `0xB4` 电量 · `0x12` 读 blob · `0x13` 出厂默认 · `0x14` 传感器块 · `0x15` 性能块（声明 10 字节，实发 11）· `0x16` 按键块 ×2 · `0x70` 配对 · `0x71` 默认配对 · `0x72` 配对数据
+- 写入即持久化；状态码 `0x01` 成功 / `0x03` 忙（重试）/ `0x07` 该连接不适用 / `0x08`,`0x11` 鼠标睡眠中
+- 失败后必须重发 `0x0F` 探测，否则设备保持「卡死」直到下一次探测成功
 
-| | **XM1** (2020 wired, VID `0x22D4`) | **XM2we** (2020 wired/2.4G) | **4k family** (4k wireless + 8k wired) |
+## 协议家族对比
+
+Endgame Gear 不止一套协议。下表只涵盖本工具真正会通信的三套家族。
+
+| | **XM1**（2020 有线，VID `0x22D4`） | **XM2we**（2020 有线/2.4G） | **4k 家族**（4k 无线 + 8k 有线） |
 |---|---|---|---|
-| usage page | to be confirmed | `0xFF02` | `0xFF01` |
-| report ID | `0xA1` out / `0xA0` in | `0x08` out / `0x09` in | `0xA1` out / `0xA0` in |
-| frame structure | 64 B command / **1041 B bulk report** | 17 B + `(0x55−Σ)&0xFF` checksum | 64 B command / 1041 B read |
-| config blob | **1024 B @ report offset 16** | none (goes to EEPROM) | 1024 B @ 16 |
-| status byte | **none** (see HidD return codes) | none | `[1]`/`[2]` (v2 has an echo variant) |
-| command count | **4** (`0x03`/`0x04`/`0x07`/`0x08`) | 5 opcodes | 13 |
-| CPI slots | **3** | 8 slots | 4 |
-| PC-side slot backup | `.profile` / `pfList.dat` (up to 5 slots) | — | JSON / raw blob |
-| vendor DLL | none (protocol is in the main exe) | `OemDrv.exe` | `hidapi` statically linked |
-| internal codename | K25A / K25B | — | W25 (4k wireless) / **K26** (8k wired) |
+| usage page | 待确认 | `0xFF02` | `0xFF01` |
+| 报文 ID | `0xA1` 出 / `0xA0` 入 | `0x08` 出 / `0x09` 入 | `0xA1` 出 / `0xA0` 入 |
+| 帧结构 | 64 B 命令 / **1041 B 大报文** | 17 B + `(0x55−Σ)&0xFF` 校验和 | 64 B 命令 / 1041 B 读取 |
+| 配置 blob | **1024 B @ 报文偏移 16** | 无（走 EEPROM） | 1024 B @ 16 |
+| 状态字节 | **无**（见 HidD 返回码） | 无 | `[1]`/`[2]`（v2 有回显变体） |
+| 命令数 | **4**（`0x03`/`0x04`/`0x07`/`0x08`） | 5 个 opcode | 13 |
+| CPI 槽数 | **3** | 8 槽 | 4 |
+| PC 端槽位备份 | `.profile` / `pfList.dat`（最多 5 槽） | — | JSON / 原始 blob |
+| 厂商 DLL | 无（协议在主程序里） | `OemDrv.exe` | `hidapi` 静态链接 |
+| 内部代号 | K25A / K25B | — | W25（4k 无线）/ **K26**（8k 有线） |
 
-The table above covers the three families this tool actually talks to. A fourth family exists — XM1r / OP1 / OP1 RGB (VID `0x3367`, interface `0xFFA1`) — with a completely different framework: 64 B packets, 54 `kCom*` commands and a 32-byte passphrase. It is recognised on connect and reported as unsupported, but never spoken to (see `re/FAMILY4_NOTES.md`).
+第四家族（XM1r / OP1 / OP1 RGB，VID `0x3367`，interface `0xFFA1`）框架完全不同：64 字节报文、54 条 `kCom*` 命令、32 字节口令 —— 连接时能被识别并明确报「不支持」，但绝不通信（见 `re/FAMILY4_NOTES.md`）。
 
-**XM1 and the 4k family share one protocol framework** — the `0xA0` 1041B bulk report, the 1024B blob @16, and the retry logic below are byte-for-byte identical. The differences are only VID, command-set size, presence of a status byte, and CPI slot count.
-**So supporting XM1 and the 8k wired family requires almost no new protocol code.**
+**XM1 与 4k 家族共用同一套协议框架** —— `0xA0` 1041B 大报文、1024B blob @16、下述重试逻辑逐字节一致。差异只在 VID、命令集规模、有无状态字节、CPI 槽数。
+**所以支持 XM1 与 8k 有线家族几乎不需要新的协议代码。**
 
-Shared HID communication wrapper: when `HidD_SetFeature` fails, error codes `{0x15, 0x17, 0x1D, 0x57, 0x65B}` are retried 4 times at 50 ms intervals — byte-for-byte identical in the official 4k tool and the XM1 main program. See `re/PROTOCOL_NOTES.md` and `re/XM1_NOTES.md`.
+共享的 HID 通信封装：`HidD_SetFeature` 失败时对错误码 `{0x15, 0x17, 0x1D, 0x57, 0x65B}` 以 50 ms 间隔重试 4 次 —— 官方 4k 工具与 XM1 主程序逐字节一致。见 `re/PROTOCOL_NOTES.md` 与 `re/XM1_NOTES.md`。
 
-## Reverse-engineering verification
+## 逆向验证
 
-The protocol implementation has been verified byte-for-byte against the official `Endgame Gear XM2w 4k v2 Configuration Tool v1.02` binary: command table / targets / lengths, the 0x16 dual-block write, blob layout (CPI slots `0x23+5n`, keys `0x37+7n`, glass mode `0x6F`), and the busy-retry and send-error retry strategies all match. The complete evidence chain (disassembly scripts + intermediate artifacts) is under `re/`. The LED tab and Surface Calibration have no protocol implementation path in the official v1.02 (template leftover UI), so they are not implemented.
+协议实现已与官方 `Endgame Gear XM2w 4k v2 Configuration Tool v1.02` 二进制逐字节核对：命令表 / 目标 / 长度、`0x16` 双块写、blob 布局（CPI 槽 `0x23+5n`、按键 `0x37+7n`、glass 模式 `0x6F`）、忙重试与发送错误重试策略全部吻合。完整证据链（反汇编脚本 + 中间产物）在 `re/` 下。官方 v1.02 中 LED 标签页与表面校准没有协议实现路径（模板残留 UI），故不实现。
 
-**XM1**: the official installer is an InstallShield Basic MSI (5.82 MB `ISSetupStream` proprietary compressed overlay; zlib/deflate/LZMA/BZ2 all fail to open it), so the real files were extracted with `pawstas80/Unpacker` before static analysis — 3 commands, no status byte, config stored in files rather than EEPROM. The full evidence chain is in `re/XM1_NOTES.md`.
+**XM1**：官方安装包是 InstallShield Basic MSI（5.82 MB 的 `ISSetupStream` 专有压缩覆盖层；zlib/deflate/LZMA/BZ2 都打不开），先用 `pawstas80/Unpacker` 抽出真实文件再做静态分析 —— 3 条命令、无状态字节、配置存文件而非 EEPROM。完整证据链在 `re/XM1_NOTES.md`。
 
-## Acknowledgements
+## 致谢
 
-- **[johanneszab/vole](https://github.com/johanneszab/vole)** — the complete USB configuration protocol reverse-engineering documentation and Linux implementation (Ghidra + USBPcap + real-hardware verification); the sole basis for the 4k family's protocol layer
-- **[okms/xm2we-linux](https://github.com/okms/xm2we-linux)** — complete protocol documentation for the XM2we 2020 wired/2.4G family (PROTOCOL.md, cross-verified on real hardware) and a Python implementation; the entire basis for XM2we support
-- **[stuffz/mouse-battery-monitor](https://github.com/stuffz/mouse-battery-monitor)** — HID protocol documentation for battery status
-- **[gentoocat/XM2we-Unleashed](https://github.com/gentoocat/XM2we-Unleashed)** — direct-communication exploration of XM2we (no license, used as intelligence reference only)
-- **[qsxcv/UnofficialEGGWebConfig](https://github.com/qsxcv/UnofficialEGGWebConfig)** · **[zexsso/OP1-WebAPP](https://github.com/zexsso/OP1-WebAPP)** — comparable WebHID web configurators (8k series / OP1w 4k); for XM2w 4k v1/v2 these are currently the only ones (ecosystem overview in `docs/ecosystem-survey.md`)
-- **[daviddwk/xm2we-util](https://github.com/daviddwk/xm2we-util)** — a second independent implementation of the XM2we protocol, used to cross-check constants
-- **[Endgame Gear / Pro Gamersware GmbH](https://www.endgamegear.com/)** — the hardware itself, plus unobfuscated, analyzable official configuration tools
+- **[johanneszab/vole](https://github.com/johanneszab/vole)** —— 完整的 USB 配置协议逆向文档与 Linux 实现（Ghidra + USBPcap + 真机验证）；4k 家族协议层的唯一依据
+- **[okms/xm2we-linux](https://github.com/okms/xm2we-linux)** —— XM2we 2020 有线/2.4G 家族的完整协议文档（PROTOCOL.md，经真机交叉验证）与 Python 实现；XM2we 支持的全部依据
+- **[stuffz/mouse-battery-monitor](https://github.com/stuffz/mouse-battery-monitor)** —— 电量状态的 HID 协议文档
+- **[gentoocat/XM2we-Unleashed](https://github.com/gentoocat/XM2we-Unleashed)** —— XM2we 直连通信探索（无许可证，仅作情报参考）
+- **[qsxcv/UnofficialEGGWebConfig](https://github.com/qsxcv/UnofficialEGGWebConfig)** · **[zexsso/OP1-WebAPP](https://github.com/zexsso/OP1-WebAPP)** —— 可比的 WebHID 网页配置器（8k 系列 / OP1w 4k）；对 XM2w 4k v1/v2 而言它们是目前仅有的（生态概览见 `docs/ecosystem-survey.md`）
+- **[daviddwk/xm2we-util](https://github.com/daviddwk/xm2we-util)** —— XM2we 协议的第二个独立实现，用于交叉核对常量
+- **[Endgame Gear / Pro Gamersware GmbH](https://www.endgamegear.com/)** —— 硬件本身，以及未混淆、可分析的官方配置工具
 
-## Disclaimer
+## 免责声明
 
-This is an independent open-source tool with no affiliation to Endgame Gear / Pro Gamersware GmbH. It only reads and writes your own configuration; it does not modify firmware and does not bypass any protection mechanism. Use at your own risk; you bear the consequences of any configuration change you make (the protocol documentation has verified that writing works in both directions, but please use low-level operations other than "factory reset" judiciously).
+这是一个独立的开源工具，与 Endgame Gear / Pro Gamersware GmbH 无任何隶属关系。它只读写你自己的配置；不改固件、不绕过任何保护机制。使用风险自担；你所做任何配置改动的后果由你自己承担（协议文档已验证写入双向可靠，但请对「恢复出厂」以外的底层操作保持审慎）。
 
-**Models not verified on real hardware (the entire 8k wired family, OP1we, and several variant PIDs) are read-only by default**: clicking write shows a confirmation dialog, and after confirming it is unlocked for that connection only, with a backup exported first. XM2we left this list in November 2026, after a user verified reads and writes over both the cable and the receiver.
+> [!WARNING]
+> **未真机验证的型号（整个 8k 有线家族、OP1we 及若干变体 PID）默认只读**：点击写入会弹出确认对话框，确认后仅**对本次连接**放行，并先自动导出备份。XM2we 已于 2026 年 11 月移出本名单 —— 一位用户分别在有线与无线两种连接下验证了读与写。
 
-## Contributing to testing
+## 参与测试
 
-Do you have a mouse we don't (the entire 8k wired family, or an OP1we)? Your real-hardware testing is the only path to verifying these models. Please read these two documents first:
+有我们没有的鼠标吗（整个 8k 有线家族，或 OP1we）？你的真机测试是验证这些型号的唯一路径。请先读这两份文档：
 
-- **[docs/remote-beta-guide.md](docs/remote-beta-guide.md)** — must read before participating (backup, risks, how to recover)
-- **[docs/test-checklist.md](docs/test-checklist.md)** — which items to test and how to fill each in
+- **[docs/remote-beta-guide.md](docs/remote-beta-guide.md)** —— 参与前必读（备份、风险、如何恢复）
+- **[docs/test-checklist.md](docs/test-checklist.md)** —— 测哪些项、每项怎么填
 
-Clicking "Export test data packet (.json)" in the tool gives you all of it in one go: model / VID / PID / interface set / firmware / full blob (EEPROM dump for the WE family) / communication log, plus a report template.
+在工具里点「导出测试数据包 (.json)」即可一次拿全：型号 / VID / PID / 接口集 / 固件 / 完整 blob（WE 家族为 EEPROM 转储）/ 通信日志，外加报告模板。
 
-## License
+## 许可证
 
-This project is released under **GPL-3.0-or-later** (see `LICENSE`). You are free to use, modify and redistribute it, and any derivative distribution based on this code must also be open-sourced under GPL-3.
+本项目以 **GPL-3.0-or-later** 发布（见 `LICENSE`）。你可以自由使用、修改和再分发，任何基于本代码的衍生分发也必须以 GPL-3 开源。
 
-Third-party material: `op1web_PROTOCOL.md` (MIT © zexsso) and `eggweb_protocol.js` (**AGPL-3** © qsxcv) collected under `re/upstream/` are retained as research archive only and take no part in the build; `MANIFEST.md` holds the compliance conclusions, and the full community scan lives in git history (`docs/community-code-scan.md`, removed 2026-10-11). Protocol facts themselves are not copyrightable, but please respect each upstream project's license terms.
+第三方素材：`re/upstream/` 下收录的 `op1web_PROTOCOL.md`（MIT © zexsso）与 `eggweb_protocol.js`（**AGPL-3** © qsxcv）仅作研究存档保留，不参与构建；合规结论见 `MANIFEST.md`，完整的社区扫描在 git 历史里（`docs/community-code-scan.md`，2026-10-11 移除）。协议事实本身不受版权保护，但请尊重各上游项目的许可条款。
 
-## Changelog
+## 更新日志
 
-See **[CHANGELOG.md](CHANGELOG.md)** (since v1.3).
+见 **[CHANGELOG.md](CHANGELOG.md)**（自 v1.3 起）。
 
-## Roadmap
+## 路线图
 
-The task queue with dependencies and completion status lives in **[docs/internal/TASKS.md](docs/internal/TASKS.md)**.
+带依赖与完成状态的任务队列在 **[docs/internal/TASKS.md](docs/internal/TASKS.md)**。
 
-### Support status
+### 支持状态
 
-| Device | Status |
+| 设备 | 状态 |
 |---|---|
-| **XM2w 4k / 4k v2, OP1w 4k / 4k v2** | ✅ Full read + write (protocol verified byte-for-byte against the official v1.02 tool) |
-| **XM1 / XM1 RGB** | ✅ Read + write available (writes hard-limited to the 23 bytes confirmed by real-hardware testing) |
-| **XM2we** | ✅ **Verified on real hardware** (Nov 2026) — read and write over both the cable (`0x1960`) and the receiver (`0x1961`); LOD mapping confirmed by a differential dump; restoring returned all 181 bytes byte-identical |
-| **OP1we** | 🧩 Code ready (shares the XM2we driver), **not yet connected to real hardware** |
-| **XM2 8k / OP1 8k (incl. v2)** | 🧩 **Read + write implemented** (`0x11` whole-blob write, cross-checked against three independent sources), **not yet verified on real hardware** — writes open only after an explicit confirmation |
+| **XM2w 4k / 4k v2，OP1w 4k / 4k v2** | ✅ 完整读写（协议与官方 v1.02 工具逐字节核对） |
+| **XM1 / XM1 RGB** | ✅ 可读可写（写入硬性限制在实测确认的 23 字节内） |
+| **XM2we** | ✅ **已真机验证**（2026-11）—— 有线（`0x1960`）与无线（`0x1961`）均可读可写；LOD 映射由差分实测确认；恢复后 181 字节逐字节一致 |
+| **OP1we** | 🧩 代码就绪（与 XM2we 共用驱动），**尚未连过真机** |
+| **XM2 8k / OP1 8k（含 v2）** | 🧩 **读写均已实现**（`0x11` 整块写，经三个独立来源交叉印证），**尚未真机验证** —— 写入需显式确认后放行 |
 
-### Done
+### 已完成
 
-- [x] Official repo and product-line reconnaissance (11 repos, full table of 16 mice → `docs/official-product-catalog.md`)
-- [x] All fields for the 4k wireless family v1 / v2 (the current primary support target)
-- [x] XM2we 2020 wired/2.4G family — **verified on real hardware** (Nov 2026): read + write on both transports, LOD mapping, reversible writes (181 bytes restored byte-for-byte)
-- [x] Protocol cross-checked against a second independent implementation (`OpenMouse-Project/mouse-protocol`): 4k blob offsets and the `0x14`/`0x15` block payloads match byte-for-byte, 8k write timings match exactly
-- [x] XM1 2020 wired family: **read + restricted write** (chapter 6 of `re/XM1_NOTES.md`)
-- [x] Style layer migrated to SCSS (`scss/`; mandatory conventions in the "Running locally" section)
-- [x] Dark theme (`[data-theme]` + CSS custom properties, zero component-style changes)
-- [x] Offline blob analysis tool (`tools/blob-studio.html`, with parsing and dual-snapshot diffing)
+- [x] 官方仓库与产品线侦察（11 个仓库，16 款鼠标全表 → `docs/official-product-catalog.md`）
+- [x] 4k 无线家族 v1 / v2 的全部字段（当前主要支持目标）
+- [x] XM2we 2020 有线/2.4G 家族 —— **已真机验证**（2026-11）：两种连接均可读写、LOD 映射、写入可逆（181 字节原样还原）
+- [x] 协议与第二套独立实现（`OpenMouse-Project/mouse-protocol`）交叉核对：4k 的 blob 偏移与 `0x14`/`0x15` 块载荷逐字节一致，8k 写入时序完全相同
+- [x] XM1 2020 有线家族：**可读 + 受限写入**（`re/XM1_NOTES.md` 第 6 章）
+- [x] 样式层迁移到 SCSS（`scss/`；强制约定见「本地运行」一节）
+- [x] 深色主题（`[data-theme]` + CSS 自定义属性，零组件样式改动）
+- [x] 离线 blob 分析工具（`tools/blob-studio.html`，含解析与双快照 diff）
 
-### Todo (by priority)
+### 待办
 
-1. **Real-hardware verification of the 8k wired family** — PIDs filled in (`0x1966`/`0x1964`/`0x1980`/`0x1978`); needs gen encoding and field semantics confirmed before writes open
-2. **OP1we real-hardware verification** — shares the XM2we driver; only the PID (`0x1962`) has never been seen on a machine
-3. **Button remapping UI** — the 4k family's protocol layer is implemented, the editor is missing
-4. **XM1 lighting / key mapping / Angle Snap / Smoothing** — doable once located by differential analysis
-5. **More languages** — add an entry file under `src/i18n/` (following the 189 keys in `de.ts`), import it into `I18N` in `src/i18n.ts`, add the language tag mapping in `normalizeLang()`, then add one entry each to the language dropdown in `index.template.html` and to `STAGE_COLORS`/`BTN_NAMES` in `main.ts`. `npm run check:i18n` validates each site individually — PRs welcome
-6. **Request protocol documentation from the vendor** — the site is already live on GitHub Pages; the email draft is in git history (`docs/email-to-endgamegear.md`, removed afterwards)
+以下按优先级排列。
 
-> ✅ Done (2026-11): XM2we verified on real hardware — read + write over the cable and the receiver, LOD mapping confirmed, writes reversible (181 bytes restored byte-for-byte)
+1. **8k 有线家族真机验证** —— PID 已填入（`0x1966`/`0x1964`/`0x1980`/`0x1978`）；需确认 gen 编码与字段语义后开放写入
+2. **OP1we 真机验证** —— 与 XM2we 共用驱动，只有 PID（`0x1962`）从未在真机上出现过
+3. **按键重映射 UI** —— 4k 家族协议层已实现，缺编辑器
+4. **XM1 灯光 / 按键映射 / Angle Snap / Smoothing** —— 差分分析定位后即可做
+5. **更多语言** —— 在 `src/i18n/` 下加一个词条文件（仿照 `de.ts` 的 189 个键），导入 `src/i18n.ts` 的 `I18N`，在 `normalizeLang()` 加语言标签映射，再在 `index.template.html` 的语言下拉与 `main.ts` 的 `STAGE_COLORS`/`BTN_NAMES` 各加一条。`npm run check:i18n` 逐站点校验 —— 欢迎 PR
+6. **向厂商索取协议文档** —— 站点已在 GitHub Pages 上线；邮件草稿在 git 历史里（`docs/email-to-endgamegear.md`，事后已删除）
+
+> [!NOTE]
+> **最近完成**
 >
-> ✅ Done (2026-10-09):
+> - ✅ 2026-11 —— XM2we 真机验证：有线与无线两种连接均可读写、LOD 映射已确认、写入可逆（181 字节原样还原）
+> - ✅ 2026-10-09 —— XM1 可读 + 受限写入（详见 [XM1 支持细则](#xm1-支持细则)）
 
-Detailed tasks, dependencies and completion status: **[docs/internal/TASKS.md](docs/internal/TASKS.md)**.
+详细任务、依赖与完成状态：**[docs/internal/TASKS.md](docs/internal/TASKS.md)**。
