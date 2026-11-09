@@ -7,7 +7,7 @@
  *
  *  ⚠️ 必须在被测模块**之前** import —— ESM 的求值顺序就是 import 声明顺序，
  *     而本文件的全部作用就是这个副作用。
- *  ⚠️ Node 22 自带只读的 globalThis.navigator，直接赋值会被静默忽略（严格模式下报错），
+ *  ⚠️ Node 22 起（本项目基线 26，见 .nvmrc）自带只读的 globalThis.navigator，直接赋值会被静默忽略（严格模式下报错），
  *     因此用 defineProperty 覆盖。
  */
 

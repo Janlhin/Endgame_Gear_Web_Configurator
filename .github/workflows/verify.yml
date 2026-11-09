@@ -36,7 +36,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          # 单一真相源：与 .nvmrc 同源，避免「本地 26 / CI 22」的版本偏离（T-06 / D-006）。
+          node-version-file: .nvmrc
           cache: npm
       # 必须 npm ci（锁文件精确还原），不用 npm install（可能静默升级）
       - run: npm ci
@@ -76,7 +77,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          # 单一真相源：与 .nvmrc 同源，避免「本地 26 / CI 22」的版本偏离（T-06 / D-006）。
+          node-version-file: .nvmrc
           cache: npm
       - uses: actions/setup-python@v5
         with:
