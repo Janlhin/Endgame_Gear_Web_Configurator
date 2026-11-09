@@ -29,6 +29,17 @@ export const BTN_NAMES: Record<string, string[]> = {
   "ja": ["左", "右", "中", "戻る", "進む", "特殊(CPI)", "ホイール上", "ホイール下"],
   "ko": ["왼쪽", "오른쪽", "가운데", "뒤로", "앞으로", "특수(CPI)", "휠 위", "휠 아래"],
 };
+/** 点击过滤（Multiclick Filter）的毫秒上限 = 官方配置工具的上限 25。
+ *  依据：`re/upstream/SOURCES.md`「多击过滤 = 按钮记录第 7 字节……
+ *  默认 8，上限 25」（2026-11-04 与官方工具互证后的结论）。
+ *
+ *  ★ 2026-11-09 更正：下拉此前只列到 15，来源是早期 UI 字符串区的 0–15 读数
+ *    （`re/PROTOCOL_NOTES.md` 的旧结论，已在该处标注作废）。当时的兜底逻辑把
+ *    「设备读回 25」当表外值补进选项 —— 能显示，却**选不了 16–25**，等于
+ *    官方驱动能设的值在网页版里只能读、不能写。0xF0 / 0xF1 是官方特例，
+ *    不受毫秒上限约束。回归由 `re/tests/test_btns.ts` [3c-0] 钉死。 */
+export const FILTER_MAX_MS = 25;
+
 /* 点击过滤的可选值（运行时生成，避免多一张重复的表）。
  *  ★ value 必须是**数字**（0 表示关闭），不能是 "off" 这类文本：
  *    下拉的 value 要与 blob 里的字节值 String(filter) 精确相等才能选中，
@@ -37,7 +48,7 @@ export const BTN_NAMES: Record<string, string[]> = {
  *    0xF0 / 0xF1 两个特例也同理，必须给数字 0xF0 / 0xF1。 */
 export function filterOpts(): [number, string][] {
   const o: [number, string][] = [[0, t("off")]];
-  for (let i = 1; i <= 15; i++) o.push([i, String(i)]);
+  for (let i = 1; i <= FILTER_MAX_MS; i++) o.push([i, String(i)]);
   return o;
 }
 /** 点击过滤槽的数量：协议只给前 5 个按键提供槽位
@@ -427,9 +438,10 @@ export function render() {
     /* 官方工具只有左右键两个过滤滑条（.rsrc: Left/Right Button Multiclick Filter），
        且 0xF0/0xF1 两个特例正是给这两键用的。 */
     if (i <= 1) opts.push([GX_SAFE, t("gxSafe")], [GX_SPEED, t("gxSpeed")]);
-    /* 设备上的值可能不在选项表里（例如官方上限是 25 而我们只列到 15）——
-       那就把这个值本身补进选项，否则下拉会**一个都不选中**（显示空白），
-       用户看到的就不是设备当前配置。 */
+    /* 设备上的值仍可能不在选项表里：超出官方上限的异常值，或 0xF0/0xF1
+       出现在非左右键上（特例只给前两键追加）。那就把这个值本身补进选项，
+       否则下拉会**一个都不选中**（显示空白），用户看到的就不是设备当前配置。
+       0..25 已由 filterOpts() 覆盖，这段兜底只管表外值，不能删。 */
     if (!opts.some((o) => o[0] === btn.filter)) opts.push([btn.filter, String(btn.filter)]);
     fillSelect(sel, opts as any, btn.filter);
     sel.value = String(btn.filter);

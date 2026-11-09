@@ -12,7 +12,7 @@
 // 点击过滤列直接编辑 buttons[i].filter（唯一事实源）。
 import "../_domstub.js";
 import { el } from "../_domstub.js";
-import { render } from "../../src/render.js";
+import { render, filterOpts, FILTER_MAX_MS } from "../../src/render.js";
 import { S } from "../../src/state.js";
 
 let pass = 0, fail = 0;
@@ -82,13 +82,28 @@ console.log("\n[3b] 特例值必须能被选中（value 用数字，文本会选
   ok(S.stage.buttons[0].filter === 241, "选 GX Speed → 写回 241", String(S.stage.buttons[0].filter));
 }
 
+console.log("\n[3c-0] 下拉覆盖官方上限 25（此前只到 15，16–25 能读不能选）");
+{
+  ok(FILTER_MAX_MS === 25, "官方上限常量 = 25", String(FILTER_MAX_MS));
+  const vals = filterOpts().map((o) => String(o[0]));
+  ok(vals[0] === "0" && vals.length === 26, "0（关）+ 1..25 共 26 项", String(vals.length));
+  ok(["16", "20", "25"].every((v) => vals.includes(v)), "16 / 20 / 25 都在选项表内", vals.join(","));
+  ok(!vals.includes("26"), "26 不在选项表内（超出官方上限）");
+  /* 只看常量会漏掉「常量对、但下拉没用它」——UI 侧再核一遍。
+     第 3 个按键无 GX 特例，options 就是纯净的 0..25。 */
+  const uiVals = (tb.children[2].children[2].children[0].options || []).map((o: any) => o.value);
+  ok(uiVals.includes("16") && uiVals.includes("25"), "渲染出的下拉里 16 / 25 可选", uiVals.join(","));
+  ok(!uiVals.includes("26"), "渲染出的下拉里没有 26");
+}
+
 console.log("\n[3c] 设备上的值不在选项表内时，不能一个都不选中");
 {
   const saved2 = S.stage;
-  S.stage = { ...saved2, buttons: [{ type: 1, code: 1, key: 1, filter: 25 }] } as any;
+  /* 上限补齐后 25 已是表内值，兜底用例改用真正超表的 26。 */
+  S.stage = { ...saved2, buttons: [{ type: 1, code: 1, key: 1, filter: 26 }] } as any;
   render();
   const s = el("btnRows").children[0].children[2].children[0];
-  ok(s.value === "25", "值 25（超出选项表）也会被选中并显示", s.value);
+  ok(s.value === "26", "值 26（超出官方上限）也会被选中并显示", s.value);
   S.stage = saved2;
 }
 
