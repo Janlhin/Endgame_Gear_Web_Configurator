@@ -123,6 +123,85 @@
 
 ---
 
+## D-006 · 2026-11-09 运行时基线统一到 Node 26（关闭 T-06）
+
+- **背景**：`.nvmrc` 原本钉 `22`，`verify.yml` 的 ubuntu / windows 两个 job 各自硬编码
+  `node-version: "22"`，而本机实际是 `v26.13.0`。规范 §工具与运行时版本策略要求版本文件
+  保证「CI 与本地一致」，当时只保证了 CI 侧。更根本的问题是 `22` 被手抄了两遍——
+  与 D-003 里三份 `--max-warnings` 属于同一种失效方式，改版本时必然再次漂移。
+- **决策**：
+  1. `.nvmrc` 改为 `26`；两个 CI job 由 `node-version: "22"` 改为
+     `node-version-file: .nvmrc`。运行时版本此后只有一个写入点。
+  2. `package.json` 增 `engines.node: ">=26 <27"`；`@types/node` 由 `^22.20.5`
+     升到 `^26.6.6` 并同步 `package-lock.json`；`re/_domstub.ts` 里
+     「Node 22 自带 navigator」的注释改为「Node 22 起（基线 26）」。
+  3. 两份 README 的「从源码构建」写明 Node 26 基线；`TASKS.md` T-06 关闭。
+- **理由**：用户 2026-11-09 指令「更新NODE26」。T-06 提出时的推荐是「本机切回 22」，
+  但那需要额外安装并长期维护一个旧运行时，让权威判定通道跟着旧环境走；
+  本机已有 26，把 CI 升上来是成本更低且不留偏离的一侧。
+- **被否决的替代方案**：
+  1. 本机切到 22（原推荐项）—— 多一套待维护的运行时，且本机 26 仍会用于其它项目，
+     偏离只是从 CI 侧挪到本地侧，没有消失。
+  2. 维持现状并登记例外 —— 版本文件形同虚设；`npm ci` 的引擎行为、
+     esbuild / sass 的产物字节在本地与 CI 是否一致无法排除。
+  3. CI 直接写 `node-version: "26"` —— 当下能对齐，但仍是两个手抄副本，
+     下次升 27 会重演 T-06。
+- **影响面**：`.nvmrc`、`.github/workflows/verify.yml`（两处）、`package.json`、
+  `package-lock.json`、`re/_domstub.ts`、两份 README、`AGENTS.md` 头部、`TASKS.md`。
+- **验证证据**：`npm install` 退出码 0（锁文件 root 的 `engines` 与
+  `@types/node` 均已同步）；`npm run check`（tsc，`@types/node@26.6.6`）退出码 0；
+  全量 `npm run verify` 退出码 0、12 段全过（含 `check:layout` 与 `check:artifact`）。
+  CI 在 Node 26 上的首次判定以远端流水线为准，本机不代替它。
+- **复审条件**：升级 Node 27 时须同时改 `.nvmrc` 与 `engines`，并实跑
+  `npm ci` + `npm run verify`；若 `@types/node` 主版本落后于运行时，视为未对齐。
+
+---
+
+## D-007 · 2026-11-09 根目录白名单例外登记并接入机器校验（关闭 T-07）
+
+- **背景**：规范 v1.21.0 §`layout` 第 560 行只允许六类条目，第 593 行禁止根目录散文
+  文件，第 595 行要求白名单外新增须先询问获批、并补 `README.md` 目录结构字段与本日志
+  理由，第 597 行要求「取根目录一级条目与白名单比对，差集非空即失败」。
+  本仓库有 28 个一级条目，其中五项在白名单外：`index.html`（Pages 根发布入口）、
+  `README.en.md`、`.nojekyll`、`knip.config.js`、`.markdownlint-cli2.jsonc`。
+  原 T-07 记的是四项且含已被远端删除的 `README.zh-CN.md`；`index.html` 此前漏记，
+  本条一并更正。
+- **决策**：用户 2026-11-09 指令「T07更新」批准按 T-07 选项 2 保留五项，落实四件事：
+  1. 本条记录理由、被否决方案与复审条件；
+  2. `README.md` / `README.en.md` 补「仓库根目录」字段，逐项列明；
+  3. 新增 `.github/root-allowlist.txt`：规范六类 17 项 + 项目登记的一级目录 6 个 +
+     获批例外 5 项；例外行带 `verify-exempt:`、理由、`ref:D-007` 与到期日 2027-06-30；
+  4. 新增 `scripts/check-root-layout.ps1`，以 `npm run check:layout` 接入 `verify`
+     链并同步 `re/check_verify.mjs` 的 REQUIRED（链条 11 → 12 段）。用
+     `git ls-files --cached --others --exclude-standard` 把「尚未 `git add` 的新文件」
+     也纳入比对，堵住「先放后报」。
+- **理由**：五项都是平台/工具只认根目录位置，迁移要付出违反默认约定的代价，换来的
+  只是形式合规；`index.html` 更是 Pages 根发布的唯一入口，物理上无法迁。清单放
+  `.github/`（六类中的「协作与平台配置」）而非新建 `config/`，是为了不制造第六个
+  白名单外条目。
+- **关于 §豁免流程第 1 项的裁量**：该条要求「在代码中显式标注
+  `// verify-exempt: <理由> ref:<issue>`」。本类豁免的对象是目录布局，其中
+  `.nojekyll` 是空文件、`index.html` 是生成物——往生成物里写注释会破坏 D-004 的
+  产物可复现性。因此由清单行承担逐项标注：每行带 `verify-exempt:`、理由、
+  `ref:D-007` 与到期日，且脚本强制校验缺一不可。「可穷举、可 diff 审查」由清单
+  承担，「到期自动失效」由脚本在过期时把该行移出允许集实现。
+- **被否决的替代方案**：
+  1. 全部合规化 —— GitHub 首页语言切换与 Pages 入口会失效；`index.html` 无法迁；
+     `docs/.markdownlint.jsonc` 的就近覆盖关系也要重写。
+  2. 只写台账、不做机器校验 —— 第 597 行仍是一句空话，下次新增 `NOTES.md` 无人拦，
+     与 D-001 里「注释不构成门禁」是同一个错误。
+  3. 把清单放根目录 `config/` —— 又多一个白名单外一级目录，自相矛盾。
+- **影响面**：新增 2 个文件、改 2 份 README、`package.json` / `scripts/verify.ps1` /
+  `re/check_verify.mjs` 各一处、本日志与 `TASKS.md`。
+- **验证证据**：`check-root-layout.ps1` 单跑退出码 0（28 个一级条目 / 5 项例外）；
+  故意在根目录放入白名单外的 `NOTES.md` 后退出码 1 并列出该项（P1 式真实拦截，
+  测试文件随即删除）；全量 `npm run verify` 退出码 0、12 段全过。
+- **复审条件**：2027-06-30 前逐项复审；若 Pages 改走独立 `gh-pages` 分支发布，
+  `index.html` 与 `.nojekyll` 应移出根目录并删除对应例外。到期未复审则清单行
+  自动失效、门禁转红；新增根目录条目仍须先询问获批。
+
+---
+
 ## 决策日志格式
 
 新增条目按 D-00N 递增，字段固定为：背景 / 决策 / 理由 / 被否决的替代方案 / 影响面 / 复审条件。

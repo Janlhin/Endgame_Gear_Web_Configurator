@@ -11,7 +11,7 @@
 > 2026-11-09：按 v1.21.0 整改五处——① 构建指纹改内容哈希，产物变为可复现（D-004）；
 > ② `pre-commit` 改为纯转发薄壳，逻辑移入 `scripts/hooks/pre-commit.ps1`（D-005）；
 > ③ `verify` 增加 `knip` 与 `check:artifact` 两段（后者拦「改了清单忘记重建产物」）；
-> ④ ESLint 预算登记为带到期日的豁免（D-003）；⑤ 新增 `.nvmrc` 钉 Node 22。
+> ④ ESLint 预算登记为带到期日的豁免（D-003）；⑤ `.nvmrc` 钉 Node 26、CI 用 `node-version-file` 读同一文件（D-006）；⑥ 根目录白名单例外登记并接入 `check:layout` 机器校验（D-007）。
 
 ## 0. 项目一句话
 

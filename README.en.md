@@ -101,6 +101,8 @@ python -m http.server 8080
 # then visit http://localhost:8080
 ```
 
+**Runtime baseline: Node 26** — `.nvmrc` is the single source of truth; both CI jobs read it via `node-version-file`, and `package.json`'s `engines` / `@types/node` major version are kept in sync. See `DECISIONS.md` D-006.
+
 **Building from source** (run after changing `src/` or `scss/`; the artifact is synced to `index.html` at the root):
 
 ```bash
@@ -109,6 +111,20 @@ npm run build     # esbuild bundles TS + sass compiles SCSS -> dist/index.html +
 npm run build -- --minify   # minified
 npm run check     # tsc --noEmit type check
 ```
+
+### Repository root
+
+The root follows the six-category allowlist in the engineering spec v1.21.0 §`layout`. The machine-readable list is `.github/root-allowlist.txt`, enforced by `npm run check:layout` (`git ls-files` diff; a non-empty diff fails). Five entries sit outside the allowlist and are approved with reasons and expiry dates (`DECISIONS.md` D-007):
+
+| Entry | Why it must stay at the root |
+|---|---|
+| `index.html` | GitHub Pages publishes from the repo root; `check:artifact` keeps this build output in sync with the sources |
+| `README.en.md` | GitHub detects the language suffix and shows a language switch on the repo home page |
+| `.nojekyll` | The only way to disable Jekyll for Pages (Jekyll excludes `_`-prefixed files and can 404 the whole site) |
+| `knip.config.js` | knip auto-discovers its config at the root |
+| `.markdownlint-cli2.jsonc` | markdownlint-cli2 auto-discovers it at the root; `docs/.markdownlint.jsonc` relies on nearest-config override |
+
+**Adding a new root entry still requires prior approval**, followed by updates to the list, this table and the decision log.
 
 ### Style development conventions (mandatory)
 

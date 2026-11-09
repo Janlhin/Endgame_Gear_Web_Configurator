@@ -144,6 +144,10 @@ python -m http.server 8080
 
 ### 从源码构建
 
+运行时基线 **Node 26**：`.nvmrc` 是唯一真相源，本机用它切版本、CI 两个 job 由
+`node-version-file: .nvmrc` 读同一文件；`package.json` 的 `engines` 与
+`@types/node` 主版本同步。理由与迁移记录见 `DECISIONS.md` D-006。
+
 改动 `src/` 或 `scss/` 后运行；产物同步到根目录 `index.html`：
 
 ```bash
@@ -152,6 +156,23 @@ npm run build     # esbuild 打包 TS + sass 编译 SCSS -> dist/index.html + in
 npm run build -- --minify   # 压缩版
 npm run check     # tsc --noEmit 类型检查
 ```
+
+### 仓库根目录
+
+根目录按《强制工程校验规范》v1.21.0 §`layout` 的六类白名单管理；可机器校验的清单在
+`.github/root-allowlist.txt`，由 `npm run check:layout` 用 `git ls-files` 比对，
+差集非空即失败。下列五项位于白名单之外，已获批准并逐项登记理由与到期日
+（`DECISIONS.md` D-007）：
+
+| 条目 | 为什么只能在根目录 |
+|---|---|
+| `index.html` | GitHub Pages 从仓库根发布，入口必须是根级 `index.html`；它是构建产物，由 `check:artifact` 保证与源码一致 |
+| `README.en.md` | GitHub 按语言后缀自动识别，并在仓库首页提供语言切换 |
+| `.nojekyll` | Pages 关闭 Jekyll 的唯一手段；Jekyll 会排除 `_` 开头文件，构建失败还会整站 404 |
+| `knip.config.js` | knip 默认在根目录自动发现 |
+| `.markdownlint-cli2.jsonc` | markdownlint-cli2 默认在根目录自动发现，且 `docs/.markdownlint.jsonc` 依赖就近覆盖 |
+
+**新增根目录条目仍须先询问并获得批准**，再同步清单、本表与决策日志。
 
 ### 样式开发约定
 
