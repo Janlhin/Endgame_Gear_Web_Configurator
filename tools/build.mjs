@@ -8,8 +8,8 @@
 // ⚠️ 样式一律在 scss/ 下用 SCSS 维护（项目强制约定），不要在模板里直接写 <style>。
 import { build } from "esbuild";
 import * as sass from "sass";
+import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { execSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { mdToHtml } from "./md2html.mjs";
@@ -21,17 +21,18 @@ import { mdToHtml } from "./md2html.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 process.chdir(ROOT);
 
-/* 构建指纹：commit 短哈希 + UTC 分钟。写进页面页脚与诊断包 meta.build，
+/* 构建指纹：产物内容的 SHA-256 前 8 位。写进页面页脚与诊断包 meta.build，
  * 让志愿者与维护者能对齐「测的是哪一版」——Pages 有 10 分钟缓存，本地打过
  * 补丁的页面又与线上产物无从区分，issue #1 就卡在这上面。
- * 取不到 git 时退化为 dev，不阻断构建。 */
-function buildStamp() {
-  let hash = "dev";
-  try { hash = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim(); } catch (_) { /* 非 git 环境 */ }
-  const t = new Date().toISOString().slice(0, 16).replace("T", " ") + "Z";
-  return `${hash} · ${t}`;
-}
-const STAMP = buildStamp();
+ *
+ * 用内容哈希而非「commit 短哈希 + 时间」，三个原因：
+ *   1. commit 哈希区分不出「同一提交下本地改过的页面」，而那正是本指纹最初
+ *      要解决的情形；内容哈希对任何一处输入改动都会变。
+ *   2. 时间戳使产物不可复现：每次构建都产出不同的 index.html，于是
+ *      「改了文档却忘了重建产物」无法用 git diff 拦住（门禁必须先有确定性）。
+ *   3. 指纹含 commit 时，提交产物会改变 HEAD，产物就永远落后一次提交，
+ *      每次提交后都要补一个「chore(build): 重建产物」——自指的提交循环。
+ * 构建日期见 CHANGELOG 与 release note；产物本身只需要一个稳定的身份。 */
 
 mkdirSync("dist", { recursive: true });
 
@@ -101,17 +102,21 @@ const checklistHtml =
 const html = template
   .replace("/*__STYLES__*/", () => css)
   .replace("/*__CHECKLIST__*/", () => checklistHtml)
-  .replace("/*__BUNDLE__*/", () => js)
-  /* 指纹在 bundle 注入之后替换：模板页脚与 src/version.ts 里的字面量都要命中。
-     用函数形式替换，避免 STAMP 里的 $ 被当成特殊模式。 */
-  .replace(/__BUILD_STAMP__/g, () => STAMP);
+  .replace("/*__BUNDLE__*/", () => js);
 
-assertNoDevComments(html, "index.html");
+/* 指纹在 bundle 注入之后计算：它覆盖模板、样式、脚本与渲染后的文档，
+ * 少一样就不是「这一份产物」的身份。占位符本身参与计算，所以同样的输入
+ * 必得同样的指纹——这是「产物可复现」与「一致性可用 git diff 判定」的前提。
+ * 用函数形式替换，避免 STAMP 里的 $ 被当成特殊模式。 */
+const STAMP = createHash("sha256").update(html, "utf8").digest("hex").slice(0, 8);
+const finalHtml = html.replace(/__BUILD_STAMP__/g, () => STAMP);
 
-writeFileSync("dist/index.html", html);
+assertNoDevComments(finalHtml, "index.html");
+
+writeFileSync("dist/index.html", finalHtml);
 // 同步写根目录 index.html：保持"双击即用 + GitHub Pages 指向仓库根"的工作流，
 // 并避免根目录副本与 src/ 脱节（v1.2 曾因此丢过 0x71/0x72 功能）。
-writeFileSync("index.html", html);
+writeFileSync("index.html", finalHtml);
 
 /* 体积按**真实字节数**（UTF-8）报，而不是字符串的 .length ——
    含中文的产物按 .length 算会少报约 20%（中文在 UTF-16 里算 1 个码元、
