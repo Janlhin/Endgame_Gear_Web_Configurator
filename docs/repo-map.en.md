@@ -9,7 +9,7 @@
 
 | File | Purpose |
 |---|---|
-| `README.md` / `README.zh-CN.md` | Project front page, English + full Simplified Chinese, cross-linked at the top |
+| `README.md` / `README.en.md` | Project front page, full Simplified Chinese (repo home) + English, cross-linked at the top |
 | `AGENTS.md` | Engineering conventions for AI collaborators (incl. the spec version reference) |
 | `CHANGELOG.md` | Version history (semantic, maintained since v1.3) |
 | `DECISIONS.md` | Case-law file (append-only): background and rationale of every architecture/cleanup decision |

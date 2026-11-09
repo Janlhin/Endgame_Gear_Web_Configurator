@@ -9,7 +9,7 @@
 
 | 文件 | 作用 |
 |---|---|
-| `README.md` / `README.zh-CN.md` | 项目门面，英文版 + 简体中文完整版，顶部互链 |
+| `README.md` / `README.en.md` | 项目门面，简体中文完整版（仓库首页）+ 英文版，顶部互链 |
 | `AGENTS.md` | 给 AI 协作者的工程规范说明（含规范版本引用） |
 | `CHANGELOG.md` | 版本变更记录（语义化，自 v1.3 起维护） |
 | `MANIFEST.md` | 第三方素材合规清单（`re/upstream/` 收录物的许可证结论） |
