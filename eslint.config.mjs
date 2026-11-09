@@ -58,6 +58,10 @@ export default tseslint.config(
       // --max-warnings 的数值**不是随手填的**：它等于当前存量，
       // 因此「多写一处 any」会立刻让 verify 失败。
       // 改动任何 --max-warnings 数值前，先跑 `npx eslint src` 看真实计数。
+      //
+      // verify-exempt: 存量 any 81 处无法一次性清零，预算式门禁（=81）替代规范的
+      //   --max-warnings=0；新增即失败，只降不升。到期须重新提案。 ref:DECISIONS.md D-003
+      // 说明见 docs/eslint-budget.md，数字的唯一来源是 package.json 的 lint 脚本。
       "@typescript-eslint/no-explicit-any": "warn",
 
       // 主规范同样禁止 @ts-ignore；确需抑制时用 @ts-expect-error 并写明原因。
