@@ -1,0 +1,48 @@
+# 根目录一级条目白名单 —— 规范 v1.21.0 §layout（第 560 行六类 + 第 595 行获批例外）
+#
+# 校验脚本：scripts/check-root-layout.ps1（npm run check:layout，已接入 verify）
+# 判定：git ls-files 的一级条目与本清单比对，差集非空即失败（规范第 597 行）。
+#
+# 格式（每行 4 段，用 | 分隔）：
+#   一级条目|类别|到期日(- 表示常设)|理由
+# 类别含「例外」的条目必须带到期日，且理由含 verify-exempt: 与 ref:D-00N
+# —— 对应规范 §豁免流程的「显式标注 / 可穷举清单 / 到期自动失效」三项。
+# 本类豁免是目录布局而非代码行，物理上无法在空文件与生成物里写 // 注释，
+# 故由清单行承担标注；替代理由见 DECISIONS.md D-007。
+#
+# 审批：2026-11-09 由项目负责人指令「T07更新」批准保留，理由见 D-007。
+# 到期日统一 2027-06-30，到期未完成复审则该项自动从允许集移除、门禁转红。
+#
+# ---------------------------------------------------------------- 规范六类
+README.md|规范六类:五个文档|-|见 §layout 第 1 类；必须存在的五个文档
+AGENTS.md|规范六类:五个文档|-|见 §layout 第 1 类
+DECISIONS.md|规范六类:五个文档|-|见 §layout 第 1 类
+TASKS.md|规范六类:五个文档|-|见 §layout 第 1 类
+MANIFEST.md|规范六类:五个文档|-|见 §layout 第 1 类
+package.json|规范六类:包管理与锁文件|-|见 §layout 第 2 类；单例
+package-lock.json|规范六类:包管理与锁文件|-|见 §layout 第 2 类；单例
+tsconfig.json|规范六类:构建与静态检查配置|-|工具默认读取位置
+eslint.config.mjs|规范六类:构建与静态检查配置|-|工具默认读取位置
+stylelint.config.cjs|规范六类:构建与静态检查配置|-|工具默认读取位置
+commitlint.config.cjs|规范六类:构建与静态检查配置|-|工具默认读取位置
+.nvmrc|规范六类:版本与忽略规则|-|运行时版本唯一真相源；CI 用 node-version-file 读它（D-006）
+.gitignore|规范六类:版本与忽略规则|-|版本与忽略规则
+.github|规范六类:协作与平台配置|-|以目录形式存在，内容不进根
+.husky|规范六类:协作与平台配置|-|以目录形式存在，内容不进根
+LICENSE|规范六类:法务与变更记录|-|惯例单例；GPL-3.0-or-later
+CHANGELOG.md|规范六类:法务与变更记录|-|惯例单例
+#
+# ------------------------------------------------- 项目自有的一级目录（登记）
+docs|项目目录:文档与逐文件地图|-|子目录按判据管理，非根目录白名单条目
+re|项目目录:协议取证与离线测试|-|同上
+scripts|项目目录:校验与钩子脚本|-|同上
+scss|项目目录:样式唯一来源|-|同上
+src|项目目录:TypeScript 源码|-|同上
+tools|项目目录:构建与转换工具|-|同上
+#
+# -------------------------------------------------------------- 获批的例外
+index.html|获批例外|2027-06-30|verify-exempt: GitHub Pages 从仓库根发布，入口必须是根级 index.html；且它是构建产物、由 check:artifact 保证与源码一致；ref:D-007
+README.en.md|获批例外|2027-06-30|verify-exempt: GitHub 按语言后缀自动识别并在仓库首页提供语言切换；移入子目录会失去该行为；ref:D-007
+.nojekyll|获批例外|2027-06-30|verify-exempt: Pages 关闭 Jekyll 的唯一手段，Jekyll 会排除下划线开头文件且构建失败会整站 404；平台只读此位置；ref:D-007
+knip.config.js|获批例外|2027-06-30|verify-exempt: knip 默认在根目录自动发现，显式 --config 会与 lint-staged 及 CI 入口产生第二套路径约定；ref:D-007
+.markdownlint-cli2.jsonc|获批例外|2027-06-30|verify-exempt: markdownlint-cli2 默认在根目录自动发现，且 docs/.markdownlint.jsonc 依赖就近覆盖关系；ref:D-007

@@ -29,6 +29,9 @@ const REQUIRED = [
   // ★ check:meta 排在最前，但它**校验自己**——否则「把这段删掉」就没人发现了，
   //   自指漏洞。下面的 selfCheck 负责堵这个洞。
   ["check:meta", "node re/check_verify.mjs"],
+  // 根目录白名单（2026-11-09 接入，DECISIONS.md D-007）：
+  // 规范 §layout 第 597 行要求「一级条目与白名单比对，差集非空即失败」。
+  ["check:layout", "scripts/check-root-layout.ps1"],
   ["check", "tsc --noEmit"],
   ["lint", "eslint src"],
   ["lint:docs", "markdownlint"],

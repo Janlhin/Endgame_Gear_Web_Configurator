@@ -62,6 +62,12 @@ Write-Host "`n==> npm run check:meta" -ForegroundColor Cyan
 & npm run check:meta
 Assert-Step 'check:meta'
 
+# 根目录按白名单（规范 §layout 第 597 行）：差集非空即失败。
+# 连未 git add 的新文件也比对，堵住「先放后报」；获批例外见 D-007。
+Write-Host "`n==> npm run check:layout（根目录白名单）" -ForegroundColor Cyan
+& npm run check:layout
+Assert-Step 'check:layout'
+
 Write-Host "`n==> npm run check" -ForegroundColor Cyan
 & npm run check
 Assert-Step 'check'
