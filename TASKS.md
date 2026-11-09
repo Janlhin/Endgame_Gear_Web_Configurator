@@ -67,9 +67,14 @@
 - 影响面：`verify.ps1` 的 `check` / `lint` / `test` 段仅做了命令搬运，未逐段实跑。
 - 阻塞了哪些任务：无。
 - 未裁决时的默认行为：以 CI 为准。
-- 状态：**待决**
-- 解决方法：—
-- 解决时间：—
+- 状态：**已决**
+- 解决方法：2026-11-09 本机实跑全量 `npm run verify`，**退出码 0，11 段全过**
+  （check:meta / check / lint / lint:docs / lint:css / test / check:i18n / knip /
+  check:ui / build / check:artifact）。`check:ui` 的五个演练均执行：layout 8 类、
+  i18n 22 例 + 3 条字体规则、reset 7 例 + 1 例对照、xm1_align 全过。
+  期间发现并修复失败路径的诊断丢失（`$PSNativeCommandUseErrorActionPreference`
+  与手工 `$LASTEXITCODE` 并用），见 verify.ps1 头部注释与规范 v1.21.0 的补正。
+- 解决时间：2026-11-09
 
 ---
 
