@@ -35,8 +35,15 @@ const REQUIRED = [
   ["lint:css", "stylelint"],
   ["test", "node re/run_test.mjs"],
   ["check:i18n", "python re/i18n_check.py"],
+  // 清理阈值层（2026-11-09 接入）：knip 的 files 规则为 error，
+  // 因此「新增一个没人引用的孤儿文件」会让 verify 失败。
+  // exports 是 warn（56 条协议 API 存量），不参与门禁——见 knip.config.js。
+  ["knip", "knip"],
   ["check:ui", "python re/render_check.py"],
   ["build", "node tools/build.mjs"],
+  // 文档与代码一致（2026-11-09 接入）：比对 build 产出的 index.html 与入库版本。
+  // 成立的前提是构建可复现（内容哈希指纹，DECISIONS.md D-004）。
+  ["check:artifact", "scripts/check-artifact.ps1"],
 ];
 
 /**

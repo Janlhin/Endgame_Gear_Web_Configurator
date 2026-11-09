@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "check": "tsc --noEmit",
+    "check:artifact": "pwsh -NoLogo -NoProfile -File ./scripts/check-artifact.ps1",
     "dev": "node tools/build.mjs --watch",
     "test": "node re/run_test.mjs",
     "check:i18n": "node re/i18n_audit.mjs",
@@ -16,7 +17,7 @@
     "verify": "pwsh -NoLogo -NoProfile -File ./scripts/verify.ps1",
     "verify:ci": "pwsh -NoLogo -NoProfile -File ./scripts/verify.ps1 -Ci",
     "prepare": "husky",
-    "lint": "eslint src --max-warnings 81",
+    "lint": "eslint src --max-warnings=81",
     "lint:fix": "eslint src --fix",
     "lint:css": "stylelint \"scss/**/*.scss\"",
     "check:meta": "node re/check_verify.mjs",
