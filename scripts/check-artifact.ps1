@@ -42,8 +42,19 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-& git diff --exit-code -- @targets
+# 产物主体是压缩成少数几行的超长代码，整份 unified diff 的单行可达数百 KB，
+# 打进 CI 日志会把日志淹没、也让真正的差异看不见（GitHub 会截掉超长行）。
+# 所以这里不直接输出 diff：先记行数统计，再只打印前几行差异且截断到 160 字符。
+$stat = ((& git --no-pager diff --numstat -- @targets) -join '; ') -replace "`t", ' '
+& git --no-pager diff --exit-code -- @targets | Out-Null
 if ($LASTEXITCODE -ne 0) {
+    Write-Host "产物与源码/文档不一致（增/删 行数）：$stat" -ForegroundColor Yellow
+    & git --no-pager diff -U0 -- @targets |
+        Where-Object { $_ -match '^[-+]' -and $_ -notmatch '^(\+\+\+|---)' } |
+        Select-Object -First 4 |
+        ForEach-Object {
+            if ($_.Length -gt 160) { $_.Substring(0, 160) + ' …（本行过长，已截断）' } else { $_ }
+        }
     [Console]::Error.WriteLine('产物与源码/文档不一致：index.html 需要重建并提交。')
     [Console]::Error.WriteLine('常见原因：改了 docs/test-checklist*.md、src/ 或 scss/ 之后没跑 npm run build，')
     [Console]::Error.WriteLine('或者跑了 build 但没把产物一并提交。')
