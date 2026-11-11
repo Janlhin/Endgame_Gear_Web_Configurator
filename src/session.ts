@@ -98,8 +98,21 @@ export async function refreshAll() {
       return;
     }
 
-    try { const r = await guarded(0x0D, 0x00, null, { pace: 150 }); S.dongleFw = fwStr(r[16], r[17]); }
-    catch (e) { if (errCode(e) !== 0x07) throw e; S.dongleFw = "—"; }
+    /* 0x0D（接收器固件）的状态语义随「型号 × 连接方式」变化，三种都必须容错：
+       · 有线：0x07「本连接不适用」→ 显示 "—"
+       · 无线且鼠标可达：0x01 → 正常取固件
+       · 无线但鼠标睡着/断电：**XM2w 回 0x08**（OP1w 回 0x01，两型号不同 —— 2026-11-11 实测）
+         此时接收器仍在应答，只是鼠标不可达。不能当致命错误：否则整个读取流程会在这一步
+         中断，连后面的 0x0E / 0xB4 都不会尝试，用户看到的是「连接失败」而不是「鼠标睡着」。
+       判据与下方 0x0E 分支一致：0x08/0x11 视为「睡着」而非「出错」。 */
+    try {
+      const r = await guarded(0x0D, 0x00, null, { pace: 150 });
+      S.dongleFw = fwStr(r[16], r[17]);
+    } catch (e) {
+      const c = errCode(e);
+      if (c !== 0x07 && c !== 0x08 && c !== 0x11) throw e;
+      S.dongleFw = "—";
+    }
     let mouseOk = false;
     try {
       const r = await guarded(0x0E, 0x00, null, { pace: 150 });
