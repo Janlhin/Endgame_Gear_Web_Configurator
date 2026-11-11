@@ -42,12 +42,57 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-& git diff --exit-code -- @targets
-if ($LASTEXITCODE -ne 0) {
+# 产物主体是压缩成少数几行的超长代码，整份 unified diff 的单行可达数百 KB，
+# 打进 CI 日志会把日志淹没、也让真正的差异看不见（GitHub 会截掉超长行）。
+# 所以这里不直接输出 diff：先记行数统计，再只打印前几行差异且截断到 160 字符。
+$stat = ((& git --no-pager diff --numstat -- @targets) -join '; ') -replace "`t", ' '
+& git --no-pager diff --exit-code -- @targets | Out-Null
+# ⚠️ 必须把 git 的退出码**先存下来**：后面要跑诊断命令，而 $LASTEXITCODE 会被
+# 那些命令覆盖。若直接 `exit $LASTEXITCODE`，门禁会被最后一条命令的退出码带走
+# （node 成功 → 0 → 门禁失效）。这正是 2026-11-11 踩过的坑。
+$diffExit = $LASTEXITCODE
+if ($diffExit -ne 0) {
+    Write-Host "产物与源码/文档不一致（增/删 行数）：$stat" -ForegroundColor Yellow
+    & git --no-pager diff -U0 -- @targets |
+        Where-Object { $_ -match '^[-+]' -and $_ -notmatch '^(\+\+\+|---)' } |
+        Select-Object -First 4 |
+        ForEach-Object {
+            if ($_.Length -gt 160) { $_.Substring(0, 160) + ' …（本行过长，已截断）' } else { $_ }
+        }
+    # 产物主体是压缩成少数几行的超长代码，光看「第几行不同」仍定位不到。
+    # 这里再精确到**首个不同的字节**，并把该处上下文（两侧各一段）打出来。
+    $diag = @'
+const cp = require("child_process");
+const fs = require("fs");
+const target = process.argv[1];
+const a = cp.execFileSync("git", ["cat-file", "blob", "HEAD:" + target], { maxBuffer: 1 << 28 });
+const b = fs.readFileSync(target);
+/* 指纹必然不同（它就是内容哈希），而且它出现在**两处**：页面页脚的 build xxxxxxxx
+   与 bundle 里的 BUILD_STAMP="xxxxxxxx"。两处都要掩掉，否则永远撞在指纹上。 */
+const stampOf = (buf) => {
+  const m = /build ([0-9a-f]{8})/.exec(buf.toString("latin1"));
+  return m ? m[1] : null;
+};
+const sa = stampOf(a), sb = stampOf(b);
+const mask = (buf) => {
+  let s = buf.toString("latin1");
+  if (sa) s = s.split(sa).join("XXXXXXXX");
+  if (sb) s = s.split(sb).join("XXXXXXXX");
+  return Buffer.from(s, "latin1");
+};
+const ma = mask(a), mb = mask(b);
+let i = 0;
+while (i < ma.length && i < mb.length && ma[i] === mb[i]) i++;
+console.log(`掩掉指纹后的首个差异字节偏移: ${i}  (已提交长度 ${ma.length}, 重建后长度 ${mb.length})`);
+const win = (buf) => buf.slice(Math.max(0, i - 70), i + 110).toString("utf8").replace(/[^\x20-\x7e]/g, ".");
+console.log("已提交 : " + win(ma));
+console.log("重建后 : " + win(mb));
+'@
+    & node -e $diag $targets[0]
     [Console]::Error.WriteLine('产物与源码/文档不一致：index.html 需要重建并提交。')
     [Console]::Error.WriteLine('常见原因：改了 docs/test-checklist*.md、src/ 或 scss/ 之后没跑 npm run build，')
     [Console]::Error.WriteLine('或者跑了 build 但没把产物一并提交。')
-    exit $LASTEXITCODE
+    exit $diffExit
 }
 
 $untracked = @(& git status --porcelain -- @targets | Where-Object { $_ -match '^\?\?' })
