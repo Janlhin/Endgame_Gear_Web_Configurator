@@ -108,8 +108,18 @@ const html = template
  * 少一样就不是「这一份产物」的身份。占位符本身参与计算，所以同样的输入
  * 必得同样的指纹——这是「产物可复现」与「一致性可用 git diff 判定」的前提。
  * 用函数形式替换，避免 STAMP 里的 $ 被当成特殊模式。 */
-const STAMP = createHash("sha256").update(html, "utf8").digest("hex").slice(0, 8);
-const finalHtml = html.replace(/__BUILD_STAMP__/g, () => STAMP);
+/* ★ 产物必须跨平台可复现（2026-11-11 修复）
+ *
+ * 同一份源码在 Windows 工作区（CRLF）与 Linux CI（LF）会产出**不同字节**：
+ * 指纹算的是注入后的整页，指纹一变产物就变。于是 check:artifact 在 CI 上
+ * 永远判「产物与源码不一致」——main 自 2026-11-09 起持续红就是这个原因
+ * （实测：CRLF 树 929dea1c，LF 树 86d0863e，CI 只认前者）。
+ *
+ * 归一化之后再算指纹、再写出，两个平台才会得到同一份产物，门禁才成立。
+ * 这里只动行尾，不动内容：其余字节仍由内容哈希决定。 */
+const normalizedHtml = html.replace(/\r\n/g, "\n");
+const STAMP = createHash("sha256").update(normalizedHtml, "utf8").digest("hex").slice(0, 8);
+const finalHtml = normalizedHtml.replace(/__BUILD_STAMP__/g, () => STAMP);
 
 assertNoDevComments(finalHtml, "index.html");
 
