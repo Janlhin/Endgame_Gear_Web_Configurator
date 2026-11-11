@@ -47,7 +47,11 @@ if ($LASTEXITCODE -ne 0) {
 # 所以这里不直接输出 diff：先记行数统计，再只打印前几行差异且截断到 160 字符。
 $stat = ((& git --no-pager diff --numstat -- @targets) -join '; ') -replace "`t", ' '
 & git --no-pager diff --exit-code -- @targets | Out-Null
-if ($LASTEXITCODE -ne 0) {
+# ⚠️ 必须把 git 的退出码**先存下来**：后面要跑诊断命令，而 $LASTEXITCODE 会被
+# 那些命令覆盖。若直接 `exit $LASTEXITCODE`，门禁会被最后一条命令的退出码带走
+# （node 成功 → 0 → 门禁失效）。这正是 2026-11-11 踩过的坑。
+$diffExit = $LASTEXITCODE
+if ($diffExit -ne 0) {
     Write-Host "产物与源码/文档不一致（增/删 行数）：$stat" -ForegroundColor Yellow
     & git --no-pager diff -U0 -- @targets |
         Where-Object { $_ -match '^[-+]' -and $_ -notmatch '^(\+\+\+|---)' } |
@@ -63,8 +67,19 @@ const fs = require("fs");
 const target = process.argv[1];
 const a = cp.execFileSync("git", ["cat-file", "blob", "HEAD:" + target], { maxBuffer: 1 << 28 });
 const b = fs.readFileSync(target);
-/* 指纹本身必然不同（它就是内容哈希），先把它掩掉，否则永远撞在指纹上、看不到真正的差异。 */
-const mask = (buf) => Buffer.from(buf.toString("latin1").replace(/build [0-9a-f]{8}/g, "build XXXXXXXX"), "latin1");
+/* 指纹必然不同（它就是内容哈希），而且它出现在**两处**：页面页脚的 build xxxxxxxx
+   与 bundle 里的 BUILD_STAMP="xxxxxxxx"。两处都要掩掉，否则永远撞在指纹上。 */
+const stampOf = (buf) => {
+  const m = /build ([0-9a-f]{8})/.exec(buf.toString("latin1"));
+  return m ? m[1] : null;
+};
+const sa = stampOf(a), sb = stampOf(b);
+const mask = (buf) => {
+  let s = buf.toString("latin1");
+  if (sa) s = s.split(sa).join("XXXXXXXX");
+  if (sb) s = s.split(sb).join("XXXXXXXX");
+  return Buffer.from(s, "latin1");
+};
 const ma = mask(a), mb = mask(b);
 let i = 0;
 while (i < ma.length && i < mb.length && ma[i] === mb[i]) i++;
@@ -77,7 +92,7 @@ console.log("重建后 : " + win(mb));
     [Console]::Error.WriteLine('产物与源码/文档不一致：index.html 需要重建并提交。')
     [Console]::Error.WriteLine('常见原因：改了 docs/test-checklist*.md、src/ 或 scss/ 之后没跑 npm run build，')
     [Console]::Error.WriteLine('或者跑了 build 但没把产物一并提交。')
-    exit $LASTEXITCODE
+    exit $diffExit
 }
 
 $untracked = @(& git status --porcelain -- @targets | Where-Object { $_ -match '^\?\?' })
