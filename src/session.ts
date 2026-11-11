@@ -17,7 +17,7 @@ import { layoutFor, applyLayout } from "./layout.js";
 import { dev, guarded, probe, StatusError } from "./transport.js";
 import { buildBlob8k, PID_FAMILY4, PID_8K, VID, VID_22D4, MOUSE_PIDS, modelOf } from "./protocol.js";
 
-/** 固件版本 → "major.minor"（次版本号十进制补零两位）。
+/** 固件版本 → "major.minor"（次版本号按十六进制补零两位）。
  *
  *  ★ 设备是「major 在前、minor 在后」两个**独立字节**，不是一个小端 u16。
  *    依据：第四族同样是这个布局（re/FAMILY4_NOTES.md:76 ——
@@ -26,9 +26,17 @@ import { buildBlob8k, PID_FAMILY4, PID_8K, VID, VID_22D4, MOUSE_PIDS, modelOf } 
  *  ★ 2026-10-20 修正：此前把 r[22] | (r[23]<<8) 当 u16 拼起来，
  *    再让本函数按「高字节=major」去拆 —— 两处方向相反，**双重反转**
  *    把主次版本号对调了。官方工具显示「鼠标固件 1.07 / 接收器固件 1.01」，
- *    我们却显示「7.1 / 1.1」。修正为直接收两个字节，主次不再靠拼装顺序隐含。 */
+ *    我们却显示「7.1 / 1.1」。修正为直接收两个字节，主次不再靠拼装顺序隐含。
+ *
+ *  ★ 2026-11-11 修正：次版本号是**十六进制串**，不是十进制数值。
+ *    之前用 String(minor) 得到十进制数字，于是 XM2w 4k v1 的字节 0x10
+ *    被显示成「1.16」——而厂商把它叫 1.10（GitHub tag `Firmware_1.10`、
+ *    官网目录「XM2w 4k ≡ 1.10」、官方工具同样显示 1.10）。
+ *    minor ≥ 0x0A 的字节才会暴露这个差异：v2 的 0x07 两种解释相同，
+ *    所以 v1 是第一个能分辨的样本。
+ *    现在按十六进制串输出，与厂商的版本命名一致。 */
 export function fwStr(major: number, minor: number) {
-  return `${major}.${String(minor).padStart(2, "0")}`;
+  return `${major}.${minor.toString(16).padStart(2, "0")}`;
 }
 
 export async function refreshAll() {
