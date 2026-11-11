@@ -62,7 +62,7 @@ export function verifyPerf(w: any): string[] {
   if (w.polling !== S.stage.polling) bad.push(`Polling 0x${w.polling.toString(16)}→0x${S.stage.polling.toString(16)}`);
   if (w.motionSync !== (S.stage.motionSync ? 1 : 0)) bad.push("Motion Sync");
   if (w.slamclick !== !!(f & 1)) bad.push("Slamclick");
-  if (S.gen === 1 && w.jitter !== (f & 0x10 ? 1 : 0)) bad.push("Jitter filter");
+  if (S.gen === 1 && w.jitter !== !!(f & 0x10)) bad.push("Jitter filter");
   if (S.gen === 2 && w.multiclick !== !!(f & 0x20)) bad.push("Multiclick");
   if (S.gen === 2 && w.maxFps !== !!(f & 0x40)) bad.push("Force max FPS");
   if (w.powerSaving !== S.stage.powerSaving) bad.push(`Power saving ${w.powerSaving}→${S.stage.powerSaving}`);

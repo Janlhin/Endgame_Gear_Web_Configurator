@@ -14,6 +14,7 @@ const ENTRIES = [
   ["re/tests/test_btns.ts", "re/tests/.test_btns.mjs"],
   ["re/tests/test_sensor_cols.ts", "re/tests/.test_sensor_cols.mjs"],
   ["re/tests/test_write_gates.ts", "re/tests/.test_write_gates.mjs"],
+  ["re/tests/test_verify_perf.ts", "re/tests/.test_verify_perf.mjs"],
   ["re/tests/test_we_diagnostics.ts", "re/tests/.test_we_diagnostics.mjs"],
   ["re/tests/test_we_frame.ts", "re/tests/.test_we_frame.mjs"],
   ["re/tests/test_cmd_frame.ts", "re/tests/.test_cmd_frame.mjs"],
