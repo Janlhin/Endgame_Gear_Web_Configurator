@@ -55,6 +55,25 @@ if ($LASTEXITCODE -ne 0) {
         ForEach-Object {
             if ($_.Length -gt 160) { $_.Substring(0, 160) + ' …（本行过长，已截断）' } else { $_ }
         }
+    # 产物主体是压缩成少数几行的超长代码，光看「第几行不同」仍定位不到。
+    # 这里再精确到**首个不同的字节**，并把该处上下文（两侧各一段）打出来。
+    $diag = @'
+const cp = require("child_process");
+const fs = require("fs");
+const target = process.argv[1];
+const a = cp.execFileSync("git", ["cat-file", "blob", "HEAD:" + target], { maxBuffer: 1 << 28 });
+const b = fs.readFileSync(target);
+/* 指纹本身必然不同（它就是内容哈希），先把它掩掉，否则永远撞在指纹上、看不到真正的差异。 */
+const mask = (buf) => Buffer.from(buf.toString("latin1").replace(/build [0-9a-f]{8}/g, "build XXXXXXXX"), "latin1");
+const ma = mask(a), mb = mask(b);
+let i = 0;
+while (i < ma.length && i < mb.length && ma[i] === mb[i]) i++;
+console.log(`掩掉指纹后的首个差异字节偏移: ${i}  (已提交长度 ${ma.length}, 重建后长度 ${mb.length})`);
+const win = (buf) => buf.slice(Math.max(0, i - 70), i + 110).toString("utf8").replace(/[^\x20-\x7e]/g, ".");
+console.log("已提交 : " + win(ma));
+console.log("重建后 : " + win(mb));
+'@
+    & node -e $diag $targets[0]
     [Console]::Error.WriteLine('产物与源码/文档不一致：index.html 需要重建并提交。')
     [Console]::Error.WriteLine('常见原因：改了 docs/test-checklist*.md、src/ 或 scss/ 之后没跑 npm run build，')
     [Console]::Error.WriteLine('或者跑了 build 但没把产物一并提交。')
