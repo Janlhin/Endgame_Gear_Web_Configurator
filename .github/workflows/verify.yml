@@ -64,11 +64,12 @@ jobs:
         run: |
           # 只校验最近一次提交；历史不追溯，避免阻塞旧提交
           $subject = (git log -1 --pretty=%s)
-          # PR 合并时 HEAD 是 GitHub 生成的合并提交，标题形如
-          # "Merge pull request #N from ..."，它不是作者写的提交信息，
-          # 按惯例不纳入 Conventional Commits 约束 —— 否则每次合并 main 必红
-          # （2026-11-11 实测：#2 与 #4 合并后 main 的 verify 均在此步失败）。
-          if ($subject -match '^Merge (pull request|branch)') {
+          # PR 合并时 HEAD 是 GitHub 生成的合并提交，标题有两种形态：
+          #   "Merge pull request #N from ..."   （合并到 main 时）
+          #   "Merge <sha> into <sha>"           （PR 事件检出的合并引用）
+          # 它都不是作者写的提交信息，按惯例不纳入 Conventional Commits 约束 ——
+          # 否则每次合并 main 必红（2026-11-11 实测：#2 与 #4 合并后均停在这一步）。
+          if ($subject -match '^Merge ') {
             Write-Host "✓ 合并提交，跳过标题格式检查"
           } elseif ($subject -notmatch '^(feat|fix|docs|refactor|chore|perf|test|build|ci)(\(.+\))?: .+') {
             Write-Host "✗ 提交信息不符合 Conventional Commits：$subject"
