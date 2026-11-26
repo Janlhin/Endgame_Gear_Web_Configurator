@@ -85,7 +85,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path 'site' | Out-Null
           Copy-Item -LiteralPath 'index.html' -Destination 'site/'
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
