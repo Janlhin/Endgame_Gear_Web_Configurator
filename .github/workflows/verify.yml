@@ -33,7 +33,7 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           # 单一真相源：与 .nvmrc 同源，避免「本地 26 / CI 22」的版本偏离（T-06 / D-006）。
@@ -82,7 +82,7 @@ jobs:
   ui:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           # 单一真相源：与 .nvmrc 同源，避免「本地 26 / CI 22」的版本偏离（T-06 / D-006）。
