@@ -40,7 +40,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 与 verify.yml 的 canary 同口径：清单卡必须真的渲染进产物。
       # md2html 若静默失效，index.html 仍能构建成功，没有别的检查会发现。
