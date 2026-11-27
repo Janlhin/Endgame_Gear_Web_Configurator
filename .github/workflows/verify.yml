@@ -88,7 +88,7 @@ jobs:
           # 单一真相源：与 .nvmrc 同源，避免「本地 26 / CI 22」的版本偏离（T-06 / D-006）。
           node-version-file: .nvmrc
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: npm ci
